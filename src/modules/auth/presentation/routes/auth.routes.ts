@@ -139,6 +139,18 @@ export async function authRoutes(
             currentLevel: { type: 'number' },
             totalXp: { type: 'number' },
             currentStreak: { type: 'number' },
+            avatarUrl: { type: 'string' },
+            position: { type: 'string' },
+            yearsOfExperience: { type: 'number' },
+            preferredLanguages: {
+              type: 'array',
+              items: { type: 'string' }
+            },
+            githubUsername: { type: 'string' },
+            companyId: { type: 'string' },
+            teamId: { type: 'string' },
+            emailVerified: { type: 'boolean' },
+            onboardingCompleted: { type: 'boolean' },
           },
         },
       },

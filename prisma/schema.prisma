@@ -1,0 +1,467 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  password          String
+  name              String
+  avatarUrl         String?
+  
+  role              UserRole  @default(JUNIOR)
+  position          String?
+  yearsOfExperience Int       @default(0)
+  preferredLanguages String[]
+  githubUsername    String?
+  
+  companyId         String?
+  company           Company?  @relation(fields: [companyId], references: [id])
+  teamId            String?
+  team              Team?     @relation(fields: [teamId], references: [id])
+  
+  emailVerified     Boolean   @default(false)
+  termsAcceptedAt   DateTime?
+  onboardingCompleted Boolean @default(false)
+  lastLoginAt       DateTime?
+  
+  currentLevel      Int       @default(1)
+  totalXp          Int       @default(0)
+  currentStreak    Int       @default(0)
+  
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  
+  attempts         ChallengeAttempt[]
+  metrics          UserMetrics?
+  badges           UserBadge[]
+  certificates     Certificate[]
+  xpTransactions   XPTransaction[]
+  aiInteractions   AIInteraction[]
+  codeEvents       CodeEvent[]
+  
+  @@index([email])
+  @@index([companyId])
+}
+
+model Company {
+  id           String   @id @default(cuid())
+  name         String
+  domain       String   @unique
+  logo         String?
+  
+  plan         Plan     @default(FREE)
+  maxUsers     Int      @default(5)
+  activeUsers  Int      @default(0)
+  
+  settings     Json     @default("{}")
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  users        User[]
+  teams        Team[]
+  billing      Billing?
+}
+
+
+model Challenge {
+  id                String   @id @default(cuid())
+  slug              String   @unique
+  title             String
+  description       String
+  
+  difficulty        Difficulty
+  category          Category
+  estimatedMinutes  Int
+  languages         String[]
+  
+  instructions      String  
+  starterCode       String?
+  solution          String
+  
+  testCases         Json     
+  hints             Json    
+  traps             Json    
+  
+  baseXp           Int      @default(100)
+  bonusXp          Int      @default(50)
+  
+  targetMetrics    Json     
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  attempts         ChallengeAttempt[]
+  
+  @@index([slug])
+  @@index([difficulty])
+  @@index([category])
+}
+
+model ChallengeAttempt {
+  id              String    @id @default(cuid())
+  
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  challengeId     String
+  challenge       Challenge @relation(fields: [challengeId], references: [id])
+  
+  sessionId       String
+  attemptNumber   Int       @default(1)
+  
+  startedAt       DateTime  @default(now())
+  completedAt     DateTime?
+  duration        Int?     
+  
+  status          AttemptStatus @default(IN_PROGRESS)
+  currentStep     Int       @default(0)
+  lastActivity    DateTime  @default(now())
+  
+  finalCode       String?
+  codeSnapshots   Json    
+  language        String
+  
+  testResults     Json    
+  score           Float     @default(0)
+  passed          Boolean   @default(false)
+  
+  finalDI         Float?
+  finalPR         Float?
+  finalCS         Float?
+  
+  aiInteractions  AIInteraction[]
+  codeEvents      CodeEvent[]
+  metrics         MetricSnapshot[]
+  traps           TrapDetection[]
+  
+  @@index([userId])
+  @@index([challengeId])
+  @@index([status])
+}
+
+model MetricSnapshot {
+  id               String   @id @default(cuid())
+  
+  attemptId        String
+  attempt          ChallengeAttempt @relation(fields: [attemptId], references: [id])
+  userId           String
+  
+  timestamp        DateTime @default(now())
+  sessionTime      Int    
+  
+  dependencyIndex  Float
+  passRate         Float
+  checklistScore   Float
+  
+  codeQuality      Float?
+  debugTime        Int?
+  aiUsageTime      Int?
+  manualCodingTime Int?
+  
+  @@index([attemptId])
+  @@index([userId])
+}
+
+model UserMetrics {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
+  
+  averageDI       Float    @default(0)
+  averagePR       Float    @default(0)
+  averageCS       Float    @default(0)
+  
+  weeklyTrends    Json     
+  
+
+  metricsByCategory Json   
+  
+  firstWeekDI     Float?
+  currentWeekDI   Float?
+  improvement     Float?
+  
+  strongAreas     String[]
+  weakAreas       String[]
+  
+  updatedAt       DateTime @updatedAt
+}
+
+model Badge {
+  id           String   @id @default(cuid())
+  key          String   @unique
+  name         String
+  description  String
+  icon         String
+  rarity       Rarity
+  
+  requirements Json    
+  xpReward    Int      @default(0)
+  visible     Boolean  @default(true)
+  
+  users       UserBadge[]
+}
+
+model UserBadge {
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  badgeId     String
+  badge       Badge    @relation(fields: [badgeId], references: [id])
+  
+  unlockedAt  DateTime @default(now())
+  progress    Float    @default(0) 
+  featured    Boolean  @default(false)
+  
+  @@id([userId, badgeId])
+}
+
+model XPTransaction {
+  id            String   @id @default(cuid())
+  
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  
+  amount        Int
+  reason        String
+  source        XPSource
+  sourceId      String?  
+  
+  balanceBefore Int
+  balanceAfter  Int
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([userId])
+}
+
+model AIInteraction {
+  id              String   @id @default(cuid())
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  attemptId       String?
+  attempt         ChallengeAttempt? @relation(fields: [attemptId], references: [id])
+  
+  provider        AIProvider
+  model           String
+  
+  messages        Json    
+  promptComplexity String?
+  responseLength  Int
+  codeLinesGenerated Int   @default(0)
+  
+  wasCopied       Boolean  @default(false)
+  copyTimestamp   DateTime?
+  pasteTimestamp  DateTime?
+  
+  inputTokens     Int
+  outputTokens    Int
+  estimatedCost   Float
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([userId])
+  @@index([attemptId])
+}
+
+model CodeEvent {
+  id              String   @id @default(cuid())
+  
+  attemptId       String
+  attempt         ChallengeAttempt @relation(fields: [attemptId], references: [id])
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  
+  type            EventType
+  timestamp       DateTime @default(now())
+  sessionTime     Int
+  
+  linesAdded      Int      @default(0)
+  linesRemoved    Int      @default(0)
+  totalLines      Int
+  charactersChanged Int
+  
+  cursorPosition  Json?
+  fileName        String?
+  
+  wasFromAI       Boolean  @default(false)
+  aiInteractionId String?
+  
+  @@index([attemptId])
+  @@index([type])
+}
+
+model TrapDetection {
+  id                String   @id @default(cuid())
+  
+  attemptId         String
+  attempt           ChallengeAttempt @relation(fields: [attemptId], references: [id])
+  trapId            String
+  
+  detectedAt        DateTime @default(now())
+  reactionTime      Int      
+  
+  fellIntoTrap      Boolean
+  fixedAfterWarning Boolean  @default(false)
+  learnedFrom       Boolean  @default(false)
+  
+  explanationShown  Boolean  @default(false)
+  explanationReadTime Int?
+  quizAnswered      Boolean  @default(false)
+  quizScore         Float?
+  
+  @@index([attemptId])
+}
+
+model Certificate {
+  id               String   @id @default(cuid())
+  code             String   @unique 
+  
+  userId           String
+  user             User     @relation(fields: [userId], references: [id])
+  level            CertLevel
+  
+  theoryScore      Float
+  practicalScore   Float
+  portfolioScore   Float
+  finalScore       Float
+  grade            String
+  
+  issuedAt         DateTime @default(now())
+  expiresAt        DateTime
+  
+  verificationHash String
+  qrCode           String?
+  
+  skills           String[]
+  challengesCompleted Int
+  totalHours       Float
+  
+  averageDI        Float
+  averagePR        Float
+  averageCS        Float
+  
+  @@index([code])
+  @@index([userId])
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id])
+  
+  name        String
+  leaderId    String?
+  
+  settings    Json     @default("{}")
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  members     User[]
+  
+  @@index([companyId])
+}
+
+model Billing {
+  id              String   @id @default(cuid())
+  companyId       String   @unique
+  company         Company  @relation(fields: [companyId], references: [id])
+  
+  plan            Plan
+  seats           Int
+  usedSeats       Int
+  
+  billingCycle    BillingCycle
+  nextBillingDate DateTime
+  
+  apiCalls        Int      @default(0)
+  storageUsed     Float    @default(0) 
+  aiTokensUsed    Int      @default(0)
+  totalCost       Float    @default(0)
+  
+  updatedAt       DateTime @updatedAt
+}
+
+enum UserRole {
+  JUNIOR
+  PLENO
+  SENIOR
+  TECH_LEAD
+  ARCHITECT
+}
+
+enum Plan {
+  FREE
+  TEAM
+  ENTERPRISE
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+  EXPERT
+}
+
+enum Category {
+  BACKEND
+  FRONTEND
+  FULLSTACK
+  DEVOPS
+  MOBILE
+  DATA
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+enum Rarity {
+  COMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+
+enum XPSource {
+  CHALLENGE
+  BADGE
+  STREAK
+  BONUS
+  ACHIEVEMENT
+}
+
+enum AIProvider {
+  OPENAI
+  ANTHROPIC
+  GOOGLE
+  META
+}
+
+enum EventType {
+  TYPED
+  PASTED
+  DELETED
+  FORMATTED
+  SAVED
+}
+
+enum CertLevel {
+  FOUNDATION
+  PROFESSIONAL
+  EXPERT
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}

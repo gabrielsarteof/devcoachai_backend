@@ -1,14 +1,15 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "outDir": "./dist"
   },
   "include": ["src/**/*"],
   "exclude": [
     "node_modules",
     "dist",
-    "coverage",
     "build",
+    "coverage",
     "**/*.test.ts",
     "**/*.spec.ts",
     "prisma",

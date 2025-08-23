@@ -5,7 +5,6 @@
     "moduleResolution": "NodeNext",
     "lib": ["ES2022"],
     "outDir": "./dist",
-    "rootDir": "./",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -29,17 +28,5 @@
       "@config/*": ["src/config/*"],
       "@utils/*": ["src/utils/*"]
     }
-  },
-  "include": [
-    "src/**/*",
-    "prisma/**/*",
-    "vitest.config.ts",
-    "eslint.config.js"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "coverage",
-    "build"
-  ]
+  }
 }

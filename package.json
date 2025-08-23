@@ -11,6 +11,8 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsup src --format cjs,esm --dts --clean --tsconfig tsconfig.build.json",
     "start": "node dist/server.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck:tests": "tsc -p tsconfig.spec.json --noEmit",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
@@ -21,8 +23,7 @@
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "prepare": "husky install",
-    "typecheck": "tsc --noEmit"
+    "prepare": "husky install"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

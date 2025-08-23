@@ -27,7 +27,7 @@ export default [
       sourceType: 'module',
       parser: typescript.parser,
       parserOptions: {
-        project: false,
+        project: ['./tsconfig.json', './tsconfig.spec.json']
       },
       globals: {
         ...globals.node,

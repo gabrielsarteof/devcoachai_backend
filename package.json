@@ -57,6 +57,7 @@
     "at-least-node": "^1.0.0",
     "atomic-sleep": "^1.0.0",
     "avvio": "^9.1.0",
+    "axios": "^1.11.0",
     "balanced-match": "^1.0.2",
     "base64-js": "^1.5.1",
     "bcryptjs": "^3.0.2",

@@ -1,25 +1,37 @@
-import { PrismaClient, Challenge, ChallengeAttempt, Prisma } from '@prisma/client';
+import { PrismaClient, Challenge, ChallengeAttempt } from '@prisma/client';
 import { IChallengeRepository, ChallengeFilters, CreateAttemptData } from '../../domain/repositories/challenge.repository.interface';
 import { CreateChallengeDTO } from '../../domain/schemas/challenge.schema';
 import { ChallengeEntity } from '../../domain/entities/challenge.entity';
 
 export class ChallengeRepository implements IChallengeRepository {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(private readonly prisma: PrismaClient) { }
 
   async create(data: CreateChallengeDTO): Promise<Challenge> {
     const entity = ChallengeEntity.create(data);
     const prismaData = entity.toPrisma();
-    
-    const createData: Prisma.ChallengeCreateInput = {
-      ...prismaData,
-      testCases: prismaData.testCases as Prisma.InputJsonValue,
-      hints: prismaData.hints as Prisma.InputJsonValue,
-      traps: prismaData.traps as Prisma.InputJsonValue,
-      targetMetrics: prismaData.targetMetrics as Prisma.InputJsonValue,
-    };
-    
+
     return await this.prisma.challenge.create({
-      data: createData,
+      data: {
+        id: prismaData.id,
+        slug: prismaData.slug,
+        title: prismaData.title,
+        description: prismaData.description,
+        difficulty: prismaData.difficulty,
+        category: prismaData.category,
+        estimatedMinutes: prismaData.estimatedMinutes,
+        languages: prismaData.languages,
+        instructions: prismaData.instructions,
+        starterCode: prismaData.starterCode,
+        solution: prismaData.solution,
+        testCases: prismaData.testCases || {},
+        hints: prismaData.hints || {},
+        traps: prismaData.traps || {},
+        targetMetrics: prismaData.targetMetrics || {},
+        baseXp: prismaData.baseXp,
+        bonusXp: prismaData.bonusXp,
+        createdAt: prismaData.createdAt,
+        updatedAt: prismaData.updatedAt,
+      },
     });
   }
 
@@ -36,14 +48,14 @@ export class ChallengeRepository implements IChallengeRepository {
   }
 
   async findAll(filters?: ChallengeFilters): Promise<Challenge[]> {
-    const where: Prisma.ChallengeWhereInput = {};
+    const where: any = {};
 
     if (filters?.difficulty) {
-      where.difficulty = filters.difficulty as any; 
+      where.difficulty = filters.difficulty;
     }
 
     if (filters?.category) {
-      where.category = filters.category as any; 
+      where.category = filters.category;
     }
 
     if (filters?.languages && filters.languages.length > 0) {
@@ -71,27 +83,27 @@ export class ChallengeRepository implements IChallengeRepository {
   }
 
   async update(id: string, data: Partial<CreateChallengeDTO>): Promise<Challenge> {
-    const updateData: Prisma.ChallengeUpdateInput = {
-      ...data,
-      updatedAt: new Date(),
-    };
-    
-    if (data.testCases !== undefined) {
-      updateData.testCases = data.testCases as Prisma.InputJsonValue;
+    const updateData: any = { ...data };
+
+    if (data.testCases) {
+      updateData.testCases = JSON.stringify(data.testCases);
     }
-    if (data.hints !== undefined) {
-      updateData.hints = data.hints as Prisma.InputJsonValue;
+    if (data.hints) {
+      updateData.hints = JSON.stringify(data.hints);
     }
-    if (data.traps !== undefined) {
-      updateData.traps = data.traps as Prisma.InputJsonValue;
+    if (data.traps) {
+      updateData.traps = JSON.stringify(data.traps);
     }
-    if (data.targetMetrics !== undefined) {
-      updateData.targetMetrics = data.targetMetrics as Prisma.InputJsonValue;
+    if (data.targetMetrics) {
+      updateData.targetMetrics = JSON.stringify(data.targetMetrics);
     }
 
     return await this.prisma.challenge.update({
       where: { id },
-      data: updateData,
+      data: {
+        ...updateData,
+        updatedAt: new Date(),
+      },
     });
   }
 
@@ -117,43 +129,34 @@ export class ChallengeRepository implements IChallengeRepository {
     const previousAttempts = await this.getUserAttempts(data.userId, data.challengeId);
     const attemptNumber = previousAttempts.length + 1;
 
-    const createData: Prisma.ChallengeAttemptUncheckedCreateInput = {
-      ...data,
-      attemptNumber,
-      codeSnapshots: [],
-      testResults: [],
-    };
-
     return await this.prisma.challengeAttempt.create({
-      data: createData,
+      data: {
+        ...data,
+        attemptNumber,
+        codeSnapshots: [],
+        testResults: [],
+      },
     });
   }
 
   async updateAttempt(id: string, data: Partial<ChallengeAttempt>): Promise<ChallengeAttempt> {
-    const { userId, challengeId, codeSnapshots, testResults, ...cleanData } = data;
-    
-    const updateData: Prisma.ChallengeAttemptUncheckedUpdateInput = {
-      ...cleanData,
+    const { id: _, userId: __, challengeId: ___, ...updateData } = data;
+
+    const preparedData: any = {
+      ...updateData,
       lastActivity: new Date(),
     };
-
-    if (userId !== undefined) {
-      updateData.userId = userId;
-    }
-    if (challengeId !== undefined) {
-      updateData.challengeId = challengeId;
+    if (updateData.codeSnapshots !== undefined) {
+      preparedData.codeSnapshots = updateData.codeSnapshots || [];
     }
 
-    if (codeSnapshots !== undefined) {
-      updateData.codeSnapshots = codeSnapshots as Prisma.InputJsonValue;
-    }
-    if (testResults !== undefined) {
-      updateData.testResults = testResults as Prisma.InputJsonValue;
+    if (updateData.testResults !== undefined) {
+      preparedData.testResults = updateData.testResults || [];
     }
 
     return await this.prisma.challengeAttempt.update({
       where: { id },
-      data: updateData,
+      data: preparedData,
     });
   }
 }

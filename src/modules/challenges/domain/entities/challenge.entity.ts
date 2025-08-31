@@ -1,5 +1,6 @@
 import { Challenge as PrismaChallenge } from '@prisma/client';
 import { CreateChallengeDTO } from '../schemas/challenge.schema';
+import { Trap as TrapType, validateTrap } from '../types/challenge.types';
 
 interface TestCase {
   id: string;
@@ -7,16 +8,6 @@ interface TestCase {
   expectedOutput: string;
   weight: number;
   description?: string;
-}
-
-interface Trap {
-  id: string;
-  type: string;
-  buggedCode: string;
-  correctCode: string;
-  explanation: string;
-  detectionPattern: string;
-  severity: string;
 }
 
 export class ChallengeEntity {
@@ -41,8 +32,9 @@ export class ChallengeEntity {
     return new ChallengeEntity(challenge);
   }
 
-  getTraps(): Trap[] {
-    return JSON.parse(this.props.traps as string);
+  getTraps(): TrapType[] {
+    const trapsData = JSON.parse(this.props.traps as string);
+    return trapsData.map((trap: any) => validateTrap(trap));
   }
 
   getTestCases(): TestCase[] {
@@ -54,21 +46,18 @@ export class ChallengeEntity {
 
     let score = 0;
 
-    // DI Score (lower is better)
     if (metrics.di <= target.maxDI) {
       score += 33.33;
     } else {
       score += Math.max(0, 33.33 * (100 - metrics.di) / (100 - target.maxDI));
     }
 
-    // PR Score (higher is better)
     if (metrics.pr >= target.minPR) {
       score += 33.33;
     } else {
       score += 33.33 * (metrics.pr / target.minPR);
     }
 
-    // CS Score (higher is better)
     if (metrics.cs >= target.minCS) {
       score += 33.34;
     } else {

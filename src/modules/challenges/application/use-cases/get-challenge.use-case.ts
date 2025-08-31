@@ -1,18 +1,7 @@
 import { IChallengeRepository } from '../../domain/repositories/challenge.repository.interface';
 import { ChallengeEntity } from '../../domain/entities/challenge.entity';
 import { messages } from '@/shared/constants/messages';
-import type { ChallengeAttempt } from '@prisma/client';
-
-interface AttemptSummary {
-  id: string;
-  attemptNumber: number;
-  status: string;
-  score: number;
-  passed: boolean;
-  startedAt: Date;
-  completedAt: Date | null;
-  duration: number | null;
-}
+import { ChallengeAttempt } from '@prisma/client';
 
 export class GetChallengeUseCase {
   constructor(private readonly repository: IChallengeRepository) {}
@@ -27,25 +16,23 @@ export class GetChallengeUseCase {
 
     const entity = ChallengeEntity.fromPrisma(challenge);
     
-    let attemptSummaries: AttemptSummary[] = [];
-    
+    let attempts: ChallengeAttempt[] = [];
     if (userId) {
-      const attempts: ChallengeAttempt[] = await this.repository.getUserAttempts(userId, challenge.id);
-      attemptSummaries = attempts.map(attempt => ({
-        id: attempt.id,
-        attemptNumber: attempt.attemptNumber,
-        status: attempt.status,
-        score: attempt.score,
-        passed: attempt.passed,
-        startedAt: attempt.startedAt,
-        completedAt: attempt.completedAt,
-        duration: attempt.duration,
-      }));
+      attempts = await this.repository.getUserAttempts(userId, challenge.id);
     }
 
     return {
       challenge: entity.toJSON(),
-      attempts: attemptSummaries,
+      attempts: attempts.map(a => ({
+        id: a.id,
+        attemptNumber: a.attemptNumber,
+        status: a.status,
+        score: a.score,
+        passed: a.passed,
+        startedAt: a.startedAt,
+        completedAt: a.completedAt,
+        duration: a.duration,
+      })),
     };
   }
 }

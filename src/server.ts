@@ -9,6 +9,7 @@ import Redis from 'ioredis';
 import { config } from './config/env';
 import { logger } from './shared/infrastructure/monitoring/logger';
 import authPlugin from './modules/auth/infrastructure/plugin/auth.plugin';
+import challengePlugin from './modules/challenges/infrastructure/plugin/challenge.plugin';
 
 const prisma = new PrismaClient({
   log: config.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
@@ -49,12 +50,16 @@ const buildApp = async () => {
       return user?.id || request.ip;
     },
     allowList: function(request: FastifyRequest) {
-      // Nota : aqui é inserido a lógica de exceções de rate limit para rotas ou usuários específicos
       return false;
     },
   });
 
   await app.register(authPlugin, {
+    prisma,
+    redis,
+  });
+
+  await app.register(challengePlugin, {
     prisma,
     redis,
   });

@@ -2,6 +2,7 @@ import Fastify, { FastifyInstance } from 'fastify';
 import { PrismaClient } from '@prisma/client';
 import Redis from 'ioredis';
 import authPlugin from '../../src/modules/auth/infrastructure/plugin/auth.plugin';
+import challengePlugin from '../../src/modules/challenges/infrastructure/plugin/challenge.plugin'; 
 
 export async function buildTestApp(): Promise<{
   app: FastifyInstance;
@@ -15,14 +16,19 @@ export async function buildTestApp(): Promise<{
   const redis = new Redis({
     host: 'localhost',
     port: 6379,
-    db: 1, 
+    db: 1,
   });
 
   const app = Fastify({
-    logger: false, 
+    logger: false,
   });
 
   await app.register(authPlugin, {
+    prisma,
+    redis,
+  });
+
+  await app.register(challengePlugin, {
     prisma,
     redis,
   });

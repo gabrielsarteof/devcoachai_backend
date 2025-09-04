@@ -10,6 +10,8 @@ import { config } from './config/env';
 import { logger } from './shared/infrastructure/monitoring/logger';
 import authPlugin from './modules/auth/infrastructure/plugin/auth.plugin';
 import challengePlugin from './modules/challenges/infrastructure/plugin/challenge.plugin';
+import websocketPlugin from './shared/infrastructure/websocket/websocket.plugin';
+import metricPlugin from './modules/metrics/infrastructure/plugin/metric.plugin';
 
 const prisma = new PrismaClient({
   log: config.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
@@ -33,6 +35,7 @@ const buildApp = async () => {
     origin: config.CORS_ORIGIN,
     credentials: true,
   });
+  
   await app.register(cookie, {
     secret: config.JWT_SECRET,
     parseOptions: {
@@ -40,6 +43,11 @@ const buildApp = async () => {
       secure: config.NODE_ENV === 'production',
       sameSite: 'lax',
     },
+  });
+
+  await app.register(websocketPlugin, {
+    prisma,
+    redis,
   });
 
   await app.register(rateLimit, {
@@ -62,6 +70,12 @@ const buildApp = async () => {
   await app.register(challengePlugin, {
     prisma,
     redis,
+  });
+
+  await app.register(metricPlugin, {
+    prisma,
+    redis,
+    wsServer: app.ws,
   });
 
   app.get('/health', async () => ({

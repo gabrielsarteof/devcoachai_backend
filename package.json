@@ -306,6 +306,7 @@
     "on-exit-leak-free": "^2.1.2",
     "once": "^1.4.0",
     "onetime": "^5.1.2",
+    "openai": "^5.19.1",
     "optionator": "^0.9.4",
     "ora": "^5.4.1",
     "os-tmpdir": "^1.0.2",

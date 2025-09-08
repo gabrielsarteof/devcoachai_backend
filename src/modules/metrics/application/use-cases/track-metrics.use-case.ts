@@ -40,12 +40,34 @@ export class TrackMetricsUseCase {
   ) {}
 
   async execute(userId: string, data: TrackMetricsDTO) {
+    const startTime = Date.now();
+    
+    logger.info({
+      operation: 'metrics_tracking',
+      userId,
+      attemptId: data.attemptId,
+      sessionTime: data.sessionTime,
+      totalLines: data.totalLines,
+      linesFromAI: data.linesFromAI,
+      linesTyped: data.linesTyped,
+      testRuns: data.testRuns,
+      testsPassed: data.testsPassed,
+      testsTotal: data.testsTotal,
+      checklistItemsCount: data.checklistItems.length
+    }, 'Metrics tracking initiated');
+
     try {
       const attempt = await this.prisma.challengeAttempt.findUnique({
         where: { id: data.attemptId },
       });
 
       if (!attempt || attempt.userId !== userId) {
+        logger.warn({
+          userId,
+          attemptId: data.attemptId,
+          reason: 'invalid_attempt_or_unauthorized',
+          executionTime: Date.now() - startTime
+        }, 'Metrics tracking failed - invalid attempt');
         throw new Error('Invalid attempt');
       }
 
@@ -106,11 +128,65 @@ export class TrackMetricsUseCase {
         },
       });
 
-      logger.info({ 
-        userId, 
+      const executionTime = Date.now() - startTime;
+
+      logger.info({
+        userId,
         attemptId: data.attemptId,
-        metrics: calculation 
-      }, 'Metrics tracked');
+        metricSnapshotId: metricSnapshot.id,
+        metrics: {
+          dependencyIndex: calculation.dependencyIndex,
+          passRate: calculation.passRate,
+          checklistScore: calculation.checklistScore
+        },
+        riskLevel: riskAssessment.level,
+        insightsCount: insights.length,
+        executionTime
+      }, 'Metrics tracking completed successfully');
+
+      if (riskAssessment.level === 'CRITICAL') {
+        logger.error({
+          userId,
+          attemptId: data.attemptId,
+          riskLevel: riskAssessment.level,
+          riskScore: riskAssessment.score,
+          riskFactors: riskAssessment.factors,
+          dependencyIndex: calculation.dependencyIndex,
+          passRate: calculation.passRate,
+          checklistScore: calculation.checklistScore
+        }, 'CRITICAL risk level detected in metrics');
+      } else if (riskAssessment.level === 'HIGH') {
+        logger.warn({
+          userId,
+          attemptId: data.attemptId,
+          riskLevel: riskAssessment.level,
+          riskScore: riskAssessment.score,
+          riskFactors: riskAssessment.factors,
+          dependencyIndex: calculation.dependencyIndex
+        }, 'HIGH risk level detected in metrics');
+      }
+
+      if (calculation.dependencyIndex > 80) {
+        logger.warn({
+          userId,
+          attemptId: data.attemptId,
+          dependencyIndex: calculation.dependencyIndex,
+          linesFromAI: data.linesFromAI,
+          totalLines: data.totalLines,
+          highDependency: true
+        }, 'Very high AI dependency detected');
+      }
+
+      if (calculation.passRate < 30) {
+        logger.warn({
+          userId,
+          attemptId: data.attemptId,
+          passRate: calculation.passRate,
+          testsPassed: data.testsPassed,
+          testsTotal: data.testsTotal,
+          lowPassRate: true
+        }, 'Low test pass rate detected');
+      }
 
       return {
         metricSnapshot,
@@ -119,7 +195,13 @@ export class TrackMetricsUseCase {
         insights,
       };
     } catch (error) {
-      logger.error({ error, userId, data }, 'Failed to track metrics');
+      logger.error({
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+        attemptId: data.attemptId,
+        sessionTime: data.sessionTime,
+        executionTime: Date.now() - startTime
+      }, 'Metrics tracking use case failed');
       throw error;
     }
   }

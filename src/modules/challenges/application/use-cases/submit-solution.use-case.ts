@@ -23,9 +23,26 @@ export class SubmitSolutionUseCase {
   ) {}
 
   async execute(userId: string, data: SubmitSolutionDTO) {
+    const startTime = Date.now();
+    
+    logger.info({
+      operation: 'solution_submission',
+      userId,
+      challengeId: data.challengeId,
+      attemptId: data.attemptId,
+      language: data.language,
+      codeLength: data.code.length
+    }, 'Solution submission started');
+
     try {
       const challenge = await this.repository.findById(data.challengeId);
       if (!challenge) {
+        logger.warn({
+          userId,
+          challengeId: data.challengeId,
+          reason: 'challenge_not_found',
+          executionTime: Date.now() - startTime
+        }, 'Solution submission failed - challenge not found');
         throw new Error(messages.challenge.notFound);
       }
 
@@ -34,21 +51,47 @@ export class SubmitSolutionUseCase {
       });
 
       if (!attempt || attempt.userId !== userId) {
+        logger.warn({
+          userId,
+          attemptId: data.attemptId,
+          reason: 'invalid_attempt_or_unauthorized',
+          executionTime: Date.now() - startTime
+        }, 'Solution submission failed - invalid attempt');
         throw new Error('Invalid attempt');
       }
 
       if (attempt.status === 'COMPLETED') {
+        logger.warn({
+          userId,
+          attemptId: data.attemptId,
+          currentStatus: attempt.status,
+          reason: 'attempt_already_completed',
+          executionTime: Date.now() - startTime
+        }, 'Solution submission failed - attempt already completed');
         throw new Error(messages.challenge.alreadyCompleted);
       }
 
       if (!challenge.languages.includes(data.language)) {
+        logger.warn({
+          userId,
+          challengeId: data.challengeId,
+          language: data.language,
+          supportedLanguages: challenge.languages,
+          reason: 'language_not_supported',
+          executionTime: Date.now() - startTime
+        }, 'Solution submission failed - language not supported');
         throw new Error(`Language ${data.language} not supported for this challenge`);
       }
 
       const entity = ChallengeEntity.fromPrisma(challenge);
       const testCases = entity.getTestCases();
 
-      logger.info({ attemptId: data.attemptId }, 'Executing solution');
+      logger.info({
+        userId,
+        attemptId: data.attemptId,
+        testCasesCount: testCases.length,
+        operation: 'executing_solution'
+      }, 'Executing solution against test cases');
       
       const results = await this.judge0.executeCode(
         data.code,
@@ -81,7 +124,7 @@ export class SubmitSolutionUseCase {
         .reduce((sum, tc) => sum + tc.weight, 0);
       
       const score = Math.round((passedWeight / totalWeight) * 100);
-      const passed = score >= 60; 
+      const passed = score >= 60;
 
       const updatedAttempt = await this.repository.updateAttempt(data.attemptId, {
         finalCode: data.code,
@@ -93,6 +136,8 @@ export class SubmitSolutionUseCase {
         duration: Math.floor((Date.now() - attempt.startedAt.getTime()) / 1000),
       });
 
+      const executionTime = Date.now() - startTime;
+
       if (passed) {
         const xpAmount = challenge.baseXp + (score >= 90 ? challenge.bonusXp : 0);
         
@@ -103,8 +148,8 @@ export class SubmitSolutionUseCase {
             reason: `Completed challenge: ${challenge.title}`,
             source: 'CHALLENGE',
             sourceId: challenge.id,
-            balanceBefore: 0, // Should fetch current balance
-            balanceAfter: xpAmount, // Should calculate new balance
+            balanceBefore: 0,
+            balanceAfter: xpAmount,
           },
         });
 
@@ -115,7 +160,30 @@ export class SubmitSolutionUseCase {
           },
         });
 
-        logger.info({ userId, challengeId: challenge.id, xp: xpAmount }, 'XP awarded');
+        logger.info({
+          userId,
+          challengeId: challenge.id,
+          attemptId: data.attemptId,
+          score,
+          xpEarned: xpAmount,
+          testsPassed: testResults.filter(t => t.passed).length,
+          testsTotal: testResults.length,
+          difficulty: challenge.difficulty,
+          category: challenge.category,
+          executionTime
+        }, 'Solution submission successful - challenge completed');
+      } else {
+        logger.info({
+          userId,
+          challengeId: challenge.id,
+          attemptId: data.attemptId,
+          score,
+          testsPassed: testResults.filter(t => t.passed).length,
+          testsTotal: testResults.length,
+          difficulty: challenge.difficulty,
+          category: challenge.category,
+          executionTime
+        }, 'Solution submission completed - challenge not passed');
       }
 
       return {
@@ -127,7 +195,14 @@ export class SubmitSolutionUseCase {
         feedback: this.generateFeedback(score, testResults),
       };
     } catch (error) {
-      logger.error({ error, data }, 'Solution submission failed');
+      logger.error({
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+        challengeId: data.challengeId,
+        attemptId: data.attemptId,
+        language: data.language,
+        executionTime: Date.now() - startTime
+      }, 'Solution submission use case failed');
       throw error;
     }
   }

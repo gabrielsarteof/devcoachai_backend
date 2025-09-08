@@ -10,20 +10,65 @@ export class MetricAggregatorService {
   ) {}
 
   async getSessionMetrics(attemptId: string): Promise<MetricSnapshot[]> {
+    const startTime = Date.now();
     const cacheKey = `metrics:session:${attemptId}`;
-    const cached = await this.redis.get(cacheKey);
     
-    if (cached) {
-      return JSON.parse(cached);
+    logger.debug({
+      operation: 'get_session_metrics',
+      attemptId,
+      cacheKey
+    }, 'Retrieving session metrics');
+
+    try {
+      const cached = await this.redis.get(cacheKey);
+      
+      if (cached) {
+        const metrics = JSON.parse(cached);
+        
+        logger.info({
+          operation: 'session_metrics_cache_hit',
+          attemptId,
+          metricsCount: metrics.length,
+          processingTime: Date.now() - startTime
+        }, 'Session metrics retrieved from cache');
+        
+        return metrics;
+      }
+
+      const metrics = await this.prisma.metricSnapshot.findMany({
+        where: { attemptId },
+        orderBy: { timestamp: 'asc' },
+      });
+
+      await this.redis.setex(cacheKey, 600, JSON.stringify(metrics));
+      
+      const processingTime = Date.now() - startTime;
+      
+      logger.info({
+        operation: 'session_metrics_db_retrieved',
+        attemptId,
+        metricsCount: metrics.length,
+        timeRange: metrics.length > 0 ? {
+          start: metrics[0].timestamp,
+          end: metrics[metrics.length - 1].timestamp
+        } : null,
+        processingTime
+      }, 'Session metrics retrieved from database and cached');
+
+      return metrics;
+    } catch (error) {
+      const processingTime = Date.now() - startTime;
+      
+      logger.error({
+        operation: 'get_session_metrics_failed',
+        attemptId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        processingTime
+      }, 'Failed to retrieve session metrics');
+      
+      throw error;
     }
-
-    const metrics = await this.prisma.metricSnapshot.findMany({
-      where: { attemptId },
-      orderBy: { timestamp: 'asc' },
-    });
-
-    await this.redis.setex(cacheKey, 600, JSON.stringify(metrics));
-    return metrics;
   }
 
   async getUserAverages(userId: string): Promise<{
@@ -31,40 +76,143 @@ export class MetricAggregatorService {
     averagePR: number;
     averageCS: number;
   }> {
-    const userMetrics = await this.prisma.userMetrics.findUnique({
-      where: { userId },
-    });
+    const startTime = Date.now();
+    
+    logger.debug({
+      operation: 'get_user_averages',
+      userId
+    }, 'Retrieving user metric averages');
 
-    if (!userMetrics) {
-      return { averageDI: 0, averagePR: 0, averageCS: 0 };
+    try {
+      const userMetrics = await this.prisma.userMetrics.findUnique({
+        where: { userId },
+      });
+
+      const processingTime = Date.now() - startTime;
+
+      if (!userMetrics) {
+        logger.info({
+          operation: 'user_averages_not_found',
+          userId,
+          result: { averageDI: 0, averagePR: 0, averageCS: 0 },
+          processingTime
+        }, 'No user metrics found, returning default averages');
+        
+        return { averageDI: 0, averagePR: 0, averageCS: 0 };
+      }
+
+      const averages = {
+        averageDI: userMetrics.averageDI,
+        averagePR: userMetrics.averagePR,
+        averageCS: userMetrics.averageCS,
+      };
+      
+      logger.info({
+        operation: 'user_averages_retrieved',
+        userId,
+        averages,
+        updatedAt: userMetrics.updatedAt,
+        processingTime
+      }, 'User metric averages retrieved successfully');
+
+      return averages;
+    } catch (error) {
+      const processingTime = Date.now() - startTime;
+      
+      logger.error({
+        operation: 'get_user_averages_failed',
+        userId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        processingTime
+      }, 'Failed to retrieve user averages');
+      
+      throw error;
     }
-
-    return {
-      averageDI: userMetrics.averageDI,
-      averagePR: userMetrics.averagePR,
-      averageCS: userMetrics.averageCS,
-    };
   }
 
   async calculateTrends(
     attemptId: string,
     windowSize: number = 5
   ): Promise<Record<string, MetricTrend>> {
-    const metrics = await this.getSessionMetrics(attemptId);
+    const startTime = Date.now();
     
-    if (metrics.length < 2) {
-      return {
-        DI: this.createEmptyTrend('DI'),
-        PR: this.createEmptyTrend('PR'),
-        CS: this.createEmptyTrend('CS'),
-      };
-    }
+    logger.debug({
+      operation: 'calculate_trends',
+      attemptId,
+      windowSize
+    }, 'Calculating metric trends');
 
-    return {
-      DI: this.calculateTrend(metrics, 'dependencyIndex', 'DI', windowSize),
-      PR: this.calculateTrend(metrics, 'passRate', 'PR', windowSize),
-      CS: this.calculateTrend(metrics, 'checklistScore', 'CS', windowSize),
-    };
+    try {
+      const metrics = await this.getSessionMetrics(attemptId);
+      
+      if (metrics.length < 2) {
+        const emptyTrends = {
+          DI: this.createEmptyTrend('DI'),
+          PR: this.createEmptyTrend('PR'),
+          CS: this.createEmptyTrend('CS'),
+        };
+        
+        logger.info({
+          operation: 'trends_insufficient_data',
+          attemptId,
+          metricsCount: metrics.length,
+          result: 'empty_trends',
+          processingTime: Date.now() - startTime
+        }, 'Insufficient data for trend calculation');
+        
+        return emptyTrends;
+      }
+
+      const trends = {
+        DI: this.calculateTrend(metrics, 'dependencyIndex', 'DI', windowSize),
+        PR: this.calculateTrend(metrics, 'passRate', 'PR', windowSize),
+        CS: this.calculateTrend(metrics, 'checklistScore', 'CS', windowSize),
+      };
+
+      const processingTime = Date.now() - startTime;
+      
+      logger.info({
+        operation: 'trends_calculated',
+        attemptId,
+        metricsCount: metrics.length,
+        windowSize,
+        trends: {
+          DI: { trend: trends.DI.trend, changePercent: trends.DI.changePercent },
+          PR: { trend: trends.PR.trend, changePercent: trends.PR.changePercent },
+          CS: { trend: trends.CS.trend, changePercent: trends.CS.changePercent }
+        },
+        processingTime
+      }, 'Metric trends calculated successfully');
+
+      // Log significant trends
+      Object.entries(trends).forEach(([metric, trend]) => {
+        if (Math.abs(trend.changePercent) > 20) {
+          logger.info({
+            attemptId,
+            metric,
+            trend: trend.trend,
+            changePercent: trend.changePercent,
+            significantTrend: true
+          }, `Significant ${metric} trend detected`);
+        }
+      });
+
+      return trends;
+    } catch (error) {
+      const processingTime = Date.now() - startTime;
+      
+      logger.error({
+        operation: 'calculate_trends_failed',
+        attemptId,
+        windowSize,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        processingTime
+      }, 'Failed to calculate metric trends');
+      
+      throw error;
+    }
   }
 
   private calculateTrend(
@@ -73,47 +221,98 @@ export class MetricAggregatorService {
     metricName: 'DI' | 'PR' | 'CS',
     windowSize: number
   ): MetricTrend {
-    const values = metrics.map(m => ({
-      timestamp: m.timestamp,
-      value: Number(m[field]) || 0,
-    }));
+    logger.debug({
+      operation: 'calculate_individual_trend',
+      field,
+      metricName,
+      metricsCount: metrics.length,
+      windowSize
+    }, 'Calculating individual metric trend');
 
-    if (values.length < 2) {
-      return this.createEmptyTrend(metricName);
-    }
+    try {
+      const values = metrics.map(m => ({
+        timestamp: m.timestamp,
+        value: Number(m[field]) || 0,
+      }));
 
-    const recent = values.slice(-windowSize);
-    const older = values.slice(Math.max(0, values.length - windowSize * 2), -windowSize);
-    
-    if (older.length === 0) {
-      return {
+      if (values.length < 2) {
+        logger.debug({
+          metricName,
+          valuesCount: values.length,
+          result: 'empty_trend'
+        }, 'Insufficient values for trend calculation');
+        
+        return this.createEmptyTrend(metricName);
+      }
+
+      const recent = values.slice(-windowSize);
+      const older = values.slice(Math.max(0, values.length - windowSize * 2), -windowSize);
+      
+      if (older.length === 0) {
+        logger.debug({
+          metricName,
+          recentCount: recent.length,
+          olderCount: older.length,
+          result: 'stable_trend'
+        }, 'No older data available, trend is stable');
+        
+        return {
+          metric: metricName,
+          values,
+          trend: 'stable',
+          changePercent: 0,
+        };
+      }
+
+      const recentAvg = recent.reduce((sum, v) => sum + v.value, 0) / recent.length;
+      const olderAvg = older.reduce((sum, v) => sum + v.value, 0) / older.length;
+      const changePercent = ((recentAvg - olderAvg) / olderAvg) * 100;
+
+      let trend: MetricTrend['trend'];
+      if (metricName === 'DI') {
+        // For Dependency Index, lower is better
+        trend = changePercent < -5 ? 'improving' : changePercent > 5 ? 'declining' : 'stable';
+      } else {
+        // For Pass Rate and Checklist Score, higher is better
+        trend = changePercent > 5 ? 'improving' : changePercent < -5 ? 'declining' : 'stable';
+      }
+
+      const result = {
         metric: metricName,
         values,
-        trend: 'stable',
-        changePercent: 0,
+        trend,
+        changePercent: Math.round(changePercent * 100) / 100,
       };
+
+      logger.debug({
+        metricName,
+        recentAvg,
+        olderAvg,
+        changePercent: result.changePercent,
+        trend,
+        recentCount: recent.length,
+        olderCount: older.length
+      }, 'Individual trend calculated');
+
+      return result;
+    } catch (error) {
+      logger.error({
+        operation: 'calculate_individual_trend_failed',
+        metricName,
+        field,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }, 'Failed to calculate individual trend');
+      
+      return this.createEmptyTrend(metricName);
     }
-
-    const recentAvg = recent.reduce((sum, v) => sum + v.value, 0) / recent.length;
-    const olderAvg = older.reduce((sum, v) => sum + v.value, 0) / older.length;
-    const changePercent = ((recentAvg - olderAvg) / olderAvg) * 100;
-
-    let trend: MetricTrend['trend'];
-    if (metricName === 'DI') {
-      trend = changePercent < -5 ? 'improving' : changePercent > 5 ? 'declining' : 'stable';
-    } else {
-      trend = changePercent > 5 ? 'improving' : changePercent < -5 ? 'declining' : 'stable';
-    }
-
-    return {
-      metric: metricName,
-      values,
-      trend,
-      changePercent: Math.round(changePercent * 100) / 100,
-    };
   }
 
   private createEmptyTrend(metricName: 'DI' | 'PR' | 'CS'): MetricTrend {
+    logger.debug({
+      operation: 'create_empty_trend',
+      metricName
+    }, 'Creating empty trend');
+
     return {
       metric: metricName,
       values: [],
@@ -123,6 +322,13 @@ export class MetricAggregatorService {
   }
 
   async updateUserAverages(userId: string): Promise<void> {
+    const startTime = Date.now();
+    
+    logger.info({
+      operation: 'update_user_averages',
+      userId
+    }, 'Updating user metric averages');
+
     try {
       const attempts = await this.prisma.challengeAttempt.findMany({
         where: {
@@ -136,25 +342,38 @@ export class MetricAggregatorService {
         },
       });
 
-      if (attempts.length === 0) return;
+      if (attempts.length === 0) {
+        logger.info({
+          operation: 'update_user_averages_no_attempts',
+          userId,
+          processingTime: Date.now() - startTime
+        }, 'No completed attempts found, skipping average update');
+        return;
+      }
 
       const avgDI = attempts.reduce((sum, a) => sum + (a.finalDI || 0), 0) / attempts.length;
       const avgPR = attempts.reduce((sum, a) => sum + (a.finalPR || 0), 0) / attempts.length;
       const avgCS = attempts.reduce((sum, a) => sum + (a.finalCS || 0), 0) / attempts.length;
 
+      const roundedAverages = {
+        avgDI: Math.round(avgDI * 100) / 100,
+        avgPR: Math.round(avgPR * 100) / 100,
+        avgCS: Math.round(avgCS * 100) / 100,
+      };
+
       await this.prisma.userMetrics.upsert({
         where: { userId },
         update: {
-          averageDI: Math.round(avgDI * 100) / 100,
-          averagePR: Math.round(avgPR * 100) / 100,
-          averageCS: Math.round(avgCS * 100) / 100,
+          averageDI: roundedAverages.avgDI,
+          averagePR: roundedAverages.avgPR,
+          averageCS: roundedAverages.avgCS,
           updatedAt: new Date(),
         },
         create: {
           userId,
-          averageDI: Math.round(avgDI * 100) / 100,
-          averagePR: Math.round(avgPR * 100) / 100,
-          averageCS: Math.round(avgCS * 100) / 100,
+          averageDI: roundedAverages.avgDI,
+          averagePR: roundedAverages.avgPR,
+          averageCS: roundedAverages.avgCS,
           weeklyTrends: [],
           metricsByCategory: {},
           strongAreas: [],
@@ -162,9 +381,70 @@ export class MetricAggregatorService {
         },
       });
 
-      logger.info({ userId, avgDI, avgPR, avgCS }, 'User averages updated');
+      const processingTime = Date.now() - startTime;
+      
+      logger.info({
+        operation: 'user_averages_updated',
+        userId,
+        attemptsCount: attempts.length,
+        averages: roundedAverages,
+        processingTime
+      }, 'User averages updated successfully');
+
+      // Log performance insights
+      if (roundedAverages.avgDI < 30) {
+        logger.info({
+          userId,
+          averageDI: roundedAverages.avgDI,
+          lowDependency: true
+        }, 'User shows low AI dependency on average');
+      } else if (roundedAverages.avgDI > 70) {
+        logger.warn({
+          userId,
+          averageDI: roundedAverages.avgDI,
+          highDependency: true
+        }, 'User shows high AI dependency on average');
+      }
+
+      if (roundedAverages.avgPR > 80) {
+        logger.info({
+          userId,
+          averagePR: roundedAverages.avgPR,
+          highPassRate: true
+        }, 'User shows excellent test pass rate on average');
+      } else if (roundedAverages.avgPR < 50) {
+        logger.warn({
+          userId,
+          averagePR: roundedAverages.avgPR,
+          lowPassRate: true
+        }, 'User shows low test pass rate on average');
+      }
+
+      if (roundedAverages.avgCS > 8) {
+        logger.info({
+          userId,
+          averageCS: roundedAverages.avgCS,
+          excellentValidation: true
+        }, 'User shows excellent validation practices on average');
+      } else if (roundedAverages.avgCS < 5) {
+        logger.warn({
+          userId,
+          averageCS: roundedAverages.avgCS,
+          poorValidation: true
+        }, 'User shows poor validation practices on average');
+      }
     } catch (error) {
-      logger.error({ error, userId }, 'Failed to update user averages');
+      const processingTime = Date.now() - startTime;
+      
+      logger.error({
+        operation: 'update_user_averages_failed',
+        userId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        processingTime
+      }, 'Failed to update user averages');
+      
+      throw error;
     }
   }
 }

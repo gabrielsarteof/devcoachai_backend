@@ -2,6 +2,7 @@ import { JWTService } from '../../infrastructure/services/jwt.service';
 import { IAuthRepository } from '../../domain/repositories/auth.repository.interface';
 import { SessionEntity } from '../../domain/entities/session.entity';
 import { messages } from '@/shared/constants/messages';
+import { logger } from '@/shared/infrastructure/monitoring/logger';
 
 export class RefreshTokenUseCase {
   constructor(
@@ -10,38 +11,83 @@ export class RefreshTokenUseCase {
   ) {}
 
   async execute(refreshToken: string, metadata?: { userAgent?: string; ipAddress?: string }) {
-    const session = await this.authRepository.findSessionByToken(refreshToken);
+    const startTime = Date.now();
     
-    if (!session) {
-      throw new Error(messages.auth.tokenInvalid);
-    }
+    logger.info({
+      operation: 'token_refresh_attempt',
+      ipAddress: metadata?.ipAddress,
+      userAgent: metadata?.userAgent
+    }, 'Token refresh attempt started');
 
-    const sessionEntity = new SessionEntity(session);
-    
-    if (sessionEntity.isExpired()) {
+    try {
+      const session = await this.authRepository.findSessionByToken(refreshToken);
+      
+      if (!session) {
+        logger.warn({
+          reason: 'session_not_found',
+          ipAddress: metadata?.ipAddress,
+          executionTime: Date.now() - startTime
+        }, 'Token refresh failed - session not found');
+        throw new Error(messages.auth.tokenInvalid);
+      }
+
+      const sessionEntity = new SessionEntity(session);
+      
+      if (sessionEntity.isExpired()) {
+        logger.warn({
+          userId: session.userId,
+          sessionId: session.id,
+          reason: 'session_expired',
+          ipAddress: metadata?.ipAddress,
+          executionTime: Date.now() - startTime
+        }, 'Token refresh failed - session expired');
+        
+        await this.authRepository.deleteSession(session.id);
+        throw new Error(messages.auth.tokenExpired);
+      }
+
+      const payload = await this.jwtService.verifyToken(refreshToken);
+      
+      if (payload.type !== 'refresh') {
+        logger.warn({
+          userId: session.userId,
+          tokenType: payload.type,
+          reason: 'invalid_token_type',
+          ipAddress: metadata?.ipAddress,
+          executionTime: Date.now() - startTime
+        }, 'Token refresh failed - invalid token type');
+        throw new Error(messages.auth.tokenInvalid);
+      }
+
+      const tokens = await this.jwtService.refreshTokens(refreshToken);
+
       await this.authRepository.deleteSession(session.id);
-      throw new Error(messages.auth.tokenExpired);
+
+      const newSession = SessionEntity.create({
+        userId: session.userId,
+        refreshToken: tokens.refreshToken,
+        userAgent: metadata?.userAgent || session.userAgent,
+        ipAddress: metadata?.ipAddress || session.ipAddress,
+      });
+
+      await this.authRepository.createSession(newSession.getProps());
+
+      logger.info({
+        userId: session.userId,
+        oldSessionId: session.id,
+        newSessionId: newSession.getProps().id,
+        executionTime: Date.now() - startTime,
+        ipAddress: metadata?.ipAddress
+      }, 'Token refresh successful');
+
+      return tokens;
+    } catch (error) {
+      logger.error({
+        error: error instanceof Error ? error.message : 'Unknown error',
+        ipAddress: metadata?.ipAddress,
+        executionTime: Date.now() - startTime
+      }, 'Token refresh use case failed');
+      throw error;
     }
-
-    const payload = await this.jwtService.verifyToken(refreshToken);
-    
-    if (payload.type !== 'refresh') {
-      throw new Error(messages.auth.tokenInvalid);
-    }
-
-    const tokens = await this.jwtService.refreshTokens(refreshToken);
-
-    await this.authRepository.deleteSession(session.id);
-
-    const newSession = SessionEntity.create({
-      userId: session.userId,
-      refreshToken: tokens.refreshToken,
-      userAgent: metadata?.userAgent || session.userAgent,
-      ipAddress: metadata?.ipAddress || session.ipAddress,
-    });
-
-    await this.authRepository.createSession(newSession.getProps());
-
-    return tokens;
   }
 }

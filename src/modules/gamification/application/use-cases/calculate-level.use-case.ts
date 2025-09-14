@@ -1,11 +1,11 @@
 import { LevelProgressionService } from '../../domain/services/level-progression.service';
-import { IGamificationRepository } from '../../domain/repositories/gamification.repository.interface';
+import { IXPRepository } from '../../domain/repositories/xp.repository.interface';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 
 export class CalculateLevelUseCase {
   constructor(
     private readonly levelService: LevelProgressionService,
-    private readonly repository: IGamificationRepository
+    private readonly xpRepository: IXPRepository
   ) {}
 
   async execute(userId: string) {
@@ -17,7 +17,7 @@ export class CalculateLevelUseCase {
     }, 'Calculating user level');
 
     try {
-      const userData = await this.repository.getUserLevelData(userId);
+      const userData = await this.xpRepository.getUserLevelData(userId);
       const levelData = this.levelService.calculateLevel(userData.totalXp);
       
       const result = {

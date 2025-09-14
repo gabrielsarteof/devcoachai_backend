@@ -31,3 +31,23 @@ export interface StreakData {
 
 export type BadgeRarity = 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
 export type LeaderboardScope = 'GLOBAL' | 'COMPANY' | 'WEEKLY' | 'MONTHLY';
+
+export interface BadgeProgress {
+  badgeId: string;
+  userId: string;
+  currentValue: number;
+  targetValue: number;
+  percentage: number;
+  lastUpdated: Date;
+}
+
+export interface BadgeUnlockEvent {
+  userId: string;
+  badgeId: string;
+  badgeKey: string;
+  badgeName: string;
+  category: string;
+  rarity: string;
+  xpReward: number;
+  timestamp: Date;
+}

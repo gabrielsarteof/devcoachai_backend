@@ -12,6 +12,7 @@ import authPlugin from './modules/auth/infrastructure/plugin/auth.plugin';
 import challengePlugin from './modules/challenges/infrastructure/plugin/challenge.plugin';
 import websocketPlugin from './shared/infrastructure/websocket/websocket.plugin';
 import metricPlugin from './modules/metrics/infrastructure/plugin/metric.plugin';
+import gamificationPlugin from './modules/gamification/infrastructure/plugin/gamification.plugin';
 
 const prisma = new PrismaClient({
   log: config.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
@@ -35,7 +36,7 @@ const buildApp = async () => {
     origin: config.CORS_ORIGIN,
     credentials: true,
   });
-  
+
   await app.register(cookie, {
     secret: config.JWT_SECRET,
     parseOptions: {
@@ -53,11 +54,11 @@ const buildApp = async () => {
   await app.register(rateLimit, {
     max: 100,
     timeWindow: '1 minute',
-    keyGenerator: function(request: FastifyRequest) {
+    keyGenerator: function (request: FastifyRequest) {
       const user = request.user as { id?: string } | undefined;
       return user?.id || request.ip;
     },
-    allowList: function(request: FastifyRequest) {
+    allowList: function () {
       return false;
     },
   });
@@ -78,6 +79,12 @@ const buildApp = async () => {
     wsServer: app.ws,
   });
 
+  await app.register(gamificationPlugin, {
+    prisma,
+    redis,
+    wsServer: app.ws,  
+  });
+
   app.get('/health', async () => ({
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -87,11 +94,11 @@ const buildApp = async () => {
 
   const closeGracefully = async (signal: string) => {
     logger.info(`Received signal to terminate: ${signal}`);
-    
+
     await app.close();
     await prisma.$disconnect();
     redis.disconnect();
-    
+
     process.exit(0);
   };
 
@@ -104,10 +111,10 @@ const buildApp = async () => {
 const start = async () => {
   try {
     const app = await buildApp();
-    
-    await app.listen({ 
-      port: config.PORT, 
-      host: '0.0.0.0' 
+
+    await app.listen({
+      port: config.PORT,
+      host: '0.0.0.0'
     });
 
     logger.info(`Server listening on http://0.0.0.0:${config.PORT}`);

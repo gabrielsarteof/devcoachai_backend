@@ -1,17 +1,23 @@
 import { BadgeService } from '../../domain/services/badge.service';
 import { UnlockBadgeUseCase } from '../../application/use-cases/unlock-badge.use-case';
+import { LeaderboardService } from '../../domain/services/leaderboard.service';
 import { WebSocketServer } from '@/shared/infrastructure/websocket/socket.server';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 
 export interface XPAwardedEvent {
   userId: string;
   totalXP: number;
+  xpAwarded: number;
+  companyId?: string;
+  teamId?: string;
   levelUp?: { newLevel: number };
 }
 
 export interface ChallengeCompletedEvent {
   userId: string;
   challengeId: string;
+  companyId?: string;
+  teamId?: string;
   metrics: {
     dependencyIndex: number;
     passRate: number;
@@ -19,10 +25,18 @@ export interface ChallengeCompletedEvent {
   };
 }
 
+export interface StreakUpdatedEvent {
+  userId: string;
+  currentStreak: number;
+  companyId?: string;
+  teamId?: string;
+}
+
 export class BadgeEventListeners {
   constructor(
     private readonly badgeService: BadgeService,
     private readonly unlockBadgeUseCase: UnlockBadgeUseCase,
+    private readonly leaderboardService: LeaderboardService,
     private readonly wsServer?: WebSocketServer
   ) {}
 
@@ -31,11 +45,20 @@ export class BadgeEventListeners {
       operation: 'badge_listener_xp_awarded',
       userId: event.userId,
       totalXP: event.totalXP,
+      xpAwarded: event.xpAwarded,
       levelUp: event.levelUp
-    }, 'Processing XP event for badges');
+    }, 'Processing XP event for badges and leaderboards');
 
     try {
-      await this.evaluateAndUnlockBadges(event.userId);
+      await Promise.all([
+        this.evaluateAndUnlockBadges(event.userId),
+        this.leaderboardService.updateUserRankings({
+          userId: event.userId,
+          companyId: event.companyId,
+          teamId: event.teamId,
+          xpGained: event.xpAwarded,
+        })
+      ]);
     } catch (error) {
       logger.error({
         operation: 'badge_listener_xp_awarded_failed',
@@ -51,7 +74,7 @@ export class BadgeEventListeners {
       userId: event.userId,
       challengeId: event.challengeId,
       metrics: event.metrics
-    }, 'Processing challenge completion for badges');
+    }, 'Processing challenge completion for badges and leaderboards');
 
     try {
       await this.evaluateAndUnlockBadges(event.userId);
@@ -65,7 +88,7 @@ export class BadgeEventListeners {
     }
   }
 
-  async onLevelUp(event: { userId: string; newLevel: number; totalXP: number }): Promise<void> {
+  async onLevelUp(event: { userId: string; newLevel: number; totalXP: number; companyId?: string; teamId?: string }): Promise<void> {
     logger.info({
       operation: 'badge_listener_level_up',
       userId: event.userId,
@@ -81,6 +104,56 @@ export class BadgeEventListeners {
         newLevel: event.newLevel,
         error: error instanceof Error ? error.message : 'Unknown error'
       }, 'Failed to process level up event');
+    }
+  }
+
+  async onStreakUpdated(event: StreakUpdatedEvent): Promise<void> {
+    logger.info({
+      operation: 'badge_listener_streak_updated',
+      userId: event.userId,
+      currentStreak: event.currentStreak
+    }, 'Processing streak update for badges and leaderboards');
+
+    try {
+      await Promise.all([
+        this.evaluateAndUnlockBadges(event.userId),
+        this.leaderboardService.updateUserRankings({
+          userId: event.userId,
+          companyId: event.companyId,
+          teamId: event.teamId,
+          currentStreak: event.currentStreak,
+        })
+      ]);
+    } catch (error) {
+      logger.error({
+        operation: 'badge_listener_streak_updated_failed',
+        userId: event.userId,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }, 'Failed to process streak updated event');
+    }
+  }
+
+  async onBadgeUnlocked(event: { userId: string; badgeId: string; companyId?: string; teamId?: string }): Promise<void> {
+    logger.info({
+      operation: 'badge_listener_badge_unlocked',
+      userId: event.userId,
+      badgeId: event.badgeId
+    }, 'Processing badge unlock for leaderboards');
+
+    try {
+      await this.leaderboardService.updateUserRankings({
+        userId: event.userId,
+        companyId: event.companyId,
+        teamId: event.teamId,
+        badgeUnlocked: true,
+      });
+    } catch (error) {
+      logger.error({
+        operation: 'badge_listener_badge_unlocked_failed',
+        userId: event.userId,
+        badgeId: event.badgeId,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }, 'Failed to process badge unlocked event');
     }
   }
 

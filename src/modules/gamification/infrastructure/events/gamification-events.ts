@@ -1,8 +1,9 @@
 import { EventEmitter } from 'events';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
-import { BadgeEventListeners, XPAwardedEvent, ChallengeCompletedEvent } from '../listeners/badge.listeners';
+import { BadgeEventListeners, XPAwardedEvent, ChallengeCompletedEvent, StreakUpdatedEvent } from '../listeners/badge.listeners';
 import { BadgeService } from '../../domain/services/badge.service';
 import { UnlockBadgeUseCase } from '../../application/use-cases/unlock-badge.use-case';
+import { LeaderboardService } from '../../domain/services/leaderboard.service';
 import { WebSocketServer } from '@/shared/infrastructure/websocket/socket.server';
 
 class GamificationEventEmitter extends EventEmitter {
@@ -24,11 +25,13 @@ class GamificationEventEmitter extends EventEmitter {
   initialize(
     badgeService: BadgeService, 
     unlockBadgeUseCase: UnlockBadgeUseCase,
+    leaderboardService: LeaderboardService,
     wsServer?: WebSocketServer
   ): void {
     this.badgeListeners = new BadgeEventListeners(
       badgeService,
       unlockBadgeUseCase,
+      leaderboardService,
       wsServer
     );
     
@@ -42,7 +45,7 @@ class GamificationEventEmitter extends EventEmitter {
       await this.badgeListeners?.onXPAwarded(event);
     });
 
-    this.on('level.up', async (event: { userId: string; newLevel: number; totalXP: number }) => {
+    this.on('level.up', async (event: { userId: string; newLevel: number; totalXP: number; companyId?: string; teamId?: string }) => {
       logger.info({
         operation: 'event_level_up',
         userId: event.userId,
@@ -62,6 +65,26 @@ class GamificationEventEmitter extends EventEmitter {
       await this.badgeListeners?.onChallengeCompleted(event);
     });
 
+    this.on('streak.updated', async (event: StreakUpdatedEvent) => {
+      logger.info({
+        operation: 'event_streak_updated',
+        userId: event.userId,
+        currentStreak: event.currentStreak
+      }, 'Streak updated event received');
+      
+      await this.badgeListeners?.onStreakUpdated(event);
+    });
+
+    this.on('badge.unlocked', async (event: { userId: string; badgeId: string; companyId?: string; teamId?: string }) => {
+      logger.info({
+        operation: 'event_badge_unlocked',
+        userId: event.userId,
+        badgeId: event.badgeId
+      }, 'Badge unlocked event received');
+      
+      await this.badgeListeners?.onBadgeUnlocked(event);
+    });
+
     logger.info('Gamification event emitter initialized');
   }
 
@@ -69,12 +92,20 @@ class GamificationEventEmitter extends EventEmitter {
     this.emit('xp.awarded', event);
   }
 
-  emitLevelUp(event: { userId: string; newLevel: number; totalXP: number }): void {
+  emitLevelUp(event: { userId: string; newLevel: number; totalXP: number; companyId?: string; teamId?: string }): void {
     this.emit('level.up', event);
   }
 
   emitChallengeCompleted(event: ChallengeCompletedEvent): void {
     this.emit('challenge.completed', event);
+  }
+
+  emitStreakUpdated(event: StreakUpdatedEvent): void {
+    this.emit('streak.updated', event);
+  }
+
+  emitBadgeUnlocked(event: { userId: string; badgeId: string; companyId?: string; teamId?: string }): void {
+    this.emit('badge.unlocked', event);
   }
 }
 

@@ -3,19 +3,41 @@ import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { PrismaClient } from '@prisma/client';
 import Redis from 'ioredis';
 import { WebSocketServer } from '@/shared/infrastructure/websocket/socket.server';
+
+// Services e Repositories
 import { RedisCacheService } from '../services/cache.service';
 import { BadgeRepository } from '../repositories/badge.repository';
 import { XPRepository } from '../repositories/xp.repository';
 import { LeaderboardRepository } from '../repositories/leaderboard.repository';
+import { NotificationRepository } from '../repositories/notification.repository';
+import { StreakRepository } from '../repositories/streak.repository';
+
+// Domain Services
 import { XPCalculatorService } from '../../domain/services/xp-calculator.service';
 import { LevelProgressionService } from '../../domain/services/level-progression.service';
 import { BadgeService } from '../../domain/services/badge.service';
 import { LeaderboardService } from '../../domain/services/leaderboard.service';
+import { NotificationService } from '../../domain/services/notification.service';
+import { StreakManagerService } from '../../domain/services/streak-manager.service';
+
+// Use Cases
 import { AwardXPUseCase } from '../../application/use-cases/award-xp.use-case';
 import { CalculateLevelUseCase } from '../../application/use-cases/calculate-level.use-case';
 import { UnlockBadgeUseCase } from '../../application/use-cases/unlock-badge.use-case';
 import { GetUserBadgesUseCase } from '../../application/use-cases/get-user-badges.use-case';
-import { GetLeaderboardUseCase } from '../../application/use-cases/get-leaderboard.use-case'; 
+import { GetLeaderboardUseCase } from '../../application/use-cases/get-leaderboard.use-case';
+import { GetDashboardUseCase } from '../../application/use-cases/get-dashboard.use-case';
+import { CreateNotificationUseCase } from '../../application/use-cases/create-notification.use-case';
+import { AcknowledgeNotificationUseCase } from '../../application/use-cases/acknowledge-notification.use-case';
+import { GetStreakStatusUseCase } from '../../application/use-cases/get-streak-status.use-case';
+import { UpdateStreakUseCase } from '../../application/use-cases/update-streak.use-case';  
+import { FreezeStreakUseCase } from '../../application/use-cases/freeze-streak.use-case';
+
+// Presentation
+import { GamificationGateway } from '../../presentation/gateways/gamification.gateway';
+import { GamificationController } from '../../presentation/controllers/gamification.controller';
+
+// Events
 import { gamificationEvents } from '../events/gamification-events';
 
 export interface GamificationPluginOptions {
@@ -38,9 +60,14 @@ const gamificationPlugin: FastifyPluginAsync<GamificationPluginOptions> = async 
   const xpRepository = new XPRepository(options.prisma, levelService);
   const badgeRepository = new BadgeRepository(options.prisma, cacheService);
   const leaderboardRepository = new LeaderboardRepository(options.prisma);
+  const notificationRepository = new NotificationRepository(options.prisma);
+  const streakRepository = new StreakRepository(options.prisma);
 
+  // Domain Services
   const badgeService = new BadgeService(badgeRepository, cacheService);
   const leaderboardService = new LeaderboardService(leaderboardRepository, cacheService);
+  const notificationService = new NotificationService(notificationRepository, cacheService);
+  const streakManager = new StreakManagerService(streakRepository, cacheService);
 
   // Use Cases
   const awardXPUseCase = new AwardXPUseCase(
@@ -61,22 +88,109 @@ const gamificationPlugin: FastifyPluginAsync<GamificationPluginOptions> = async 
   );
 
   const getUserBadgesUseCase = new GetUserBadgesUseCase(badgeService);
-
   const getLeaderboardUseCase = new GetLeaderboardUseCase(leaderboardService);
+  
+  const getDashboardUseCase = new GetDashboardUseCase(
+    badgeService,
+    leaderboardService,
+    streakManager,
+    levelService,
+    notificationService,
+    xpRepository,
+    cacheService
+  );
 
+  const createNotificationUseCase = new CreateNotificationUseCase(notificationService, options.wsServer);
+  const acknowledgeNotificationUseCase = new AcknowledgeNotificationUseCase(notificationService);
+
+  // Streak Use Cases
+  const getStreakStatusUseCase = new GetStreakStatusUseCase(streakManager);
+  const updateStreakUseCase = new UpdateStreakUseCase(streakManager);
+  const freezeStreakUseCase = new FreezeStreakUseCase(streakManager);
+
+  // Controller
+  const controller = new GamificationController(
+    getDashboardUseCase,
+    getUserBadgesUseCase,
+    getLeaderboardUseCase,
+    getStreakStatusUseCase,
+    createNotificationUseCase,
+    acknowledgeNotificationUseCase,
+    notificationService
+  );
+
+  // WebSocket Gateway
+  new GamificationGateway(
+    options.wsServer.getIO(),
+    getDashboardUseCase,
+    acknowledgeNotificationUseCase,
+    notificationService
+  );
+
+  // Event system
   gamificationEvents.initialize(badgeService, unlockBadgeUseCase, leaderboardService, options.wsServer);
 
+  // Rotas REST
+  await fastify.register(async function (fastify) {
+    fastify.get('/dashboard', {
+      preHandler: fastify.authenticate,
+      handler: controller.getDashboard.bind(controller)
+    });
+
+    fastify.get('/badges', {
+      preHandler: fastify.authenticate,
+      handler: controller.getUserBadges.bind(controller)
+    });
+
+    fastify.get('/leaderboard', {
+      preHandler: fastify.authenticate,
+      handler: controller.getLeaderboard.bind(controller)
+    });
+
+    fastify.get('/streak', {
+      preHandler: fastify.authenticate,
+      handler: controller.getStreakStatus.bind(controller)
+    });
+
+    fastify.get('/notifications', {
+      preHandler: fastify.authenticate,
+      handler: controller.getUserNotifications.bind(controller)
+    });
+
+    fastify.post('/notifications/:notificationId/acknowledge', {
+      preHandler: fastify.authenticate,
+      handler: controller.acknowledgeNotification.bind(controller)
+    });
+
+    fastify.post('/notifications', {
+      preHandler: fastify.authenticate,
+      handler: controller.createNotification.bind(controller)
+    });
+  }, { prefix: '/api/gamification' });
+
+  // Decorações para uso em outros módulos
   fastify.decorate('gamification', {
     awardXP: awardXPUseCase,
     calculateLevel: calculateLevelUseCase,
     unlockBadge: unlockBadgeUseCase,
     getUserBadges: getUserBadgesUseCase,
     getLeaderboard: getLeaderboardUseCase,
+    getDashboard: getDashboardUseCase,
+    createNotification: createNotificationUseCase,
+    acknowledgeNotification: acknowledgeNotificationUseCase,
+    getStreakStatus: getStreakStatusUseCase,
+    updateStreak: updateStreakUseCase,
+    freezeStreak: freezeStreakUseCase,
+    
+    // Services para uso direto
     badgeService,
-    leaderboardService
+    leaderboardService,
+    notificationService,
+    streakManager,
+    controller
   });
 
-  fastify.log.info('Gamification plugin registered successfully');
+  fastify.log.info('Gamification plugin registered successfully with WebSocket integration');
 };
 
 export default fp(gamificationPlugin, {

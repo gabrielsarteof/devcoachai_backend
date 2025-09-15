@@ -45,6 +45,7 @@ model User {
   xpTransactions   XPTransaction[]
   aiInteractions   AIInteraction[]
   codeEvents       CodeEvent[]
+  notifications    Notification[]
   
   @@index([email])
   @@index([companyId])
@@ -389,6 +390,33 @@ model Billing {
   updatedAt       DateTime @updatedAt
 }
 
+model Notification {
+  id        String               @id @default(cuid())
+  userId    String
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type      NotificationType
+  title     String               @db.VarChar(100)
+  message   String               @db.VarChar(500)
+  icon      String
+  priority  NotificationPriority @default(medium)
+  category  String?              @db.VarChar(50)
+  
+  metadata  Json                 @default("{}")
+  actions   Json                 @default("[]")
+  
+  expiresAt DateTime?
+  readAt    DateTime?
+  createdAt DateTime             @default(now())
+  
+  @@index([userId])
+  @@index([type])
+  @@index([priority])
+  @@index([readAt])
+  @@index([expiresAt])
+  @@index([userId, readAt])
+}
+
 enum UserRole {
   JUNIOR
   PLENO
@@ -464,4 +492,19 @@ enum CertLevel {
 enum BillingCycle {
   MONTHLY
   YEARLY
+}
+
+enum NotificationType {
+  achievement
+  reminder
+  milestone
+  level_up
+  badge_unlock
+  streak_risk
+}
+
+enum NotificationPriority {
+  low
+  medium
+  high
 }

@@ -4,6 +4,7 @@ import { XPTransactionEntity } from '../../domain/entities/xp-transaction.entity
 import { IXPRepository } from '../../domain/repositories/xp.repository.interface';
 import { WebSocketServer } from '@/shared/infrastructure/websocket/socket.server';
 import { XPSource, Difficulty } from '@/shared/domain/enums';
+import { GamificationEvents } from '../../domain/enums/websocket-events.enum'; // ADICIONAR ESTA LINHA
 import { z } from 'zod';
 
 export const AwardXPSchema = z.object({
@@ -89,15 +90,20 @@ export class AwardXPUseCase {
         newTotalXP
       );
 
+      // APENAS MUDAR OS NOMES DOS EVENTOS AQUI
       if (this.wsServer) {
-        this.wsServer.emitToUser(data.userId, 'xp:awarded', {
+        this.wsServer.emitToUser(data.userId, GamificationEvents.XP_AWARDED, {
           transaction: xpTransaction.toJSON(),
           totalXP: newTotalXP,
-          levelUp: result.levelUpdate.leveledUp ? result.levelUpdate : null
+          levelUp: result.levelUpdate.leveledUp ? result.levelUpdate : null,
+          timestamp: new Date() // ADICIONAR timestamp
         });
         
         if (result.levelUpdate.leveledUp) {
-          this.wsServer.emitToUser(data.userId, 'level:up', result.levelUpdate);
+          this.wsServer.emitToUser(data.userId, GamificationEvents.LEVEL_UP, {
+            ...result.levelUpdate,
+            timestamp: new Date() // ADICIONAR timestamp
+          });
         }
       }
 
@@ -132,7 +138,7 @@ export class AwardXPUseCase {
       throw error;
     }
   }
-
+  
   private calculateMultipliers(data: AwardXPDTO, user: { currentStreak: number }) {
     let multipliers = {
       difficulty: 1,

@@ -1,19 +1,25 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { IAIProvider } from '../../domain/providers/ai-provider.interface';
-import { CreateAIInteractionDTO } from '../../domain/schemas/ai-interaction.schema';
+import { 
+  CreateAIInteractionDTO,
+  TrackCopyPasteDTO 
+} from '../../domain/schemas/ai-interaction.schema';
+import { AIMessage } from '../../domain/types/ai.types';
 import { RateLimiterService } from '../../infrastructure/services/rate-limiter.service';
 import { UsageTrackerService } from '../../infrastructure/services/usage-tracker.service';
 import { TrackCopyPasteUseCase } from '../../application/use-cases/track-copy-paste.use-case';
-import { TrackCopyPasteDTO } from '../../domain/schemas/ai-interaction.schema';
+import { ValidatePromptUseCase } from '../../application/use-cases/validate-prompt.use-case';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 
 export class AIProxyController {
   private providers: Map<string, IAIProvider> = new Map();
+  private governanceEnabled = process.env.GOVERNANCE_ENABLED === 'true';
 
   constructor(
     private readonly rateLimiter: RateLimiterService,
     private readonly usageTracker: UsageTrackerService,
-    private readonly trackCopyPasteUseCase: TrackCopyPasteUseCase
+    private readonly trackCopyPasteUseCase: TrackCopyPasteUseCase,
+    private readonly validatePromptUseCase?: ValidatePromptUseCase 
   ) {}
 
   registerProvider(name: string, provider: IAIProvider): void {
@@ -23,7 +29,8 @@ export class AIProxyController {
       operation: 'ai_provider_registered',
       providerName: name,
       supportedModels: provider.models.map(m => m.id),
-      totalProviders: this.providers.size
+      totalProviders: this.providers.size,
+      governanceEnabled: this.governanceEnabled,
     }, `AI provider '${name}' registered successfully`);
   }
 
@@ -35,8 +42,18 @@ export class AIProxyController {
     const requestId = crypto.randomUUID();
     
     try {
-      const user = request.user as { id: string };
-      const { provider: providerName, messages, model, ...config } = request.body;
+      const user = request.user as { id: string; level?: number };
+      const { 
+        provider: providerName, 
+        messages, 
+        model, 
+        challengeId,
+        enableGovernance = true,
+        attemptId,
+        temperature,
+        maxTokens,
+        stream
+      } = request.body;
 
       logger.info({
         requestId,
@@ -45,12 +62,94 @@ export class AIProxyController {
         provider: providerName,
         model,
         messageCount: messages.length,
-        attemptId: request.body.attemptId,
-        temperature: config.temperature,
-        maxTokens: config.maxTokens,
-        stream: config.stream,
-        ipAddress: request.ip
+        attemptId,
+        challengeId,
+        governanceEnabled: this.governanceEnabled && enableGovernance,
+        temperature,
+        maxTokens,
+        stream,
+        ipAddress: request.ip,
       }, 'AI chat request received');
+
+      if (this.governanceEnabled && enableGovernance && challengeId && this.validatePromptUseCase) {
+        const validationStartTime = Date.now();
+        
+        const combinedPrompt = messages
+          .filter((m: AIMessage) => m.role === 'user')
+          .map((m: AIMessage) => m.content)
+          .join(' ');
+
+        const validation = await this.validatePromptUseCase.execute({
+          userId: user.id,
+          challengeId,
+          prompt: combinedPrompt,
+          userLevel: user.level,
+          attemptId,
+        });
+
+        const validationTime = Date.now() - validationStartTime;
+
+        logger.info({
+          requestId,
+          userId: user.id,
+          challengeId,
+          classification: validation.classification,
+          riskScore: validation.riskScore,
+          confidence: validation.confidence,
+          validationTime,
+          meetsLatencyTarget: validationTime < 50,
+        }, 'Prompt validation completed');
+
+        if (validation.suggestedAction === 'BLOCK') {
+          logger.warn({
+            requestId,
+            userId: user.id,
+            challengeId,
+            provider: providerName,
+            classification: validation.classification,
+            riskScore: validation.riskScore,
+            reasons: validation.reasons,
+            blocked: true,
+          }, 'AI chat request blocked by governance');
+
+          return reply.status(403).send({
+            error: 'Prompt blocked',
+            message: 'Your prompt has been blocked due to policy violations.',
+            reasons: validation.reasons,
+            riskScore: validation.riskScore,
+            classification: validation.classification,
+            suggestions: this.getSuggestions(validation.reasons),
+          });
+        }
+
+        if (validation.suggestedAction === 'THROTTLE') {
+          await this.applyThrottling(user.id, validation.riskScore);
+          
+          logger.info({
+            requestId,
+            userId: user.id,
+            challengeId,
+            throttled: true,
+            riskScore: validation.riskScore,
+          }, 'Additional throttling applied');
+        }
+
+        if (validation.suggestedAction === 'REVIEW') {
+          logger.warn({
+            requestId,
+            userId: user.id,
+            challengeId,
+            classification: validation.classification,
+            riskScore: validation.riskScore,
+            requiresReview: true,
+          }, 'Prompt flagged for review');
+        }
+
+        if (validation.classification === 'WARNING') {
+          reply.header('X-Governance-Warning', 'true');
+          reply.header('X-Risk-Score', validation.riskScore.toString());
+        }
+      }
 
       const rateLimit = await this.rateLimiter.checkLimit(user.id, 1000);
       if (!rateLimit.allowed) {
@@ -61,7 +160,7 @@ export class AIProxyController {
           reason: rateLimit.reason,
           resetAt: rateLimit.resetAt,
           rateLimitExceeded: true,
-          executionTime: Date.now() - startTime
+          executionTime: Date.now() - startTime,
         }, 'AI chat request blocked by rate limiter');
         
         return reply.status(429).send({
@@ -79,7 +178,7 @@ export class AIProxyController {
           provider: providerName,
           availableProviders: Array.from(this.providers.keys()),
           reason: 'provider_not_found',
-          executionTime: Date.now() - startTime
+          executionTime: Date.now() - startTime,
         }, 'AI chat request failed - provider not found');
         
         return reply.status(400).send({
@@ -96,7 +195,7 @@ export class AIProxyController {
           model,
           supportedModels: provider.models.map(m => m.id),
           reason: 'model_not_supported',
-          executionTime: Date.now() - startTime
+          executionTime: Date.now() - startTime,
         }, 'AI chat request failed - model not supported');
         
         return reply.status(400).send({
@@ -107,13 +206,13 @@ export class AIProxyController {
 
       const apiStartTime = Date.now();
 
-      if (config.stream) {
+      if (stream) {
         logger.info({
           requestId,
           userId: user.id,
           provider: providerName,
           model,
-          streamingMode: true
+          streamingMode: true,
         }, 'Starting streaming AI chat response');
 
         reply.raw.writeHead(200, {
@@ -126,7 +225,12 @@ export class AIProxyController {
         let tokenCount = 0;
 
         try {
-          for await (const chunk of provider.stream(messages, { model, ...config })) {
+          for await (const chunk of provider.stream(messages, { 
+            model, 
+            temperature,
+            maxTokens,
+            stream: true
+          })) {
             totalContent += chunk;
             tokenCount++;
             
@@ -135,7 +239,7 @@ export class AIProxyController {
           }
           
           const responseTokens = provider.countTokens(totalContent);
-          const promptTokens = provider.countTokens(messages.map(m => m.content).join(' '));
+          const promptTokens = provider.countTokens(messages.map((m: AIMessage) => m.content).join(' '));
           const modelInfo = provider.models.find(m => m.id === model);
           const cost = modelInfo 
             ? ((promptTokens / 1000) * modelInfo.inputCost) + ((responseTokens / 1000) * modelInfo.outputCost)
@@ -143,7 +247,7 @@ export class AIProxyController {
 
           await this.usageTracker.trackUsage({
             userId: user.id,
-            attemptId: request.body.attemptId,
+            attemptId,
             provider: providerName as any,
             model,
             inputTokens: promptTokens,
@@ -168,7 +272,8 @@ export class AIProxyController {
             cost,
             apiTime: Date.now() - apiStartTime,
             executionTime,
-            streamCompleted: true
+            streamCompleted: true,
+            governanceApplied: this.governanceEnabled && enableGovernance && !!challengeId,
           }, 'AI streaming chat completed successfully');
 
           reply.raw.write('data: [DONE]\n\n');
@@ -182,7 +287,7 @@ export class AIProxyController {
             model,
             error: error instanceof Error ? error.message : 'Unknown error',
             streamingMode: true,
-            executionTime
+            executionTime,
           }, 'AI streaming chat error');
           
           const errorEvent = JSON.stringify({ error: 'Stream error' });
@@ -191,11 +296,16 @@ export class AIProxyController {
           reply.raw.end();
         }
       } else {
-        const completion = await provider.chat(messages, { model, ...config });
+        const completion = await provider.chat(messages, { 
+          model,
+          temperature,
+          maxTokens,
+          stream: false
+        });
 
         await this.usageTracker.trackUsage({
           userId: user.id,
-          attemptId: request.body.attemptId,
+          attemptId,
           provider: providerName as any,
           model,
           inputTokens: completion.usage.promptTokens,
@@ -220,7 +330,8 @@ export class AIProxyController {
           apiTime: Date.now() - apiStartTime,
           executionTime,
           rateLimitRemaining: rateLimit.remaining,
-          aiChatCompleted: true
+          governanceApplied: this.governanceEnabled && enableGovernance && !!challengeId,
+          aiChatCompleted: true,
         }, 'AI chat completed successfully');
 
         if (completion.cost > 0.10) {
@@ -231,19 +342,8 @@ export class AIProxyController {
             model,
             cost: completion.cost,
             totalTokens: completion.usage.totalTokens,
-            highCostInteraction: true
+            highCostInteraction: true,
           }, 'High cost AI interaction detected');
-        }
-
-        if (completion.usage.totalTokens > 4000) {
-          logger.warn({
-            requestId,
-            userId: user.id,
-            provider: providerName,
-            model,
-            totalTokens: completion.usage.totalTokens,
-            highTokenUsage: true
-          }, 'High token usage detected');
         }
 
         return reply.send({
@@ -254,6 +354,10 @@ export class AIProxyController {
             cost: completion.cost,
             remaining: rateLimit.remaining,
           },
+          governance: this.governanceEnabled && enableGovernance && challengeId ? {
+            validated: true,
+            challengeContext: true,
+          } : undefined,
         });
       }
     } catch (error) {
@@ -265,7 +369,7 @@ export class AIProxyController {
         operation: 'ai_chat_error',
         error: errorMessage,
         stack: error instanceof Error ? error.stack : undefined,
-        executionTime
+        executionTime,
       }, 'AI chat request failed');
       
       if (error instanceof Error) {
@@ -276,12 +380,6 @@ export class AIProxyController {
           });
         }
         if (error.message.includes('Invalid API key')) {
-          logger.error({
-            requestId,
-            apiKeyError: true,
-            securityEvent: true
-          }, 'Invalid API key for AI provider');
-          
           return reply.status(401).send({
             error: 'Authentication failed',
             message: 'Invalid API key for provider',
@@ -296,6 +394,55 @@ export class AIProxyController {
     }
   };
 
+  private async applyThrottling(userId: string, riskScore: number): Promise<void> {
+  const delayMs = Math.min(riskScore * 10, 1000); 
+  
+  if (delayMs > 0) {
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+  }
+
+  if (typeof (this.rateLimiter as any).setThrottle === 'function') {
+    await (this.rateLimiter as any).setThrottle(userId, riskScore);
+  }
+  
+  logger.info({
+    userId,
+    riskScore,
+    delayMs,
+    throttleApplied: true
+  }, 'Throttling applied to user due to risk detection');
+}
+
+  private getSuggestions(reasons: string[]): string[] {
+    const suggestions: string[] = [];
+
+    if (reasons.some(r => r.includes('Direct solution'))) {
+      suggestions.push(
+        'Try asking for guidance or hints instead of the complete solution.',
+        'Break down the problem and ask about specific concepts.',
+        'Focus on understanding the approach rather than getting the answer.'
+      );
+    }
+
+    if (reasons.some(r => r.includes('Off-topic'))) {
+      suggestions.push(
+        'Keep your questions related to the challenge at hand.',
+        'Focus on the technical aspects of the problem.',
+        'Review the challenge requirements and ask specific questions.'
+      );
+    }
+
+    if (reasons.some(r => r.includes('Social engineering'))) {
+      suggestions.push(
+        'Please use the AI assistant as intended for learning purposes.',
+        'Focus on improving your skills through practice.',
+        'The system is designed to help you learn, not to provide shortcuts.'
+      );
+    }
+
+    return suggestions.slice(0, 3);
+  }
+  
   trackCopyPaste = async (
     request: FastifyRequest<{ Body: TrackCopyPasteDTO }>,
     reply: FastifyReply
@@ -333,25 +480,6 @@ export class AIProxyController {
         executionTime,
         copyPasteTracked: true
       }, `${request.body.action} event tracked successfully`);
-
-      if (request.body.action === 'copy' && request.body.aiInteractionId) {
-        logger.info({
-          userId: user.id,
-          attemptId: request.body.attemptId,
-          aiInteractionId: request.body.aiInteractionId,
-          sourceLines: request.body.sourceLines,
-          aiCodeCopied: true
-        }, 'AI-generated code copied by user');
-      }
-
-      if (request.body.action === 'paste' && request.body.targetLines && request.body.targetLines > 50) {
-        logger.warn({
-          userId: user.id,
-          attemptId: request.body.attemptId,
-          targetLines: request.body.targetLines,
-          largePasteEvent: true
-        }, 'Large code paste event detected');
-      }
 
       return reply.send({
         success: true,

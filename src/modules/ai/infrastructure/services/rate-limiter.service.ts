@@ -15,7 +15,7 @@ export class RateLimiterService {
     private readonly config?: Partial<RateLimitConfig>
   ) {
     this.config = { ...this.defaultConfig, ...config };
-    
+
     logger.info({
       operation: 'rate_limiter_initialized',
       config: this.config
@@ -29,7 +29,7 @@ export class RateLimiterService {
     reason?: string;
   }> {
     const startTime = Date.now();
-    
+
     logger.debug({
       operation: 'check_rate_limit',
       userId,
@@ -58,27 +58,27 @@ export class RateLimiterService {
       }, 'Generated rate limit keys');
 
       const pipeline = this.redis.pipeline();
-      
+
       pipeline.incr(keys.minute);
       pipeline.expire(keys.minute, 60);
-      
+
       pipeline.incr(keys.hour);
       pipeline.expire(keys.hour, 3600);
-      
+
       pipeline.incrby(keys.day, tokens);
       pipeline.expire(keys.day, 86400);
-      
+
       pipeline.get(keys.burst);
-      
+
       const results = await pipeline.exec();
-      
+
       if (!results) {
         logger.error({
           operation: 'rate_limit_check_failed',
           userId,
           reason: 'redis_pipeline_failed'
         }, 'Rate limit check failed - Redis pipeline returned null');
-        
+
         throw new Error('Rate limit check failed');
       }
 
@@ -102,8 +102,8 @@ export class RateLimiterService {
       if (lastBurst) {
         const lastBurstTime = parseInt(lastBurst);
         const timeSinceBurst = now - lastBurstTime;
-        
-        if (timeSinceBurst < 1000) { 
+
+        if (timeSinceBurst < 1000) {
           logger.warn({
             operation: 'burst_limit_exceeded',
             userId,
@@ -111,7 +111,7 @@ export class RateLimiterService {
             timeSinceBurst,
             burstLimit: this.config!.burstLimit
           }, 'Burst limit exceeded');
-          
+
           return {
             allowed: false,
             remaining: 0,
@@ -129,7 +129,7 @@ export class RateLimiterService {
           limit: this.config!.maxRequestsPerMinute,
           resetAt: new Date((minute + 1) * 60000)
         }, 'Minute rate limit exceeded');
-        
+
         return {
           allowed: false,
           remaining: 0,
@@ -146,7 +146,7 @@ export class RateLimiterService {
           limit: this.config!.maxRequestsPerHour,
           resetAt: new Date((hour + 1) * 3600000)
         }, 'Hour rate limit exceeded');
-        
+
         return {
           allowed: false,
           remaining: 0,
@@ -163,7 +163,7 @@ export class RateLimiterService {
           limit: this.config!.maxTokensPerDay,
           resetAt: new Date((day + 1) * 86400000)
         }, 'Daily token limit exceeded');
-        
+
         return {
           allowed: false,
           remaining: 0,
@@ -195,7 +195,7 @@ export class RateLimiterService {
         },
         processingTime
       }, 'Rate limit check passed');
-      
+
       if (remainingMinute <= 2) {
         logger.warn({
           userId,
@@ -228,10 +228,10 @@ export class RateLimiterService {
         remaining: Math.min(remainingMinute, remainingHour),
         resetAt: new Date((minute + 1) * 60000),
       };
-      
+
     } catch (error) {
       const processingTime = Date.now() - startTime;
-      
+
       logger.error({
         operation: 'rate_limit_check_error',
         userId,
@@ -240,7 +240,7 @@ export class RateLimiterService {
         stack: error instanceof Error ? error.stack : undefined,
         processingTime
       }, 'Rate limit check failed');
-      
+
       throw error;
     }
   }
@@ -250,7 +250,7 @@ export class RateLimiterService {
     tokens: { daily: number };
   }> {
     const startTime = Date.now();
-    
+
     logger.debug({
       operation: 'get_remaining_quota',
       userId
@@ -279,7 +279,7 @@ export class RateLimiterService {
       };
 
       const processingTime = Date.now() - startTime;
-      
+
       logger.info({
         operation: 'get_remaining_quota_success',
         userId,
@@ -294,10 +294,10 @@ export class RateLimiterService {
       }, 'Remaining quota retrieved');
 
       return quota;
-      
+
     } catch (error) {
       const processingTime = Date.now() - startTime;
-      
+
       logger.error({
         operation: 'get_remaining_quota_failed',
         userId,
@@ -305,14 +305,15 @@ export class RateLimiterService {
         stack: error instanceof Error ? error.stack : undefined,
         processingTime
       }, 'Failed to get remaining quota');
-      
+
       throw error;
     }
   }
 
+
   async resetUserLimits(userId: string): Promise<void> {
     const startTime = Date.now();
-    
+
     logger.warn({
       operation: 'reset_user_limits',
       userId
@@ -321,14 +322,14 @@ export class RateLimiterService {
     try {
       const pattern = `ratelimit:*${userId}*`;
       const keys = await this.redis.keys(pattern);
-      
+
       let deletedCount = 0;
       if (keys.length > 0) {
         deletedCount = await this.redis.del(...keys);
       }
-      
+
       const processingTime = Date.now() - startTime;
-      
+
       logger.warn({
         operation: 'reset_user_limits_success',
         userId,
@@ -336,10 +337,10 @@ export class RateLimiterService {
         keysFound: keys.length,
         processingTime
       }, 'User rate limits reset successfully');
-      
+
     } catch (error) {
       const processingTime = Date.now() - startTime;
-      
+
       logger.error({
         operation: 'reset_user_limits_failed',
         userId,
@@ -347,8 +348,45 @@ export class RateLimiterService {
         stack: error instanceof Error ? error.stack : undefined,
         processingTime
       }, 'Failed to reset user limits');
-      
+
       throw error;
+    }
+  }
+
+    async setThrottle(userId: string, riskScore: number): Promise<void> {
+    const key = `throttle:${userId}`;
+    const ttl = 300; 
+
+    try {
+      await this.redis.setex(key, ttl, riskScore.toString());
+
+      logger.info({
+        userId,
+        riskScore,
+        ttl,
+        throttleApplied: true
+      }, 'Throttling applied to user');
+    } catch (error) {
+      logger.error({
+        userId,
+        riskScore,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }, 'Failed to apply throttling');
+    }
+  }
+
+  async getThrottle(userId: string): Promise<number | null> {
+    const key = `throttle:${userId}`;
+
+    try {
+      const value = await this.redis.get(key);
+      return value ? parseInt(value) : null;
+    } catch (error) {
+      logger.error({
+        userId,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }, 'Failed to get throttle status');
+      return null;
     }
   }
 }

@@ -13,6 +13,7 @@ import challengePlugin from './modules/challenges/infrastructure/plugin/challeng
 import websocketPlugin from './shared/infrastructure/websocket/websocket.plugin';
 import metricPlugin from './modules/metrics/infrastructure/plugin/metric.plugin';
 import gamificationPlugin from './modules/gamification/infrastructure/plugin/gamification.plugin';
+import aiPlugin from './modules/ai/infrastructure/plugin/ai.plugin';
 
 const prisma = new PrismaClient({
   log: config.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
@@ -68,6 +69,11 @@ const buildApp = async () => {
     redis,
   });
 
+  await app.register(aiPlugin, {
+    prisma,
+    redis,
+  });
+
   await app.register(challengePlugin, {
     prisma,
     redis,
@@ -82,7 +88,7 @@ const buildApp = async () => {
   await app.register(gamificationPlugin, {
     prisma,
     redis,
-    wsServer: app.ws,  
+    wsServer: app.ws,
   });
 
   app.get('/health', async () => ({

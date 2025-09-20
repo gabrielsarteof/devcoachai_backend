@@ -46,6 +46,7 @@ model User {
   aiInteractions   AIInteraction[]
   codeEvents       CodeEvent[]
   notifications    Notification[]
+  validationLogs   ValidationLog[]
   
   @@index([email])
   @@index([companyId])
@@ -100,6 +101,9 @@ model Challenge {
   updatedAt        DateTime @updatedAt
   
   attempts         ChallengeAttempt[]
+  validationLogs       ValidationLog[]
+  validationRules      ValidationRule[]
+  governanceMetrics    GovernanceMetrics[]
   
   @@index([slug])
   @@index([difficulty])
@@ -141,6 +145,7 @@ model ChallengeAttempt {
   codeEvents      CodeEvent[]
   metrics         MetricSnapshot[]
   traps           TrapDetection[]
+  validationLogs  ValidationLog[]
   
   @@index([userId])
   @@index([challengeId])
@@ -247,6 +252,7 @@ model AIInteraction {
   userId          String
   user            User     @relation(fields: [userId], references: [id])
   attemptId       String?
+  challengeId          String?
   attempt         ChallengeAttempt? @relation(fields: [attemptId], references: [id])
   
   provider        AIProvider
@@ -415,6 +421,74 @@ model Notification {
   @@index([readAt])
   @@index([expiresAt])
   @@index([userId, readAt])
+}
+
+model ValidationLog {
+  id             String   @id @default(cuid())
+  userId         String
+  challengeId    String
+  attemptId      String?
+  promptHash     String
+  classification String
+  riskScore      Float
+  confidence     Float
+  action         String
+  reasons        String[]
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge Challenge         @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  attempt   ChallengeAttempt? @relation(fields: [attemptId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([challengeId])
+  @@index([attemptId])
+  @@index([classification])
+  @@index([createdAt])
+  @@index([userId, challengeId, createdAt])
+}
+
+model ValidationRule {
+  id          String   @id @default(cuid())
+  challengeId String
+  ruleId      String
+  pattern     String
+  action      String
+  weight      Int      @default(50)
+  description String
+  category    String?
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@unique([challengeId, ruleId])
+  @@index([challengeId])
+  @@index([enabled])
+}
+
+model GovernanceMetrics {
+  id                String   @id @default(cuid())
+  challengeId       String?
+  date              DateTime @db.Date
+  totalValidations  Int      @default(0)
+  blockedCount      Int      @default(0)
+  throttledCount    Int      @default(0)
+  allowedCount      Int      @default(0)
+  avgRiskScore      Float    @default(0)
+  avgConfidence     Float    @default(0)
+  avgProcessingTime Float    @default(0)
+  topPatterns       Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  challenge Challenge? @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@unique([challengeId, date])
+  @@index([challengeId])
+  @@index([date])
 }
 
 enum UserRole {

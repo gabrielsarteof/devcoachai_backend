@@ -75,3 +75,46 @@ export interface PromptAnalysis {
   hasCodeRequest: boolean;
   socialEngineeringScore: number; 
 }
+
+export interface SemanticAnalysisResult {
+  similarity: number; 
+  embeddings: number[];
+  intent: PromptIntent;
+  manipulationScore: number; 
+  contextAlignment: number; 
+  processingTime: number;
+  cached: boolean;
+}
+
+export type PromptIntent = 
+  | 'EDUCATIONAL'      
+  | 'SOLUTION_SEEKING' 
+  | 'CLARIFICATION'   
+  | 'DEBUGGING'        
+  | 'GAMING'          
+  | 'MANIPULATION'   
+  | 'OFF_TOPIC'       
+  | 'UNCLEAR';        
+
+export interface EnhancedValidationResult extends PromptValidationResult {
+  semanticAnalysis?: SemanticAnalysisResult;
+  hybridScore: number;
+  detectedPatterns: string[];
+  manipulationIndicators: string[];
+}
+
+export interface SemanticCacheConfig {
+  embeddingTTL: number;      
+  intentAnalysisTTL: number; 
+  similarityTTL: number;     
+}
+
+export interface SemanticValidationConfig extends ValidationConfig {
+  enableSemanticAnalysis: boolean;
+  borderlineLowerBound: number;  
+  borderlineUpperBound: number;  
+  semanticSimilarityThreshold: number;
+  maxPromptLength: number;     
+  openAIModel: string;           
+  embeddingModel: string;        
+}

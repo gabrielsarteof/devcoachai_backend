@@ -1,4 +1,4 @@
-import { AIMessage } from '../types/ai.types';
+import { AIMessage } from '../../domain/types/ai.types';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 
 export interface ConversationAnalysis {

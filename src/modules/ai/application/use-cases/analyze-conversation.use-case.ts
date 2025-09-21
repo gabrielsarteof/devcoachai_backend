@@ -1,4 +1,4 @@
-import { ConversationAnalyzerService } from '../../domain/services/conversation-analyzer.service';
+import { ConversationAnalyzerService } from '../../infrastructure/services/conversation-analyzer.service';
 import { IAIInteractionRepository } from '../../domain/repositories/ai-interaction.repository.interface';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 

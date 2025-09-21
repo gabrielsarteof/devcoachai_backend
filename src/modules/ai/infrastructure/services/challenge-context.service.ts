@@ -1,10 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import { Redis } from 'ioredis';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
-import {
-  IChallengeContextService,
-  ContextStats
-} from '../../domain/services/prompt-validator.service.interface';
+import { IChallengeContextService } from '../../domain/services/challenge-context.service.interface';
+import { ContextStats } from '../../domain/types/context.types';
 import { ChallengeContext } from '../../domain/types/governance.types';
 import { ChallengeEntity } from '@/modules/challenges/domain/entities/challenge.entity';
 

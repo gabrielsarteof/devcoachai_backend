@@ -18,14 +18,16 @@ import { ValidatePromptUseCase } from '../../application/use-cases/validate-prom
 import { AIProxyController } from '../../presentation/controllers/ai-proxy.controller';
 import { aiRoutes } from '../../presentation/routes/ai.routes';
 import { AIInteractionRepository } from '../repositories/ai-interaction.repository';
-import { ConversationAnalyzerService } from '../../domain/services/conversation-analyzer.service';
+import { ConversationAnalyzerService } from '../services/conversation-analyzer.service';
+import { SemanticAnalyzerService } from '../services/semantic-analyzer.service';
+import { HybridPromptValidatorService } from '../services/hybrid-prompt-validator.service';
 
 export interface AIPluginOptions {
   prisma: PrismaClient;
   redis: Redis;
 }
 
-const aiPlugin: FastifyPluginAsync<AIPluginOptions> = async function(
+const aiPlugin: FastifyPluginAsync<AIPluginOptions> = async function (
   fastify: FastifyInstance,
   options: AIPluginOptions
 ): Promise<void> {
@@ -42,8 +44,16 @@ const aiPlugin: FastifyPluginAsync<AIPluginOptions> = async function(
 
   const usageTracker = new UsageTrackerService(prisma, redis);
   const copyPasteDetector = new CopyPasteDetectorService(prisma, redis);
-  
+
   const promptValidator = new PromptValidatorService(redis);
+  const semanticAnalyzer = process.env.ENABLE_SEMANTIC_ANALYSIS === 'true' && process.env.OPENAI_API_KEY
+    ? new SemanticAnalyzerService(redis, process.env.OPENAI_API_KEY)
+    : null;
+
+  const hybridValidator = semanticAnalyzer
+    ? new HybridPromptValidatorService(redis, promptValidator, semanticAnalyzer)
+    : promptValidator;
+
   const challengeContextService = new ChallengeContextService(prisma, redis);
 
   const providerFactory = new ProviderFactoryService(redis);
@@ -56,14 +66,14 @@ const aiPlugin: FastifyPluginAsync<AIPluginOptions> = async function(
   );
 
   const trackCopyPasteUseCase = new TrackCopyPasteUseCase(copyPasteDetector);
-  
+
   const analyzeConversationUseCase = new AnalyzeConversationUseCase(
     new ConversationAnalyzerService(),
     aiInteractionRepository
   );
 
   const validatePromptUseCase = new ValidatePromptUseCase(
-    promptValidator,
+    hybridValidator,
     challengeContextService,
     prisma
   );
@@ -72,7 +82,7 @@ const aiPlugin: FastifyPluginAsync<AIPluginOptions> = async function(
     rateLimiter,
     usageTracker,
     trackCopyPasteUseCase,
-    validatePromptUseCase 
+    validatePromptUseCase
   );
 
   const providers: string[] = [];
@@ -122,8 +132,19 @@ const aiPlugin: FastifyPluginAsync<AIPluginOptions> = async function(
 
   fastify.get('/ai/health', async (_request, reply) => {
     const governanceEnabled = process.env.GOVERNANCE_ENABLED === 'true';
+    const semanticEnabled = process.env.ENABLE_SEMANTIC_ANALYSIS === 'true';
     const stats = await challengeContextService.getContextStats();
-    
+
+    let semanticHealth = null;
+    if (semanticEnabled && semanticAnalyzer) {
+      semanticHealth = semanticAnalyzer.getHealthStatus();
+    }
+
+    let hybridMetrics = null;
+    if (hybridValidator instanceof HybridPromptValidatorService) {
+      hybridMetrics = await hybridValidator.getHealthMetrics();
+    }
+
     return reply.send({
       status: 'healthy',
       providers,
@@ -131,10 +152,16 @@ const aiPlugin: FastifyPluginAsync<AIPluginOptions> = async function(
         enabled: governanceEnabled,
         cachedContexts: stats.cachedContexts,
         cacheHitRate: stats.cacheHitRate,
+        semantic: {
+          enabled: semanticEnabled,
+          health: semanticHealth,
+          metrics: hybridMetrics,
+        },
       },
       timestamp: new Date().toISOString(),
     });
   });
+
 
   if (process.env.PREWARM_CHALLENGES) {
     const challengeIds = process.env.PREWARM_CHALLENGES.split(',');
@@ -142,7 +169,7 @@ const aiPlugin: FastifyPluginAsync<AIPluginOptions> = async function(
       { challengeIds },
       'Prewarming challenge context cache'
     );
-    
+
     challengeContextService.prewarmCache(challengeIds).catch((error) => {
       fastify.log.error(
         { error: error.message },

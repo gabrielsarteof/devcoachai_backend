@@ -1,9 +1,7 @@
 import { Redis } from 'ioredis';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
-import {
-  IPromptValidatorService,
-  ValidationMetrics
-} from '../../domain/services/prompt-validator.service.interface';
+import {IPromptValidatorService,} from '../../domain/services/prompt-validator.service.interface';
+import { ValidationMetrics } from '../../domain/types/validation.types';
 import {
   PromptValidationResult,
   ChallengeContext,

@@ -1,17 +1,18 @@
 import type { FastifyInstance, RouteHandlerMethod } from 'fastify';
 import { AIProxyController } from '../controllers/ai-proxy.controller';
-import { 
-  CreateAIInteractionSchema, 
+import {
+  CreateAIInteractionSchema,
   TrackCopyPasteSchema,
   PromptValidationRequestSchema,
-  ValidationMetricsQuerySchema
+  ValidationMetricsQuerySchema,
+  AnalyzeTemporalBehaviorSchema,
+  GenerateFeedbackRequestSchema,
 } from '../../domain/schemas/ai-interaction.schema';
 
 export async function aiRoutes(
   fastify: FastifyInstance,
-  controller: AIProxyController
+  controller: AIProxyController,
 ): Promise<void> {
-  
   fastify.post('/chat', {
     preHandler: [fastify.authenticate],
     schema: {
@@ -49,6 +50,8 @@ export async function aiRoutes(
             riskScore: { type: 'number' },
             classification: { type: 'string' },
             suggestions: { type: 'array', items: { type: 'string' } },
+            temporalAnalysis: { type: 'object', nullable: true },
+            educationalFeedback: { type: 'object', nullable: true },
           },
         },
       },
@@ -120,11 +123,11 @@ export async function aiRoutes(
           properties: {
             isValid: { type: 'boolean' },
             riskScore: { type: 'number' },
-            classification: { 
+            classification: {
               type: 'string',
               enum: ['SAFE', 'WARNING', 'BLOCKED'],
             },
-            reasons: { 
+            reasons: {
               type: 'array',
               items: { type: 'string' },
             },
@@ -133,7 +136,7 @@ export async function aiRoutes(
               enum: ['ALLOW', 'THROTTLE', 'BLOCK', 'REVIEW'],
             },
             confidence: { type: 'number' },
-            metadata: { 
+            metadata: {
               type: 'object',
               nullable: true,
             },
@@ -151,7 +154,7 @@ export async function aiRoutes(
     handler: async (request, reply) => {
       const user = request.user as { id: string; level?: number };
       const body = request.body as any;
-      
+
       if (!fastify.ai?.validatePrompt) {
         return reply.status(501).send({
           error: 'Not Implemented',
@@ -170,6 +173,58 @@ export async function aiRoutes(
 
       return reply.send(result);
     },
+  });
+
+  fastify.post('/governance/analyze-temporal', {
+    preHandler: [fastify.authenticate],
+    schema: {
+      body: AnalyzeTemporalBehaviorSchema,
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            overallRisk: { type: 'number' },
+            isGamingAttempt: { type: 'boolean' },
+            temporalPatterns: { type: 'array' },
+            behaviorMetrics: { type: 'object' },
+            recommendations: { type: 'array' },
+          },
+        },
+        501: {
+          type: 'object',
+          properties: {
+            error: { type: 'string' },
+            message: { type: 'string' },
+          },
+        },
+      },
+    },
+    handler: controller.analyzeTemporalBehavior as RouteHandlerMethod,
+  });
+
+  fastify.post('/governance/generate-feedback', {
+    preHandler: [fastify.authenticate],
+    schema: {
+      body: GenerateFeedbackRequestSchema,
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            context: { type: 'object' },
+            guidance: { type: 'object' },
+            learningPath: { type: 'object' },
+          },
+        },
+        501: {
+          type: 'object',
+          properties: {
+            error: { type: 'string' },
+            message: { type: 'string' },
+          },
+        },
+      },
+    },
+    handler: controller.generateEducationalFeedback as RouteHandlerMethod,
   });
 
   fastify.get('/governance/metrics', {
@@ -211,7 +266,7 @@ export async function aiRoutes(
     },
     handler: async (request, reply) => {
       const query = request.query as any;
-      
+
       if (!fastify.ai?.promptValidator) {
         return reply.status(501).send({
           error: 'Not Implemented',
@@ -219,14 +274,17 @@ export async function aiRoutes(
         });
       }
 
-      const timeRange = query.startDate && query.endDate ? {
-        start: new Date(query.startDate),
-        end: new Date(query.endDate),
-      } : undefined;
+      const timeRange =
+        query.startDate && query.endDate
+          ? {
+              start: new Date(query.startDate),
+              end: new Date(query.endDate),
+            }
+          : undefined;
 
       const metrics = await fastify.ai.promptValidator.getValidationMetrics(
         query.challengeId,
-        timeRange
+        timeRange,
       );
 
       return reply.send(metrics);
@@ -307,7 +365,7 @@ export async function aiRoutes(
     },
     handler: async (request, reply) => {
       const { challengeId } = request.body as { challengeId: string };
-      
+
       if (!fastify.ai?.challengeContextService) {
         return reply.status(501).send({
           error: 'Not Implemented',
@@ -315,8 +373,10 @@ export async function aiRoutes(
         });
       }
 
-      await fastify.ai.challengeContextService.refreshChallengeContext(challengeId);
-      
+      await fastify.ai.challengeContextService.refreshChallengeContext(
+        challengeId,
+      );
+
       return reply.send({
         success: true,
         message: `Context cache refreshed for challenge ${challengeId}`,
@@ -359,7 +419,7 @@ export async function aiRoutes(
     },
     handler: async (request, reply) => {
       const { challengeIds } = request.body as { challengeIds: string[] };
-      
+
       if (!fastify.ai?.challengeContextService) {
         return reply.status(501).send({
           error: 'Not Implemented',
@@ -368,7 +428,7 @@ export async function aiRoutes(
       }
 
       await fastify.ai.challengeContextService.prewarmCache(challengeIds);
-      
+
       return reply.send({
         success: true,
         message: 'Cache prewarm initiated',
@@ -405,7 +465,7 @@ export async function aiRoutes(
     },
     handler: async (request, reply) => {
       const { challengeId } = request.query as { challengeId?: string };
-      
+
       if (!fastify.ai?.promptValidator) {
         return reply.status(501).send({
           error: 'Not Implemented',
@@ -414,10 +474,10 @@ export async function aiRoutes(
       }
 
       await fastify.ai.promptValidator.clearCache(challengeId);
-      
+
       return reply.send({
         success: true,
-        message: challengeId 
+        message: challengeId
           ? `Cache cleared for challenge ${challengeId}`
           : 'All validation cache cleared',
       });
@@ -440,7 +500,13 @@ export async function aiRoutes(
           properties: {
             intent: {
               type: 'string',
-              enum: ['educational', 'solution_seeking', 'gaming', 'off_topic', 'unclear'],
+              enum: [
+                'educational',
+                'solution_seeking',
+                'gaming',
+                'off_topic',
+                'unclear',
+              ],
             },
             topics: {
               type: 'array',
@@ -467,7 +533,7 @@ export async function aiRoutes(
     },
     handler: async (request, reply) => {
       const { prompt } = request.body as { prompt: string };
-      
+
       if (!fastify.ai?.promptValidator) {
         return reply.status(501).send({
           error: 'Not Implemented',

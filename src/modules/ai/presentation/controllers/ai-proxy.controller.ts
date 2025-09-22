@@ -1,14 +1,19 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { IAIProvider } from '../../domain/providers/ai-provider.interface';
-import { 
+import {
   CreateAIInteractionDTO,
-  TrackCopyPasteDTO 
+  TrackCopyPasteDTO,
+  AnalyzeTemporalBehaviorDTO,
+  GenerateFeedbackRequestDTO
 } from '../../domain/schemas/ai-interaction.schema';
 import { AIMessage } from '../../domain/types/ai.types';
 import { RateLimiterService } from '../../infrastructure/services/rate-limiter.service';
 import { UsageTrackerService } from '../../infrastructure/services/usage-tracker.service';
 import { TrackCopyPasteUseCase } from '../../application/use-cases/track-copy-paste.use-case';
 import { ValidatePromptUseCase } from '../../application/use-cases/validate-prompt.use-case';
+import { AnalyzeTemporalBehaviorUseCase } from '../../application/use-cases/analyze-temporal-behavior.use-case';
+import { IEducationalFeedbackService } from '../../domain/services/educational-feedback.service.interface';
+import { IChallengeContextService } from '../../domain/services/challenge-context.service.interface';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 
 export class AIProxyController {
@@ -19,12 +24,15 @@ export class AIProxyController {
     private readonly rateLimiter: RateLimiterService,
     private readonly usageTracker: UsageTrackerService,
     private readonly trackCopyPasteUseCase: TrackCopyPasteUseCase,
-    private readonly validatePromptUseCase?: ValidatePromptUseCase 
-  ) {}
+    private readonly validatePromptUseCase?: ValidatePromptUseCase,
+    private readonly analyzeTemporalBehaviorUseCase?: AnalyzeTemporalBehaviorUseCase,
+    private readonly educationalFeedbackService?: IEducationalFeedbackService,
+    private readonly challengeContextService?: IChallengeContextService
+  ) { }
 
   registerProvider(name: string, provider: IAIProvider): void {
     this.providers.set(name, provider);
-    
+
     logger.info({
       operation: 'ai_provider_registered',
       providerName: name,
@@ -40,13 +48,13 @@ export class AIProxyController {
   ): Promise<void> => {
     const startTime = Date.now();
     const requestId = crypto.randomUUID();
-    
+
     try {
       const user = request.user as { id: string; level?: number };
-      const { 
-        provider: providerName, 
-        messages, 
-        model, 
+      const {
+        provider: providerName,
+        messages,
+        model,
         challengeId,
         enableGovernance = true,
         attemptId,
@@ -71,9 +79,93 @@ export class AIProxyController {
         ipAddress: request.ip,
       }, 'AI chat request received');
 
+      if (this.governanceEnabled && enableGovernance && challengeId && attemptId && this.analyzeTemporalBehaviorUseCase) {
+        try {
+          const temporalAnalysis = await this.analyzeTemporalBehaviorUseCase.execute({
+            userId: user.id,
+            attemptId: attemptId,
+            currentValidation: {
+              challengeId,
+              prompt: messages
+                .filter((m: AIMessage) => m.role === 'user')
+                .map((m: AIMessage) => m.content)
+                .join(' '),
+            },
+            lookbackMinutes: 30
+          });
+
+          if (temporalAnalysis?.shouldBlock && temporalAnalysis.overallRisk > 80) {
+            logger.warn({
+              requestId,
+              userId: user.id,
+              attemptId,
+              challengeId,
+              temporalRisk: temporalAnalysis.overallRisk,
+              patterns: temporalAnalysis.temporalPatterns,
+              gamingDetected: true
+            }, 'Gaming behavior detected through temporal analysis');
+
+            let educationalFeedback = null;
+            if (this.educationalFeedbackService && challengeId) {
+              try {
+                let challengeContext = undefined;
+                if (this.challengeContextService) {
+                  try {
+                    challengeContext = await this.challengeContextService.getChallengeContext(challengeId);
+                  } catch (contextError) {
+                    logger.warn({
+                      requestId,
+                      challengeId,
+                      error: contextError instanceof Error ? contextError.message : 'Unknown error'
+                    }, 'Failed to get challenge context for feedback');
+                  }
+                }
+
+                educationalFeedback = await this.educationalFeedbackService.generateFeedback({
+                  validation: {
+                    isValid: false,
+                    riskScore: temporalAnalysis.overallRisk || 90,
+                    classification: 'BLOCKED',
+                    reasons: ['Gaming behavior detected through temporal analysis'],
+                    suggestedAction: 'BLOCK',
+                    confidence: 90
+                  },
+                  userLevel: user.level || 1,
+                  userId: user.id,
+                  context: challengeContext
+                });
+              } catch (feedbackError) {
+                logger.error({
+                  requestId,
+                  error: feedbackError instanceof Error ? feedbackError.message : 'Unknown error',
+                  userId: user.id
+                }, 'Failed to generate educational feedback');
+              }
+            }
+
+            return reply.status(403).send({
+              error: 'Gaming behavior detected',
+              message: 'Multiple attempts to bypass the educational system detected.',
+              temporalAnalysis: {
+                risk: temporalAnalysis.overallRisk,
+                patterns: temporalAnalysis.temporalPatterns
+              },
+              educationalFeedback
+            });
+          }
+
+        } catch (temporalError) {
+          logger.error({
+            requestId,
+            error: temporalError instanceof Error ? temporalError.message : 'Unknown error',
+            userId: user.id
+          }, 'Temporal analysis failed - continuing with normal flow');
+        }
+      }
+
       if (this.governanceEnabled && enableGovernance && challengeId && this.validatePromptUseCase) {
         const validationStartTime = Date.now();
-        
+
         const combinedPrompt = messages
           .filter((m: AIMessage) => m.role === 'user')
           .map((m: AIMessage) => m.content)
@@ -124,7 +216,7 @@ export class AIProxyController {
 
         if (validation.suggestedAction === 'THROTTLE') {
           await this.applyThrottling(user.id, validation.riskScore);
-          
+
           logger.info({
             requestId,
             userId: user.id,
@@ -162,7 +254,7 @@ export class AIProxyController {
           rateLimitExceeded: true,
           executionTime: Date.now() - startTime,
         }, 'AI chat request blocked by rate limiter');
-        
+
         return reply.status(429).send({
           error: 'Rate limit exceeded',
           message: rateLimit.reason,
@@ -180,7 +272,7 @@ export class AIProxyController {
           reason: 'provider_not_found',
           executionTime: Date.now() - startTime,
         }, 'AI chat request failed - provider not found');
-        
+
         return reply.status(400).send({
           error: 'Invalid provider',
           message: `Provider ${providerName} not found`,
@@ -197,7 +289,7 @@ export class AIProxyController {
           reason: 'model_not_supported',
           executionTime: Date.now() - startTime,
         }, 'AI chat request failed - model not supported');
-        
+
         return reply.status(400).send({
           error: 'Invalid model',
           message: `Model ${model} not supported by ${providerName}`,
@@ -225,23 +317,23 @@ export class AIProxyController {
         let tokenCount = 0;
 
         try {
-          for await (const chunk of provider.stream(messages, { 
-            model, 
+          for await (const chunk of provider.stream(messages, {
+            model,
             temperature,
             maxTokens,
             stream: true
           })) {
             totalContent += chunk;
             tokenCount++;
-            
+
             const event = JSON.stringify({ content: chunk });
             reply.raw.write(`data: ${event}\n\n`);
           }
-          
+
           const responseTokens = provider.countTokens(totalContent);
           const promptTokens = provider.countTokens(messages.map((m: AIMessage) => m.content).join(' '));
           const modelInfo = provider.models.find(m => m.id === model);
-          const cost = modelInfo 
+          const cost = modelInfo
             ? ((promptTokens / 1000) * modelInfo.inputCost) + ((responseTokens / 1000) * modelInfo.outputCost)
             : 0;
 
@@ -257,7 +349,7 @@ export class AIProxyController {
           });
 
           const executionTime = Date.now() - startTime;
-          
+
           logger.info({
             requestId,
             userId: user.id,
@@ -279,7 +371,7 @@ export class AIProxyController {
           reply.raw.write('data: [DONE]\n\n');
         } catch (error) {
           const executionTime = Date.now() - startTime;
-          
+
           logger.error({
             requestId,
             userId: user.id,
@@ -289,14 +381,14 @@ export class AIProxyController {
             streamingMode: true,
             executionTime,
           }, 'AI streaming chat error');
-          
+
           const errorEvent = JSON.stringify({ error: 'Stream error' });
           reply.raw.write(`data: ${errorEvent}\n\n`);
         } finally {
           reply.raw.end();
         }
       } else {
-        const completion = await provider.chat(messages, { 
+        const completion = await provider.chat(messages, {
           model,
           temperature,
           maxTokens,
@@ -315,7 +407,7 @@ export class AIProxyController {
         });
 
         const executionTime = Date.now() - startTime;
-        
+
         logger.info({
           requestId,
           userId: user.id,
@@ -363,7 +455,7 @@ export class AIProxyController {
     } catch (error) {
       const executionTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
+
       logger.error({
         requestId,
         operation: 'ai_chat_error',
@@ -371,7 +463,7 @@ export class AIProxyController {
         stack: error instanceof Error ? error.stack : undefined,
         executionTime,
       }, 'AI chat request failed');
-      
+
       if (error instanceof Error) {
         if (error.message.includes('Rate limit')) {
           return reply.status(429).send({
@@ -395,28 +487,28 @@ export class AIProxyController {
   };
 
   private async applyThrottling(userId: string, riskScore: number): Promise<void> {
-  const delayMs = Math.min(riskScore * 10, 1000); 
-  
-  if (delayMs > 0) {
-    await new Promise(resolve => setTimeout(resolve, delayMs));
-  }
+    const delayMs = Math.min(riskScore * 10, 1000);
 
-  if (typeof (this.rateLimiter as any).setThrottle === 'function') {
-    await (this.rateLimiter as any).setThrottle(userId, riskScore);
+    if (delayMs > 0) {
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+
+    if (typeof (this.rateLimiter as any).setThrottle === 'function') {
+      await (this.rateLimiter as any).setThrottle(userId, riskScore);
+    }
+
+    logger.info({
+      userId,
+      riskScore,
+      delayMs,
+      throttleApplied: true
+    }, 'Throttling applied to user due to risk detection');
   }
-  
-  logger.info({
-    userId,
-    riskScore,
-    delayMs,
-    throttleApplied: true
-  }, 'Throttling applied to user due to risk detection');
-}
 
   private getSuggestions(reasons: string[]): string[] {
     const suggestions: string[] = [];
 
-    if (reasons.some(r => r.includes('Direct solution'))) {
+    if (reasons.some(r => r.includes('Direct solution') || r.includes('Solicitação direta'))) {
       suggestions.push(
         'Try asking for guidance or hints instead of the complete solution.',
         'Break down the problem and ask about specific concepts.',
@@ -424,7 +516,7 @@ export class AIProxyController {
       );
     }
 
-    if (reasons.some(r => r.includes('Off-topic'))) {
+    if (reasons.some(r => r.includes('Off-topic') || r.includes('fora do tópico'))) {
       suggestions.push(
         'Keep your questions related to the challenge at hand.',
         'Focus on the technical aspects of the problem.',
@@ -432,7 +524,7 @@ export class AIProxyController {
       );
     }
 
-    if (reasons.some(r => r.includes('Social engineering'))) {
+    if (reasons.some(r => r.includes('Social engineering') || r.includes('engenharia social'))) {
       suggestions.push(
         'Please use the AI assistant as intended for learning purposes.',
         'Focus on improving your skills through practice.',
@@ -442,17 +534,17 @@ export class AIProxyController {
 
     return suggestions.slice(0, 3);
   }
-  
+
   trackCopyPaste = async (
     request: FastifyRequest<{ Body: TrackCopyPasteDTO }>,
     reply: FastifyReply
   ): Promise<void> => {
     const startTime = Date.now();
     const requestId = crypto.randomUUID();
-    
+
     try {
       const user = request.user as { id: string };
-      
+
       logger.info({
         requestId,
         operation: 'copy_paste_tracking_request',
@@ -467,9 +559,9 @@ export class AIProxyController {
       }, 'Copy/paste tracking request received');
 
       await this.trackCopyPasteUseCase.execute(user.id, request.body);
-      
+
       const executionTime = Date.now() - startTime;
-      
+
       logger.info({
         requestId,
         userId: user.id,
@@ -488,7 +580,7 @@ export class AIProxyController {
     } catch (error) {
       const executionTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
+
       logger.error({
         requestId,
         operation: 'copy_paste_tracking_failed',
@@ -496,7 +588,7 @@ export class AIProxyController {
         stack: error instanceof Error ? error.stack : undefined,
         executionTime
       }, 'Failed to track copy/paste event');
-      
+
       return reply.status(500).send({
         error: 'Internal server error',
         message: 'Failed to track copy/paste event',
@@ -510,7 +602,7 @@ export class AIProxyController {
   ): Promise<void> => {
     const startTime = Date.now();
     const requestId = crypto.randomUUID();
-    
+
     try {
       const user = request.user as { id: string };
       const days = request.query.days || 30;
@@ -525,9 +617,9 @@ export class AIProxyController {
 
       const usage = await this.usageTracker.getUserUsage(user.id, days);
       const quota = await this.rateLimiter.getRemainingQuota(user.id);
-      
+
       const executionTime = Date.now() - startTime;
-      
+
       logger.info({
         requestId,
         userId: user.id,
@@ -550,7 +642,7 @@ export class AIProxyController {
     } catch (error) {
       const executionTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
+
       logger.error({
         requestId,
         operation: 'ai_usage_failed',
@@ -558,13 +650,13 @@ export class AIProxyController {
         stack: error instanceof Error ? error.stack : undefined,
         executionTime
       }, 'Failed to get AI usage');
-      
+
       return reply.status(500).send({
         error: 'Internal server error',
         message: 'Failed to retrieve usage data',
       });
     }
-  };
+    };
 
   getModels = async (
     _request: FastifyRequest,
@@ -572,7 +664,7 @@ export class AIProxyController {
   ): Promise<void> => {
     const startTime = Date.now();
     const requestId = crypto.randomUUID();
-    
+
     try {
       logger.debug({
         requestId,
@@ -581,17 +673,17 @@ export class AIProxyController {
       }, 'AI models request received');
 
       const models: Record<string, any> = {};
-      
+
       for (const [name, provider] of this.providers) {
         models[name] = provider.models;
       }
 
       const executionTime = Date.now() - startTime;
-      
-      const totalModels = Object.values(models).reduce((sum, providerModels) => 
+
+      const totalModels = Object.values(models).reduce((sum, providerModels) =>
         sum + (Array.isArray(providerModels) ? providerModels.length : 0), 0
       );
-      
+
       logger.info({
         requestId,
         providersCount: this.providers.size,
@@ -605,7 +697,7 @@ export class AIProxyController {
     } catch (error) {
       const executionTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
+
       logger.error({
         requestId,
         operation: 'ai_models_failed',
@@ -613,11 +705,74 @@ export class AIProxyController {
         stack: error instanceof Error ? error.stack : undefined,
         executionTime
       }, 'Failed to get AI models');
-      
+
       return reply.status(500).send({
         error: 'Internal server error',
         message: 'Failed to retrieve AI models',
       });
     }
+  };
+
+  analyzeTemporalBehavior = async (
+    request: FastifyRequest<{ Body: AnalyzeTemporalBehaviorDTO }>,
+    reply: FastifyReply
+  ): Promise<void> => {
+    const user = request.user as { id: string };
+    const { attemptId, lookbackMinutes } = request.body;
+
+    if (!this.analyzeTemporalBehaviorUseCase) {
+      return reply.status(501).send({
+        error: 'Not Implemented',
+        message: 'Temporal analysis not available',
+      });
+    }
+
+    const result = await this.analyzeTemporalBehaviorUseCase.execute({
+      userId: user.id,
+      attemptId,
+      lookbackMinutes
+    });
+
+    return reply.send(result);
+  };
+
+  generateEducationalFeedback = async (
+    request: FastifyRequest<{ Body: GenerateFeedbackRequestDTO }>,
+    reply: FastifyReply
+  ): Promise<void> => {
+    const user = request.user as { id: string; level?: number }; 
+    const { challengeId, riskScore, reasons, userLevel } = request.body;
+
+    if (!this.educationalFeedbackService) {
+      return reply.status(501).send({
+        error: 'Not Implemented',
+        message: 'Educational feedback not available',
+      });
+    }
+
+    const result = await this.educationalFeedbackService.generateFeedback({
+      validation: {
+        isValid: false,
+        riskScore,
+        classification: riskScore > 70 ? 'BLOCKED' : riskScore > 40 ? 'WARNING' : 'SAFE',
+        reasons,
+        suggestedAction: riskScore > 70 ? 'BLOCK' : 'THROTTLE',
+        confidence: 80
+      },
+      userLevel: userLevel || user.level || 1, 
+      userId: user.id, 
+      context: {
+        challengeId,
+        title: '',
+        category: '',
+        keywords: [],
+        allowedTopics: [],
+        forbiddenPatterns: [],
+        difficulty: 'MEDIUM',
+        targetMetrics: { maxDI: 40, minPR: 70, minCS: 8 }
+      }
+    });
+
+    return reply.send(result);
   };
 }

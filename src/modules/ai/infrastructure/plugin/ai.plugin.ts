@@ -15,12 +15,15 @@ import { ChatWithAIUseCase } from '../../application/use-cases/chat-with-ai.use-
 import { TrackCopyPasteUseCase } from '../../application/use-cases/track-copy-paste.use-case';
 import { AnalyzeConversationUseCase } from '../../application/use-cases/analyze-conversation.use-case';
 import { ValidatePromptUseCase } from '../../application/use-cases/validate-prompt.use-case';
+import { AnalyzeTemporalBehaviorUseCase } from '../../application/use-cases/analyze-temporal-behavior.use-case';
 import { AIProxyController } from '../../presentation/controllers/ai-proxy.controller';
 import { aiRoutes } from '../../presentation/routes/ai.routes';
 import { AIInteractionRepository } from '../repositories/ai-interaction.repository';
 import { ConversationAnalyzerService } from '../services/conversation-analyzer.service';
 import { SemanticAnalyzerService } from '../services/semantic-analyzer.service';
 import { HybridPromptValidatorService } from '../services/hybrid-prompt-validator.service';
+import { TemporalAnalyzerService } from '../services/temporal-analyzer.service';
+import { EducationalFeedbackService } from '../services/educational-feedback.service';
 
 export interface AIPluginOptions {
   prisma: PrismaClient;
@@ -58,6 +61,9 @@ const aiPlugin: FastifyPluginAsync<AIPluginOptions> = async function (
 
   const providerFactory = new ProviderFactoryService(redis);
 
+  const temporalAnalyzer = new TemporalAnalyzerService(prisma, redis);
+  const educationalFeedback = new EducationalFeedbackService(redis);
+
   const chatWithAIUseCase = new ChatWithAIUseCase(
     providerFactory,
     rateLimiter,
@@ -78,11 +84,19 @@ const aiPlugin: FastifyPluginAsync<AIPluginOptions> = async function (
     prisma
   );
 
+  const analyzeTemporalBehaviorUseCase = new AnalyzeTemporalBehaviorUseCase(
+    temporalAnalyzer,
+    educationalFeedback
+  );
+
   const controller = new AIProxyController(
     rateLimiter,
     usageTracker,
     trackCopyPasteUseCase,
-    validatePromptUseCase
+    validatePromptUseCase,
+    analyzeTemporalBehaviorUseCase,
+    educationalFeedback,
+    challengeContextService
   );
 
   const providers: string[] = [];
@@ -113,6 +127,7 @@ const aiPlugin: FastifyPluginAsync<AIPluginOptions> = async function (
     );
     controller.registerProvider('google', googleProvider);
     providers.push('google');
+
   }
 
   fastify.decorate('ai', {
@@ -122,6 +137,9 @@ const aiPlugin: FastifyPluginAsync<AIPluginOptions> = async function (
     validatePrompt: validatePromptUseCase,
     promptValidator,
     challengeContextService,
+    analyzeTemporalBehavior: analyzeTemporalBehaviorUseCase,
+    temporalAnalyzer,
+    educationalFeedback,
   });
 
   await fastify.register(async function aiRoutesPlugin(childInstance) {
@@ -198,6 +216,9 @@ declare module 'fastify' {
       validatePrompt: ValidatePromptUseCase;
       promptValidator: PromptValidatorService;
       challengeContextService: ChallengeContextService;
+      analyzeTemporalBehavior: AnalyzeTemporalBehaviorUseCase;
+      temporalAnalyzer: TemporalAnalyzerService;
+      educationalFeedback: EducationalFeedbackService;
     };
   }
 }

@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-
 export const AIMessageSchema = z.object({
   role: z.enum(['system', 'user', 'assistant']),
   content: z.string().min(1),
@@ -58,3 +57,72 @@ export const ValidationMetricsQuerySchema = z.object({
 });
 
 export type ValidationMetricsQueryDTO = z.infer<typeof ValidationMetricsQuerySchema>;
+
+export const TemporalAnalysisResultSchema = z.object({
+  overallRisk: z.number().min(0).max(100),
+  isGamingAttempt: z.boolean(),
+  temporalPatterns: z.array(z.object({
+    type: z.string(),
+    confidence: z.number(),
+    metadata: z.record(z.any()).optional()
+  })),
+  behaviorMetrics: z.object({
+    progressionScore: z.number(),
+    complexityProgression: z.number(),
+    dependencyTrend: z.number()
+  }),
+  recommendations: z.array(z.string())
+});
+
+export type TemporalAnalysisResultDTO = z.infer<typeof TemporalAnalysisResultSchema>;
+
+export const EducationalFeedbackSchema = z.object({
+  context: z.object({
+    whatHappened: z.string(),
+    whyBlocked: z.string(),
+    riskScore: z.number()
+  }),
+  guidance: z.object({
+    immediateFix: z.array(z.string()),
+    betterApproaches: z.array(z.string()),
+    conceptsToReview: z.array(z.string())
+  }),
+  learningPath: z.object({
+    currentStage: z.string(),
+    nextSteps: z.array(z.string()),
+    suggestedResources: z.array(z.object({
+      title: z.string(),
+      url: z.string(),
+      relevance: z.number()
+    }))
+  })
+});
+
+export type EducationalFeedbackDTO = z.infer<typeof EducationalFeedbackSchema>;
+
+export const AnalyzeTemporalBehaviorSchema = z.object({
+  attemptId: z.string().cuid(),
+  lookbackMinutes: z.number().int().min(1).max(120).default(30),
+});
+
+export type AnalyzeTemporalBehaviorDTO = z.infer<typeof AnalyzeTemporalBehaviorSchema>;
+
+export const GenerateFeedbackRequestSchema = z.object({
+  challengeId: z.string().cuid(),
+  riskScore: z.number().min(0).max(100),
+  reasons: z.array(z.string()),
+  userLevel: z.number().int().min(1).max(10).optional(),
+  tone: z.enum(['encouraging', 'neutral', 'strict']).optional(),
+  context: z.object({
+    challengeId: z.string().cuid(),
+    title: z.string().optional(),
+    keywords: z.array(z.string()).optional(),
+    forbiddenPatterns: z.array(z.string()).optional(),
+    category: z.string().optional(),
+    allowedTopics: z.array(z.string()).optional(),
+    techStack: z.array(z.string()).optional(),
+    learningObjectives: z.array(z.string()).optional(),
+  }).optional(),
+});
+
+export type GenerateFeedbackRequestDTO = z.infer<typeof GenerateFeedbackRequestSchema>;

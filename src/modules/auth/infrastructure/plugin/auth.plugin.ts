@@ -25,7 +25,7 @@ const authPlugin: FastifyPluginAsync<AuthPluginOptions> = async function(
   const jwtService = JWTService.getInstance();
   await jwtService.initialize(fastify);
 
-  const authRepository = new AuthRepository(options.prisma, options.redis);
+  const authRepository = new AuthRepository(options.redis);
 
   const registerUseCase = new RegisterUseCase(
     options.prisma,

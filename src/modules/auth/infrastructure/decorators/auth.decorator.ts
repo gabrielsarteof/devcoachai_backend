@@ -12,8 +12,8 @@ export function registerAuthDecorators(
 
 declare module 'fastify' {
   interface FastifyInstance {
-    authenticate: typeof AuthMiddleware.prototype.authenticate;
-    authorize: typeof AuthMiddleware.prototype.authorize;
-    optionalAuth: typeof AuthMiddleware.prototype.optionalAuth;
+    authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    authorize: (roles: string[]) => (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    optionalAuth: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
 }

@@ -1,6 +1,5 @@
-import type { FastifyRequest, FastifyReply, HookHandlerDoneFunction } from 'fastify';
+import type { FastifyRequest, FastifyReply } from 'fastify';
 import { JWTService } from '../services/jwt.service';
-import { messages } from '@/shared/constants/messages';
 
 declare module '@fastify/jwt' {
   interface FastifyJWT {
@@ -23,15 +22,14 @@ export class AuthMiddleware {
 
   authenticate = async (
     request: FastifyRequest,
-    reply: FastifyReply,
-    done: HookHandlerDoneFunction
+    reply: FastifyReply
   ): Promise<void> => {
     try {
       const authHeader = request.headers.authorization;
       
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return reply.status(401).send({
-          error: messages.auth.unauthorized,
+          error: 'Unauthorized', // CORRIGIDO: mensagem em inglês
           message: 'Missing or invalid authorization header',
         });
       }
@@ -41,7 +39,7 @@ export class AuthMiddleware {
 
       if (payload.type !== 'access') {
         return reply.status(401).send({
-          error: messages.auth.tokenInvalid,
+          error: 'Invalid token', // CORRIGIDO: mensagem em inglês
           message: 'Invalid token type',
         });
       }
@@ -51,11 +49,9 @@ export class AuthMiddleware {
         email: payload.email,
         role: payload.role,
       };
-
-      done();
     } catch (error) {
       return reply.status(401).send({
-        error: messages.auth.tokenInvalid,
+        error: 'Token invalid', // CORRIGIDO: mensagem em inglês
         message: error instanceof Error ? error.message : 'Authentication failed',
       });
     }
@@ -64,33 +60,29 @@ export class AuthMiddleware {
   authorize = (roles: string[]) => {
     return async (
       request: FastifyRequest,
-      reply: FastifyReply,
-      done: HookHandlerDoneFunction
+      reply: FastifyReply
     ): Promise<void> => {
       const user = request.user as { id: string; email: string; role: string } | undefined;
       
       if (!user) {
         return reply.status(401).send({
-          error: messages.auth.unauthorized,
+          error: 'Unauthorized',
           message: 'User not authenticated',
         });
       }
 
       if (!roles.includes(user.role)) {
         return reply.status(403).send({
-          error: messages.general.forbidden,
+          error: 'Forbidden',
           message: `Insufficient permissions. Required roles: ${roles.join(', ')}`,
         });
       }
-
-      done();
     };
   };
 
   optionalAuth = async (
     request: FastifyRequest,
-    _reply: FastifyReply,
-    done: HookHandlerDoneFunction
+    _reply: FastifyReply
   ): Promise<void> => {
     try {
       const authHeader = request.headers.authorization;
@@ -108,8 +100,7 @@ export class AuthMiddleware {
         }
       }
     } catch {
+      // Ignorar erros em auth opcional
     }
-
-    done();
   };
 }

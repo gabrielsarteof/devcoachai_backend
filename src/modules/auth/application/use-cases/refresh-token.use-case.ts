@@ -20,6 +20,7 @@ export class RefreshTokenUseCase {
     }, 'Token refresh attempt started');
 
     try {
+      // Verificar se a sessão existe no Redis
       const session = await this.authRepository.findSessionByToken(refreshToken);
       
       if (!session) {
@@ -31,6 +32,7 @@ export class RefreshTokenUseCase {
         throw new Error(messages.auth.tokenInvalid);
       }
 
+      // Verificar se a sessão não expirou
       const sessionEntity = new SessionEntity(session);
       
       if (sessionEntity.isExpired()) {
@@ -46,6 +48,7 @@ export class RefreshTokenUseCase {
         throw new Error(messages.auth.tokenExpired);
       }
 
+      // Verificar se o JWT é válido e do tipo refresh
       const payload = await this.jwtService.verifyToken(refreshToken);
       
       if (payload.type !== 'refresh') {
@@ -59,10 +62,17 @@ export class RefreshTokenUseCase {
         throw new Error(messages.auth.tokenInvalid);
       }
 
-      const tokens = await this.jwtService.refreshTokens(refreshToken);
+      // Gerar novos tokens
+      const tokens = await this.jwtService.generateTokenPair({
+        sub: payload.sub,
+        email: payload.email,
+        role: payload.role,
+      });
 
+      // Invalidar sessão antiga
       await this.authRepository.deleteSession(session.id);
 
+      // Criar nova sessão com novo refresh token
       const newSession = SessionEntity.create({
         userId: session.userId,
         refreshToken: tokens.refreshToken,

@@ -2,9 +2,6 @@ import fp from 'fastify-plugin';
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { PrismaClient } from '@prisma/client';
 import Redis from 'ioredis';
-import { OpenAIProvider } from '../providers/openai.provider';
-import { AnthropicProvider } from '../providers/anthropic.provider';
-import { GoogleProvider } from '../providers/google.provider';
 import { ProviderFactoryService } from '../services/provider-factory.service';
 import { RateLimiterService } from '../services/rate-limiter.service';
 import { UsageTrackerService } from '../services/usage-tracker.service';
@@ -16,7 +13,17 @@ import { TrackCopyPasteUseCase } from '../../application/use-cases/track-copy-pa
 import { AnalyzeConversationUseCase } from '../../application/use-cases/analyze-conversation.use-case';
 import { ValidatePromptUseCase } from '../../application/use-cases/validate-prompt.use-case';
 import { AnalyzeTemporalBehaviorUseCase } from '../../application/use-cases/analyze-temporal-behavior.use-case';
-import { AIProxyController } from '../../presentation/controllers/ai-proxy.controller';
+import { GetAIModelsUseCase } from '../../application/use-cases/get-ai-models.use-case';
+import { GetAIUsageUseCase } from '../../application/use-cases/get-ai-usage.use-case';
+import { GetGovernanceMetricsUseCase } from '../../application/use-cases/get-governance-metrics.use-case';
+import { GetGovernanceStatsUseCase } from '../../application/use-cases/get-governance-stats.use-case';
+import { RefreshChallengeCacheUseCase } from '../../application/use-cases/refresh-challenge-cache.use-case';
+import { PrewarmCacheUseCase } from '../../application/use-cases/prewarm-cache.use-case';
+import { ClearValidationCacheUseCase } from '../../application/use-cases/clear-validation-cache.use-case';
+import { AnalyzePromptUseCase } from '../../application/use-cases/analyze-prompt.use-case';
+import { GenerateEducationalFeedbackUseCase } from '../../application/use-cases/generate-educational-feedback.use-case';
+import { AIController } from '../../presentation/controllers/ai.controller';
+import { AIGovernanceController } from '../../presentation/controllers/ai-governance.controller';
 import { aiRoutes } from '../../presentation/routes/ai.routes';
 import { AIInteractionRepository } from '../repositories/ai-interaction.repository';
 import { ConversationAnalyzerService } from '../services/conversation-analyzer.service';
@@ -24,6 +31,8 @@ import { SemanticAnalyzerService } from '../services/semantic-analyzer.service';
 import { HybridPromptValidatorService } from '../services/hybrid-prompt-validator.service';
 import { TemporalAnalyzerService } from '../services/temporal-analyzer.service';
 import { EducationalFeedbackService } from '../services/educational-feedback.service';
+import { UsageQuotaService } from '../services/usage-quota.service';
+import { RateLimitInfoService } from '../services/rate-limit-info.service';
 
 export interface AIPluginOptions {
   prisma: PrismaClient;
@@ -64,6 +73,9 @@ const aiPlugin: FastifyPluginAsync<AIPluginOptions> = async function (
   const temporalAnalyzer = new TemporalAnalyzerService(prisma, redis);
   const educationalFeedback = new EducationalFeedbackService(redis);
 
+  const usageQuotaService = new UsageQuotaService(usageTracker);
+  const rateLimitInfoService = new RateLimitInfoService(rateLimiter);
+
   const chatWithAIUseCase = new ChatWithAIUseCase(
     providerFactory,
     rateLimiter,
@@ -89,46 +101,44 @@ const aiPlugin: FastifyPluginAsync<AIPluginOptions> = async function (
     educationalFeedback
   );
 
-  const controller = new AIProxyController(
-    rateLimiter,
+  const getAIModelsUseCase = new GetAIModelsUseCase(providerFactory);
+  const getAIUsageUseCase = new GetAIUsageUseCase(
     usageTracker,
+    usageQuotaService,
+    rateLimitInfoService
+  );
+  const getGovernanceMetricsUseCase = new GetGovernanceMetricsUseCase(hybridValidator);
+  const getGovernanceStatsUseCase = new GetGovernanceStatsUseCase(challengeContextService);
+  const refreshChallengeCacheUseCase = new RefreshChallengeCacheUseCase(challengeContextService);
+  const prewarmCacheUseCase = new PrewarmCacheUseCase(challengeContextService);
+  const clearValidationCacheUseCase = new ClearValidationCacheUseCase(hybridValidator);
+  const analyzePromptUseCase = new AnalyzePromptUseCase(hybridValidator);
+  const generateEducationalFeedbackUseCase = new GenerateEducationalFeedbackUseCase(educationalFeedback);
+
+  const aiController = new AIController(
+    chatWithAIUseCase,
     trackCopyPasteUseCase,
+    getAIModelsUseCase,
+    getAIUsageUseCase
+  );
+
+  const governanceController = new AIGovernanceController(
     validatePromptUseCase,
     analyzeTemporalBehaviorUseCase,
-    educationalFeedback,
-    challengeContextService
+    generateEducationalFeedbackUseCase,
+    getGovernanceMetricsUseCase,
+    getGovernanceStatsUseCase,
+    refreshChallengeCacheUseCase,
+    prewarmCacheUseCase,
+    clearValidationCacheUseCase,
+    analyzePromptUseCase
   );
 
   const providers: string[] = [];
 
-  if (process.env.OPENAI_API_KEY) {
-    const openAIProvider = new OpenAIProvider(
-      process.env.OPENAI_API_KEY,
-      redis,
-      process.env.OPENAI_ORG_ID
-    );
-    controller.registerProvider('openai', openAIProvider);
-    providers.push('openai');
-  }
-
-  if (process.env.ANTHROPIC_API_KEY) {
-    const anthropicProvider = new AnthropicProvider(
-      process.env.ANTHROPIC_API_KEY,
-      redis
-    );
-    controller.registerProvider('anthropic', anthropicProvider);
-    providers.push('anthropic');
-  }
-
-  if (process.env.GOOGLE_API_KEY) {
-    const googleProvider = new GoogleProvider(
-      process.env.GOOGLE_API_KEY,
-      redis
-    );
-    controller.registerProvider('google', googleProvider);
-    providers.push('google');
-
-  }
+  // ProviderFactory já registra providers automaticamente baseado em ENV vars
+  const availableProviders = providerFactory.getAvailableProviders();
+  providers.push(...availableProviders);
 
   fastify.decorate('ai', {
     chatWithAI: chatWithAIUseCase,
@@ -143,7 +153,7 @@ const aiPlugin: FastifyPluginAsync<AIPluginOptions> = async function (
   });
 
   await fastify.register(async function aiRoutesPlugin(childInstance) {
-    await aiRoutes(childInstance, controller);
+    await aiRoutes(childInstance, aiController, governanceController);
   }, {
     prefix: '/ai'
   });

@@ -1,5 +1,6 @@
 import type { FastifyInstance, RouteHandlerMethod } from 'fastify';
-import { AIProxyController } from '../controllers/ai-proxy.controller';
+import { AIController } from '../controllers/ai.controller';
+import { AIGovernanceController } from '../controllers/ai-governance.controller';
 import {
   CreateAIInteractionSchema,
   TrackCopyPasteSchema,
@@ -11,8 +12,10 @@ import {
 
 export async function aiRoutes(
   fastify: FastifyInstance,
-  controller: AIProxyController,
+  aiController: AIController,
+  governanceController: AIGovernanceController,
 ): Promise<void> {
+
   fastify.post('/chat', {
     preHandler: [fastify.authenticate],
     schema: {
@@ -56,7 +59,7 @@ export async function aiRoutes(
         },
       },
     },
-    handler: controller.chat as RouteHandlerMethod,
+    handler: aiController.chat as RouteHandlerMethod,
   });
 
   fastify.post('/track-copy-paste', {
@@ -73,7 +76,7 @@ export async function aiRoutes(
         },
       },
     },
-    handler: controller.trackCopyPaste as RouteHandlerMethod,
+    handler: aiController.trackCopyPaste as RouteHandlerMethod,
   });
 
   fastify.get('/usage', {
@@ -91,11 +94,12 @@ export async function aiRoutes(
           properties: {
             usage: { type: 'object' },
             quota: { type: 'object' },
+            limits: { type: 'object' },
           },
         },
       },
     },
-    handler: controller.getUsage as RouteHandlerMethod,
+    handler: aiController.getUsage as RouteHandlerMethod,
   });
 
   fastify.get('/models', {
@@ -110,7 +114,7 @@ export async function aiRoutes(
         },
       },
     },
-    handler: controller.getModels as RouteHandlerMethod,
+    handler: aiController.getModels as RouteHandlerMethod,
   });
 
   fastify.post('/governance/validate', {
@@ -151,28 +155,7 @@ export async function aiRoutes(
         },
       },
     },
-    handler: async (request, reply) => {
-      const user = request.user as { id: string; level?: number };
-      const body = request.body as any;
-
-      if (!fastify.ai?.validatePrompt) {
-        return reply.status(501).send({
-          error: 'Not Implemented',
-          message: 'Governance system not available',
-        });
-      }
-
-      const result = await fastify.ai.validatePrompt.execute({
-        userId: user.id,
-        challengeId: body.challengeId,
-        prompt: body.prompt,
-        userLevel: body.userLevel || user.level,
-        attemptId: body.attemptId,
-        config: body.config,
-      });
-
-      return reply.send(result);
-    },
+    handler: governanceController.validatePrompt as RouteHandlerMethod,
   });
 
   fastify.post('/governance/analyze-temporal', {
@@ -199,7 +182,7 @@ export async function aiRoutes(
         },
       },
     },
-    handler: controller.analyzeTemporalBehavior as RouteHandlerMethod,
+    handler: governanceController.analyzeTemporalBehavior as RouteHandlerMethod,
   });
 
   fastify.post('/governance/generate-feedback', {
@@ -224,7 +207,7 @@ export async function aiRoutes(
         },
       },
     },
-    handler: controller.generateEducationalFeedback as RouteHandlerMethod,
+    handler: governanceController.generateEducationalFeedback as RouteHandlerMethod,
   });
 
   fastify.get('/governance/metrics', {
@@ -264,31 +247,7 @@ export async function aiRoutes(
         },
       },
     },
-    handler: async (request, reply) => {
-      const query = request.query as any;
-
-      if (!fastify.ai?.promptValidator) {
-        return reply.status(501).send({
-          error: 'Not Implemented',
-          message: 'Governance metrics not available',
-        });
-      }
-
-      const timeRange =
-        query.startDate && query.endDate
-          ? {
-              start: new Date(query.startDate),
-              end: new Date(query.endDate),
-            }
-          : undefined;
-
-      const metrics = await fastify.ai.promptValidator.getValidationMetrics(
-        query.challengeId,
-        timeRange,
-      );
-
-      return reply.send(metrics);
-    },
+    handler: governanceController.getMetrics as RouteHandlerMethod,
   });
 
   fastify.get('/governance/stats', {
@@ -323,17 +282,7 @@ export async function aiRoutes(
         },
       },
     },
-    handler: async (_request, reply) => {
-      if (!fastify.ai?.challengeContextService) {
-        return reply.status(501).send({
-          error: 'Not Implemented',
-          message: 'Context statistics not available',
-        });
-      }
-
-      const stats = await fastify.ai.challengeContextService.getContextStats();
-      return reply.send(stats);
-    },
+    handler: governanceController.getStats as RouteHandlerMethod,
   });
 
   fastify.post('/governance/cache/refresh', {
@@ -363,25 +312,7 @@ export async function aiRoutes(
         },
       },
     },
-    handler: async (request, reply) => {
-      const { challengeId } = request.body as { challengeId: string };
-
-      if (!fastify.ai?.challengeContextService) {
-        return reply.status(501).send({
-          error: 'Not Implemented',
-          message: 'Cache refresh not available',
-        });
-      }
-
-      await fastify.ai.challengeContextService.refreshChallengeContext(
-        challengeId,
-      );
-
-      return reply.send({
-        success: true,
-        message: `Context cache refreshed for challenge ${challengeId}`,
-      });
-    },
+    handler: governanceController.refreshCache as RouteHandlerMethod,
   });
 
   fastify.post('/governance/cache/prewarm', {
@@ -417,24 +348,7 @@ export async function aiRoutes(
         },
       },
     },
-    handler: async (request, reply) => {
-      const { challengeIds } = request.body as { challengeIds: string[] };
-
-      if (!fastify.ai?.challengeContextService) {
-        return reply.status(501).send({
-          error: 'Not Implemented',
-          message: 'Cache prewarm not available',
-        });
-      }
-
-      await fastify.ai.challengeContextService.prewarmCache(challengeIds);
-
-      return reply.send({
-        success: true,
-        message: 'Cache prewarm initiated',
-        processed: challengeIds.length,
-      });
-    },
+    handler: governanceController.prewarmCache as RouteHandlerMethod,
   });
 
   fastify.delete('/governance/cache', {
@@ -463,25 +377,7 @@ export async function aiRoutes(
         },
       },
     },
-    handler: async (request, reply) => {
-      const { challengeId } = request.query as { challengeId?: string };
-
-      if (!fastify.ai?.promptValidator) {
-        return reply.status(501).send({
-          error: 'Not Implemented',
-          message: 'Cache clear not available',
-        });
-      }
-
-      await fastify.ai.promptValidator.clearCache(challengeId);
-
-      return reply.send({
-        success: true,
-        message: challengeId
-          ? `Cache cleared for challenge ${challengeId}`
-          : 'All validation cache cleared',
-      });
-    },
+    handler: governanceController.clearCache as RouteHandlerMethod,
   });
 
   fastify.post('/governance/analyze', {
@@ -531,18 +427,6 @@ export async function aiRoutes(
         },
       },
     },
-    handler: async (request, reply) => {
-      const { prompt } = request.body as { prompt: string };
-
-      if (!fastify.ai?.promptValidator) {
-        return reply.status(501).send({
-          error: 'Not Implemented',
-          message: 'Prompt analysis not available',
-        });
-      }
-
-      const analysis = await fastify.ai.promptValidator.analyzePrompt(prompt);
-      return reply.send(analysis);
-    },
+    handler: governanceController.analyzePrompt as RouteHandlerMethod,
   });
 }

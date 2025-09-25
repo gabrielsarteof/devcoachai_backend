@@ -19,7 +19,7 @@ export class ChallengeRepository implements IChallengeRepository {
       estimatedMinutes: data.estimatedMinutes,
       languages: data.languages,
       testCasesCount: data.testCases.length,
-      hintsCount: data.hints.length,
+      hintsCount: data.hints?.length || 0,
       trapsCount: data.traps.length,
       baseXp: data.baseXp,
       bonusXp: data.bonusXp

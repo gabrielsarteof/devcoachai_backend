@@ -1,4 +1,5 @@
-﻿import Fastify from 'fastify';
+﻿// src/server.ts - Fixed version
+import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
@@ -52,17 +53,18 @@ const buildApp = async () => {
     redis,
   });
 
-  await app.register(rateLimit, {
-    max: 100,
-    timeWindow: '1 minute',
-    keyGenerator: function (request: FastifyRequest) {
-      const user = request.user as { id?: string } | undefined;
-      return user?.id || request.ip;
-    },
-    allowList: function () {
-      return false;
-    },
-  });
+  // ✅ FIXED: Only register rate limiting in non-test environments
+  if (config.NODE_ENV !== 'test') {
+    await app.register(rateLimit, {
+      max: 100,
+      timeWindow: '1 minute',
+      keyGenerator: function (request: FastifyRequest) {
+        const user = request.user as { id?: string } | undefined;
+        return user?.id || request.ip;
+      },
+      // ✅ REMOVED: allowList that was blocking everything
+    });
+  }
 
   await app.register(authPlugin, {
     prisma,

@@ -73,6 +73,23 @@ export class ChallengeController {
       const executionTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       
+      if (error instanceof Error && error.message.includes('weights must sum to 1.0')) {
+        logger.warn({
+          requestId,
+          operation: 'challenge_creation_invalid_weights',
+          userId: user?.id,
+          slug: request.body.slug,
+          error: errorMessage,
+          reason: 'invalid_test_case_weights',
+          executionTime
+        }, 'Challenge creation failed - invalid test case weights');
+        
+        return reply.status(500).send({
+          error: 'Internal server error',
+          message: error.message,
+        });
+      }
+
       if (error instanceof Error && error.message.includes('already exists')) {
         logger.warn({
           requestId,
@@ -151,7 +168,7 @@ export class ChallengeController {
       const executionTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       
-      if (error instanceof Error && error.message.includes('not found')) {
+      if (error instanceof Error && (error.message.includes('not found') || error.message.includes('não encontrado'))) {
         logger.warn({
           requestId,
           operation: 'challenge_not_found',
@@ -295,7 +312,7 @@ export class ChallengeController {
       const executionTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       
-      if (error instanceof Error && error.message.includes('not found')) {
+      if (error instanceof Error && (error.message.includes('not found') || error.message.includes('não encontrado'))) {
         logger.warn({
           requestId,
           operation: 'challenge_update_not_found',
@@ -366,7 +383,7 @@ export class ChallengeController {
       const executionTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       
-      if (error instanceof Error && error.message.includes('not found')) {
+      if (error instanceof Error && (error.message.includes('not found') || error.message.includes('não encontrado'))) {
         logger.warn({
           requestId,
           operation: 'challenge_deletion_not_found',
@@ -446,7 +463,7 @@ export class ChallengeController {
       const executionTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       
-      if (error instanceof Error && error.message.includes('not found')) {
+      if (error instanceof Error && (error.message.includes('not found') || error.message.includes('não encontrado'))) {
         logger.warn({
           requestId,
           operation: 'challenge_start_not_found',
@@ -462,7 +479,7 @@ export class ChallengeController {
         });
       }
 
-      if (error instanceof Error && error.message.includes('not supported')) {
+      if (error instanceof Error && (error.message.includes('not supported') || error.message.includes('não suportado'))) {
         logger.warn({
           requestId,
           operation: 'challenge_start_language_unsupported',
@@ -552,7 +569,7 @@ export class ChallengeController {
       const executionTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       
-      if (error instanceof Error && error.message.includes('not found')) {
+      if (error instanceof Error && (error.message.includes('not found') || error.message.includes('não encontrado'))) {
         logger.warn({
           requestId,
           operation: 'solution_submission_not_found',
@@ -568,7 +585,7 @@ export class ChallengeController {
         });
       }
 
-      if (error instanceof Error && error.message.includes('already completed')) {
+      if (error instanceof Error && error.message.includes('já completado')) {
         logger.warn({
           requestId,
           operation: 'solution_submission_already_completed',
@@ -580,6 +597,22 @@ export class ChallengeController {
         
         return reply.status(400).send({
           error: 'Bad request',
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && (error.message.includes('Invalid attempt') || error.message.includes('Tentativa inválida'))) {
+        logger.warn({
+          requestId,
+          operation: 'solution_submission_invalid_attempt',
+          challengeId: request.body.challengeId,
+          attemptId: request.body.attemptId,
+          userId: user.id,
+          executionTime
+        }, 'Solution submission failed - invalid attempt');
+        
+        return reply.status(403).send({
+          error: 'Forbidden',
           message: error.message,
         });
       }
@@ -662,7 +695,7 @@ export class ChallengeController {
       const executionTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       
-      if (error instanceof Error && error.message.includes('Invalid attempt')) {
+      if (error instanceof Error && (error.message.includes('Invalid attempt') || error.message.includes('Tentativa inválida'))) {
         logger.warn({
           requestId,
           operation: 'code_analysis_invalid_attempt',

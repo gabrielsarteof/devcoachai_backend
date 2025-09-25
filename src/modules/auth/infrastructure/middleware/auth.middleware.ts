@@ -29,7 +29,7 @@ export class AuthMiddleware {
       
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return reply.status(401).send({
-          error: 'Unauthorized', // CORRIGIDO: mensagem em inglês
+          error: 'Unauthorized',
           message: 'Missing or invalid authorization header',
         });
       }
@@ -39,7 +39,7 @@ export class AuthMiddleware {
 
       if (payload.type !== 'access') {
         return reply.status(401).send({
-          error: 'Invalid token', // CORRIGIDO: mensagem em inglês
+          error: 'Invalid token',
           message: 'Invalid token type',
         });
       }
@@ -51,7 +51,7 @@ export class AuthMiddleware {
       };
     } catch (error) {
       return reply.status(401).send({
-        error: 'Token invalid', // CORRIGIDO: mensagem em inglês
+        error: 'Token invalid',
         message: error instanceof Error ? error.message : 'Authentication failed',
       });
     }
@@ -89,18 +89,22 @@ export class AuthMiddleware {
       
       if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.substring(7);
-        const payload = await this.jwtService.verifyToken(token);
+        
+        try {
+          const payload = await this.jwtService.verifyToken(token);
 
-        if (payload.type === 'access') {
-          request.user = {
-            id: payload.sub,
-            email: payload.email,
-            role: payload.role,
-          };
+          if (payload.type === 'access') {
+            request.user = {
+              id: payload.sub,
+              email: payload.email,
+              role: payload.role,
+            };
+          }
+        } catch {
         }
       }
     } catch {
-      // Ignorar erros em auth opcional
+      // Ignore all errors in optional auth
     }
   };
 }

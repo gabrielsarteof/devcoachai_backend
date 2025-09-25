@@ -18,7 +18,7 @@ export class CreateChallengeUseCase {
       languages: data.languages,
       testCasesCount: data.testCases.length,
       trapsCount: data.traps.length,
-      hintsCount: data.hints.length
+      hintsCount: data.hints?.length || 0
     }, 'Challenge creation started');
 
     try {
@@ -73,7 +73,7 @@ export class CreateChallengeUseCase {
         bonusXp: challenge.bonusXp,
         testCasesCount: data.testCases.length,
         trapsCount: data.traps.length,
-        hintsCount: data.hints.length,
+        hintsCount: data.hints?.length || 0,
         executionTime
       }, 'Challenge created successfully');
       

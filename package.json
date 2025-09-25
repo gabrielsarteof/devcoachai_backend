@@ -17,6 +17,7 @@
     "test:watch": "vitest --watch",
     "test:ui": "vitest --ui",
     "test:auth": "vitest tests/modules/auth",
+    "test:challenges": "vitest tests/modules/challenges",
     "test:coverage": "vitest run --coverage",
     "test:setup": "docker-compose -f docker-compose.test.yml up -d && timeout /t 10 && npm run db:push:test",
     "test:teardown": "docker-compose -f docker-compose.test.yml down -v",

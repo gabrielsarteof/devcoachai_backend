@@ -28,17 +28,28 @@ export class ListChallengesUseCase {
       }, {} as Record<string, boolean>);
     }
 
-    return challenges.map(challenge => ({
-      id: challenge.id,
-      slug: challenge.slug,
-      title: challenge.title,
-      description: challenge.description,
-      difficulty: challenge.difficulty,
-      category: challenge.category,
-      estimatedMinutes: challenge.estimatedMinutes,
-      languages: challenge.languages,
-      baseXp: challenge.baseXp,
-      completed: completions[challenge.id] || false,
-    }));
+    return challenges.map(challenge => {
+      const baseChallenge = {
+        id: challenge.id,
+        slug: challenge.slug,
+        title: challenge.title,
+        description: challenge.description,
+        difficulty: challenge.difficulty,
+        category: challenge.category,
+        estimatedMinutes: challenge.estimatedMinutes,
+        languages: challenge.languages,
+        baseXp: challenge.baseXp,
+      };
+
+      // Only add 'completed' field if user is authenticated
+      if (userId) {
+        return {
+          ...baseChallenge,
+          completed: completions[challenge.id] || false,
+        };
+      }
+
+      return baseChallenge;
+    });
   }
 }

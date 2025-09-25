@@ -7,6 +7,8 @@ import helmet from '@fastify/helmet';
 // Importe TODOS os plugins que seus módulos dependem
 import authPlugin from '../../src/modules/auth/infrastructure/plugin/auth.plugin';
 import challengePlugin from '../../src/modules/challenges/infrastructure/plugin/challenge.plugin';
+import websocketPlugin from '../../src/shared/infrastructure/websocket/websocket.plugin';
+import metricPlugin from '../../src/modules/metrics/infrastructure/plugin/metric.plugin';
 
 export async function buildTestApp(): Promise<{
   app: FastifyInstance;
@@ -41,7 +43,9 @@ export async function buildTestApp(): Promise<{
 
     // Registre os plugins na ordem de dependência correta
     await app.register(authPlugin, { prisma, redis });
+    await app.register(websocketPlugin, { prisma, redis });
     await app.register(challengePlugin, { prisma, redis });
+    await app.register(metricPlugin, { prisma, redis, wsServer: app.ws });
 
     await app.ready();
     return { app, prisma, redis };

@@ -1,15 +1,8 @@
-import { z } from 'zod';
 import { WebSocketServer } from '@/shared/infrastructure/websocket/socket.server';
 import { MetricAggregatorService } from '../../domain/services/metric-aggregator.service';
 import { Redis } from 'ioredis';
+import { StreamMetricsDTO } from '../../domain/schemas/metric.schema';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
-
-export const StreamMetricsSchema = z.object({
-  attemptId: z.string().cuid(),
-  interval: z.number().int().min(1000).max(60000).default(5000),
-});
-
-export type StreamMetricsDTO = z.infer<typeof StreamMetricsSchema>;
 
 export class StreamMetricsUseCase {
   private streams: Map<string, NodeJS.Timeout> = new Map();

@@ -376,4 +376,59 @@ export class MetricRepository implements IMetricRepository {
       throw error;
     }
   }
+
+  async validateAttemptOwnership(attemptId: string, userId: string): Promise<boolean> {
+    const startTime = Date.now();
+
+    logger.debug({
+      operation: 'validate_attempt_ownership',
+      attemptId,
+      userId
+    }, 'Validating attempt ownership');
+
+    try {
+      const attempt = await this.prisma.challengeAttempt.findUnique({
+        where: { id: attemptId },
+        select: {
+          userId: true,
+          status: true
+        },
+      });
+
+      const processingTime = Date.now() - startTime;
+
+      // Validate ownership and that attempt is still in progress
+      const isOwner = attempt ? attempt.userId === userId : false;
+      const isInProgress = attempt ? attempt.status === 'IN_PROGRESS' : false;
+      const isValid = isOwner && isInProgress;
+
+      logger.info({
+        operation: 'validate_attempt_ownership_result',
+        attemptId,
+        userId,
+        isValid,
+        isOwner,
+        isInProgress,
+        attemptExists: !!attempt,
+        attemptStatus: attempt?.status,
+        processingTime
+      }, isValid ? 'Attempt ownership and status validated' : 'Attempt ownership or status validation failed');
+
+      return isValid;
+
+    } catch (error) {
+      const processingTime = Date.now() - startTime;
+
+      logger.error({
+        operation: 'validate_attempt_ownership_failed',
+        attemptId,
+        userId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        processingTime
+      }, 'Failed to validate attempt ownership');
+
+      throw error;
+    }
+  }
 }

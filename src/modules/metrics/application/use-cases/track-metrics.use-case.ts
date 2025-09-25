@@ -1,42 +1,15 @@
-import { z } from 'zod';
 import { IMetricRepository } from '../../domain/repositories/metric.repository.interface';
 import { MetricCalculatorService } from '../../domain/services/metric-calculator.service';
 import { WebSocketServer } from '@/shared/infrastructure/websocket/socket.server';
 import { CodeMetrics, ChecklistItem } from '../../domain/types/metric.types';
+import { TrackMetricsDTO } from '../../domain/schemas/metric.schema';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
-import { PrismaClient } from '@prisma/client';
-
-export const TrackMetricsSchema = z.object({
-  attemptId: z.string().cuid(),
-  totalLines: z.number().int().min(0),
-  linesFromAI: z.number().int().min(0),
-  linesTyped: z.number().int().min(0),
-  copyPasteEvents: z.number().int().min(0),
-  deleteEvents: z.number().int().min(0),
-  testRuns: z.number().int().min(0),
-  testsPassed: z.number().int().min(0),
-  testsTotal: z.number().int().min(0),
-  checklistItems: z.array(z.object({
-    id: z.string(),
-    label: z.string(),
-    checked: z.boolean(),
-    weight: z.number().default(1),
-    category: z.enum(['validation', 'security', 'testing', 'documentation']),
-  })),
-  sessionTime: z.number().int().min(0),
-  aiUsageTime: z.number().int().min(0).optional(),
-  manualCodingTime: z.number().int().min(0).optional(),
-  debugTime: z.number().int().min(0).optional(),
-});
-
-export type TrackMetricsDTO = z.infer<typeof TrackMetricsSchema>;
 
 export class TrackMetricsUseCase {
   constructor(
     private readonly repository: IMetricRepository,
     private readonly calculator: MetricCalculatorService,
-    private readonly wsServer: WebSocketServer,
-    private readonly prisma: PrismaClient
+    private readonly wsServer: WebSocketServer
   ) {}
 
   async execute(userId: string, data: TrackMetricsDTO) {
@@ -57,11 +30,10 @@ export class TrackMetricsUseCase {
     }, 'Metrics tracking initiated');
 
     try {
-      const attempt = await this.prisma.challengeAttempt.findUnique({
-        where: { id: data.attemptId },
-      });
+      // Validação 1: Propriedade do attempt
+      const isValidAttempt = await this.repository.validateAttemptOwnership(data.attemptId, userId);
 
-      if (!attempt || attempt.userId !== userId) {
+      if (!isValidAttempt) {
         logger.warn({
           userId,
           attemptId: data.attemptId,
@@ -69,6 +41,61 @@ export class TrackMetricsUseCase {
           executionTime: Date.now() - startTime
         }, 'Metrics tracking failed - invalid attempt');
         throw new Error('Invalid attempt');
+      }
+
+      // Validação 2: Consistência dos dados
+      if (data.linesFromAI > data.totalLines) {
+        logger.warn({
+          userId,
+          attemptId: data.attemptId,
+          linesFromAI: data.linesFromAI,
+          totalLines: data.totalLines,
+          reason: 'invalid_lines_ratio',
+          executionTime: Date.now() - startTime
+        }, 'Metrics tracking failed - AI lines exceed total lines');
+        throw new Error('Lines from AI cannot exceed total lines');
+      }
+
+      // Validação 3: Consistência dos resultados de testes
+      if (data.testsPassed > data.testsTotal) {
+        logger.warn({
+          userId,
+          attemptId: data.attemptId,
+          testsPassed: data.testsPassed,
+          testsTotal: data.testsTotal,
+          reason: 'invalid_test_ratio',
+          executionTime: Date.now() - startTime
+        }, 'Metrics tracking failed - passed tests exceed total tests');
+        throw new Error('Tests passed cannot exceed total tests');
+      }
+
+      // Validação 4: Consistência do tempo de sessão
+      const totalTimeBreakdown = (data.aiUsageTime || 0) + (data.manualCodingTime || 0) + (data.debugTime || 0);
+      if (totalTimeBreakdown > data.sessionTime) {
+        logger.warn({
+          userId,
+          attemptId: data.attemptId,
+          sessionTime: data.sessionTime,
+          totalTimeBreakdown,
+          reason: 'invalid_time_breakdown',
+          executionTime: Date.now() - startTime
+        }, 'Metrics tracking failed - time breakdown exceeds session time');
+        throw new Error('Time breakdown cannot exceed session time');
+      }
+
+      // Validação 5: Validação dos itens de checklist
+      const invalidChecklistItems = data.checklistItems.filter(item =>
+        !item.id || !item.label || item.weight < 0 || item.weight > 10
+      );
+      if (invalidChecklistItems.length > 0) {
+        logger.warn({
+          userId,
+          attemptId: data.attemptId,
+          invalidItemsCount: invalidChecklistItems.length,
+          reason: 'invalid_checklist_items',
+          executionTime: Date.now() - startTime
+        }, 'Metrics tracking failed - invalid checklist items');
+        throw new Error('Invalid checklist items found');
       }
 
       const codeMetrics: CodeMetrics = {
@@ -121,12 +148,6 @@ export class TrackMetricsUseCase {
         timestamp: calculation.timestamp,
       });
 
-      await this.prisma.challengeAttempt.update({
-        where: { id: data.attemptId },
-        data: {
-          lastActivity: new Date(),
-        },
-      });
 
       const executionTime = Date.now() - startTime;
 

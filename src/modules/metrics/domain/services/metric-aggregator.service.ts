@@ -101,10 +101,17 @@ export class MetricAggregatorService {
         return { averageDI: 0, averagePR: 0, averageCS: 0 };
       }
 
+      // Sanitizar e validar valores numéricos para evitar NaN
       const averages = {
-        averageDI: userMetrics.averageDI,
-        averagePR: userMetrics.averagePR,
-        averageCS: userMetrics.averageCS,
+        averageDI: typeof userMetrics.averageDI === 'number' && !isNaN(userMetrics.averageDI)
+          ? userMetrics.averageDI
+          : 0,
+        averagePR: typeof userMetrics.averagePR === 'number' && !isNaN(userMetrics.averagePR)
+          ? userMetrics.averagePR
+          : 0,
+        averageCS: typeof userMetrics.averageCS === 'number' && !isNaN(userMetrics.averageCS)
+          ? userMetrics.averageCS
+          : 0,
       };
       
       logger.info({
@@ -164,11 +171,31 @@ export class MetricAggregatorService {
         return emptyTrends;
       }
 
-      const trends = {
-        DI: this.calculateTrend(metrics, 'dependencyIndex', 'DI', windowSize),
-        PR: this.calculateTrend(metrics, 'passRate', 'PR', windowSize),
-        CS: this.calculateTrend(metrics, 'checklistScore', 'CS', windowSize),
-      };
+      // Calcular tendências individuais com tratamento de erro
+      let trends: Record<string, MetricTrend>;
+      try {
+        trends = {
+          DI: this.calculateTrend(metrics, 'dependencyIndex', 'DI', windowSize),
+          PR: this.calculateTrend(metrics, 'passRate', 'PR', windowSize),
+          CS: this.calculateTrend(metrics, 'checklistScore', 'CS', windowSize),
+        };
+
+        if (!trends.DI || !trends.PR || !trends.CS) {
+          throw new Error('Some trends could not be calculated');
+        }
+      } catch (trendError) {
+        logger.warn({
+          error: trendError instanceof Error ? trendError.message : 'Unknown trend calculation error',
+          attemptId,
+          metricsCount: metrics.length
+        }, 'Error in trend calculation, falling back to empty trends');
+
+        trends = {
+          DI: this.createEmptyTrend('DI'),
+          PR: this.createEmptyTrend('PR'),
+          CS: this.createEmptyTrend('CS'),
+        };
+      }
 
       const processingTime = Date.now() - startTime;
       
@@ -197,6 +224,21 @@ export class MetricAggregatorService {
           }, `Significant ${metric} trend detected`);
         }
       });
+
+      // Validação final do objeto de tendências
+      if (!trends || typeof trends !== 'object' || !trends.DI || !trends.PR || !trends.CS) {
+        logger.error({
+          attemptId,
+          trends,
+          error: 'Invalid trends object structure'
+        }, 'Final validation failed, returning empty trends');
+
+        return {
+          DI: this.createEmptyTrend('DI'),
+          PR: this.createEmptyTrend('PR'),
+          CS: this.createEmptyTrend('CS'),
+        };
+      }
 
       return trends;
     } catch (error) {

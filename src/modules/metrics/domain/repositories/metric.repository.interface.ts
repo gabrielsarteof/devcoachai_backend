@@ -1,5 +1,4 @@
 import { MetricSnapshot } from '@prisma/client';
-import { MetricCalculation } from '../types/metric.types';
 
 export interface IMetricRepository {
   create(data: CreateMetricData): Promise<MetricSnapshot>;
@@ -8,6 +7,7 @@ export interface IMetricRepository {
   findByUser(userId: string, limit?: number): Promise<MetricSnapshot[]>;
   deleteByAttempt(attemptId: string): Promise<void>;
   createBatch(data: CreateMetricData[]): Promise<MetricSnapshot[]>;
+  validateAttemptOwnership(attemptId: string, userId: string): Promise<boolean>;
 }
 
 export interface CreateMetricData {

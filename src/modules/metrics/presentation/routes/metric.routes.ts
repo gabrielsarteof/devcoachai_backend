@@ -1,18 +1,64 @@
 import type { FastifyInstance, RouteHandlerMethod } from 'fastify';
 import { MetricController } from '../controllers/metric.controller';
-import { TrackMetricsSchema } from '../../application/use-cases/track-metrics.use-case';
-import { StreamMetricsSchema } from '../../application/use-cases/stream-metrics.use-case';
 
 export async function metricRoutes(
   fastify: FastifyInstance,
   controller: MetricController
 ): Promise<void> {
-  fastify.post('/track', {
+  // RESTful route for creating/tracking metrics
+  fastify.post('/', {
     preHandler: [fastify.authenticate],
     schema: {
-      body: TrackMetricsSchema,
+      body: {
+        type: 'object',
+        properties: {
+          attemptId: { type: 'string' },
+          totalLines: { type: 'number', minimum: 0 },
+          linesFromAI: { type: 'number', minimum: 0 },
+          linesTyped: { type: 'number', minimum: 0 },
+          copyPasteEvents: { type: 'number', minimum: 0 },
+          deleteEvents: { type: 'number', minimum: 0 },
+          testRuns: { type: 'number', minimum: 0 },
+          testsPassed: { type: 'number', minimum: 0 },
+          testsTotal: { type: 'number', minimum: 0 },
+          checklistItems: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                label: { type: 'string' },
+                checked: { type: 'boolean' },
+                weight: { type: 'number', default: 1 },
+                category: {
+                  type: 'string',
+                  enum: ['validation', 'security', 'testing', 'documentation']
+                },
+              },
+              required: ['id', 'label', 'checked', 'category'],
+            },
+          },
+          sessionTime: { type: 'number', minimum: 0 },
+          aiUsageTime: { type: 'number', minimum: 0 },
+          manualCodingTime: { type: 'number', minimum: 0 },
+          debugTime: { type: 'number', minimum: 0 },
+        },
+        required: [
+          'attemptId',
+          'totalLines',
+          'linesFromAI',
+          'linesTyped',
+          'copyPasteEvents',
+          'deleteEvents',
+          'testRuns',
+          'testsPassed',
+          'testsTotal',
+          'checklistItems',
+          'sessionTime'
+        ],
+      },
       response: {
-        200: {
+        201: {
           type: 'object',
           properties: {
             success: { type: 'boolean' },
@@ -63,7 +109,17 @@ export async function metricRoutes(
         200: {
           type: 'object',
           properties: {
-            attempt: { type: 'object' },
+            attempt: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                challengeTitle: { type: 'string' },
+                difficulty: { type: 'string' },
+                category: { type: 'string' },
+                status: { type: 'string' },
+                startedAt: { type: ['string', 'null'] },
+              },
+            },
             metrics: { type: 'array' },
             trends: { type: 'object' },
             userAverages: {
@@ -74,7 +130,27 @@ export async function metricRoutes(
                 averageCS: { type: 'number' },
               },
             },
-            summary: { type: 'object' },
+            summary: {
+              type: 'object',
+              properties: {
+                totalTime: { type: 'number' },
+                totalSnapshots: { type: 'number' },
+                currentDI: { type: 'number' },
+                currentPR: { type: 'number' },
+                currentCS: { type: 'number' },
+                initialDI: { type: 'number' },
+                initialPR: { type: 'number' },
+                initialCS: { type: 'number' },
+                improvement: {
+                  type: 'object',
+                  properties: {
+                    DI: { type: 'number' },
+                    PR: { type: 'number' },
+                    CS: { type: 'number' },
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -82,12 +158,20 @@ export async function metricRoutes(
     handler: controller.getSessionMetrics as RouteHandlerMethod,
   });
 
-  fastify.post('/stream/start', {
+  // RESTful streaming routes
+  fastify.post('/stream', {
     preHandler: [fastify.authenticate],
     schema: {
-      body: StreamMetricsSchema,
+      body: {
+        type: 'object',
+        properties: {
+          attemptId: { type: 'string' },
+          interval: { type: 'number', minimum: 1000, maximum: 30000, default: 5000 },
+        },
+        required: ['attemptId'],
+      },
       response: {
-        200: {
+        201: {
           type: 'object',
           properties: {
             success: { type: 'boolean' },
@@ -99,7 +183,7 @@ export async function metricRoutes(
     handler: controller.startStream as RouteHandlerMethod,
   });
 
-  fastify.post('/stream/stop/:attemptId', {
+  fastify.delete('/stream/:attemptId', {
     preHandler: [fastify.authenticate],
     schema: {
       params: {
@@ -110,12 +194,8 @@ export async function metricRoutes(
         required: ['attemptId'],
       },
       response: {
-        200: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            message: { type: 'string' },
-          },
+        204: {
+          type: 'null',
         },
       },
     },

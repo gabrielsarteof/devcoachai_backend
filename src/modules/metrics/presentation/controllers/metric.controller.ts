@@ -1,8 +1,15 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import { TrackMetricsUseCase, TrackMetricsDTO } from '../../application/use-cases/track-metrics.use-case';
+import { TrackMetricsUseCase } from '../../application/use-cases/track-metrics.use-case';
 import { GetSessionMetricsUseCase } from '../../application/use-cases/get-session-metrics.use-case';
-import { StreamMetricsUseCase, StreamMetricsDTO } from '../../application/use-cases/stream-metrics.use-case';
+import { StreamMetricsUseCase } from '../../application/use-cases/stream-metrics.use-case';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
+import { ZodError } from 'zod';
+import {
+  TrackMetricsDTO,
+  StreamMetricsDTO,
+  AttemptParamsDTO,
+  AttemptParamsSchema
+} from '../../domain/schemas/metric.schema';
 
 export class MetricController {
   constructor(
@@ -17,12 +24,20 @@ export class MetricController {
   ): Promise<void> => {
     const startTime = Date.now();
     const requestId = crypto.randomUUID();
-    const user = request.user as { id: string };
-    
+    const user = request.user as { id: string; email: string; role: string } | undefined;
+
+    if (!user) {
+      return reply.status(401).send({
+        error: 'Unauthorized',
+        message: 'User not authenticated',
+      });
+    }
+
     logger.info({
       requestId,
       operation: 'metrics_tracking_request',
-      userId: user.id,
+      userId: user?.id,
+      userRole: user?.role,
       attemptId: request.body.attemptId,
       sessionTime: request.body.sessionTime,
       metrics: {
@@ -42,17 +57,19 @@ export class MetricController {
         manualCodingTime: request.body.manualCodingTime,
         debugTime: request.body.debugTime
       },
-      ipAddress: request.ip
+      ipAddress: request.ip,
+      userAgent: request.headers['user-agent']
     }, 'Metrics tracking request received');
 
     try {
       const result = await this.trackMetricsUseCase.execute(user.id, request.body);
-      
+
       const executionTime = Date.now() - startTime;
-      
+
       logger.info({
         requestId,
-        userId: user.id,
+        userId: user?.id,
+        userRole: user?.role,
         attemptId: request.body.attemptId,
         metricSnapshotId: result.metricSnapshot.id,
         calculatedMetrics: {
@@ -132,34 +149,50 @@ export class MetricController {
         }, 'Critical validation gaps detected in metrics');
       }
       
-      return reply.send({
+      return reply.status(201).send({
         success: true,
         data: result,
       });
     } catch (error) {
       const executionTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
+
       if (error instanceof Error && error.message === 'Invalid attempt') {
         logger.warn({
           requestId,
           operation: 'metrics_tracking_invalid_attempt',
-          userId: user.id,
+          userId: user?.id,
           attemptId: request.body.attemptId,
           reason: 'invalid_attempt_or_unauthorized',
           executionTime
         }, 'Metrics tracking failed - invalid attempt');
-        
+
         return reply.status(403).send({
           error: 'Forbidden',
           message: 'Invalid attempt or unauthorized',
         });
       }
 
+      if (error instanceof Error && error.message.includes('not found')) {
+        logger.warn({
+          requestId,
+          operation: 'metrics_tracking_not_found',
+          userId: user?.id,
+          attemptId: request.body.attemptId,
+          reason: 'attempt_not_found',
+          executionTime
+        }, 'Metrics tracking failed - attempt not found');
+
+        return reply.status(404).send({
+          error: 'Not found',
+          message: error.message,
+        });
+      }
+
       logger.error({
         requestId,
         operation: 'metrics_tracking_failed',
-        userId: user.id,
+        userId: user?.id,
         attemptId: request.body.attemptId,
         sessionTime: request.body.sessionTime,
         error: errorMessage,
@@ -175,12 +208,19 @@ export class MetricController {
   };
 
   getSessionMetrics = async (
-    request: FastifyRequest<{ Params: { attemptId: string } }>,
+    request: FastifyRequest<{ Params: AttemptParamsDTO }>,
     reply: FastifyReply
   ): Promise<void> => {
     const startTime = Date.now();
     const requestId = crypto.randomUUID();
-    const user = request.user as { id: string };
+    const user = request.user as { id: string } | undefined;
+
+    if (!user) {
+      return reply.status(401).send({
+        error: 'Unauthorized',
+        message: 'User not authenticated',
+      });
+    }
     
     logger.debug({
       requestId,
@@ -191,10 +231,47 @@ export class MetricController {
     }, 'Session metrics request received');
 
     try {
+      logger.info({
+        requestId,
+        userId: user.id,
+        attemptId: request.params.attemptId,
+        operation: 'calling_use_case'
+      }, 'About to call GetSessionMetricsUseCase');
+
       const result = await this.getSessionMetricsUseCase.execute(
         user.id,
         request.params.attemptId
       );
+
+      logger.info({
+        requestId,
+        userId: user.id,
+        attemptId: request.params.attemptId,
+        operation: 'use_case_completed',
+        resultType: typeof result,
+        hasResult: !!result,
+        resultKeys: result ? Object.keys(result) : null
+      }, 'GetSessionMetricsUseCase completed successfully');
+
+      // Log detalhado da estrutura do resultado antes de enviar
+      logger.debug({
+        requestId,
+        userId: user.id,
+        attemptId: request.params.attemptId,
+        resultStructure: {
+          hasAttempt: !!result.attempt,
+          attemptKeys: result.attempt ? Object.keys(result.attempt) : [],
+          hasMetrics: !!result.metrics,
+          metricsLength: Array.isArray(result.metrics) ? result.metrics.length : 0,
+          hasTrends: !!result.trends,
+          trendsKeys: result.trends ? Object.keys(result.trends) : [],
+          hasUserAverages: !!result.userAverages,
+          userAveragesKeys: result.userAverages ? Object.keys(result.userAverages) : [],
+          hasSummary: !!result.summary,
+          summaryKeys: result.summary ? Object.keys(result.summary) : [],
+          summaryImprovement: result.summary?.improvement ? Object.keys(result.summary.improvement) : null
+        }
+      }, 'Detailed result structure in controller');
       
       const executionTime = Date.now() - startTime;
       
@@ -243,11 +320,85 @@ export class MetricController {
         }, 'Excellent pass rate improvement detected');
       }
       
-      return reply.send(result);
+      // Validação final antes do envio
+      const responseData = {
+        attempt: result.attempt || {
+          id: request.params.attemptId,
+          challengeTitle: 'Unknown',
+          difficulty: 'UNKNOWN',
+          category: 'UNKNOWN',
+          status: 'UNKNOWN',
+          startedAt: null,
+        },
+        metrics: Array.isArray(result.metrics) ? result.metrics : [],
+        trends: result.trends || {},
+        userAverages: result.userAverages || { averageDI: 0, averagePR: 0, averageCS: 0 },
+        summary: result.summary || {
+          totalTime: 0,
+          totalSnapshots: 0,
+          currentDI: 0,
+          currentPR: 0,
+          currentCS: 0,
+          initialDI: 0,
+          initialPR: 0,
+          initialCS: 0,
+          improvement: { DI: 0, PR: 0, CS: 0 }
+        },
+      };
+
+      logger.debug({
+        requestId,
+        userId: user.id,
+        attemptId: request.params.attemptId,
+        finalResponse: {
+          hasAttempt: !!responseData.attempt,
+          hasMetrics: !!responseData.metrics,
+          metricsLength: Array.isArray(responseData.metrics) ? responseData.metrics.length : 0,
+          hasSummary: !!responseData.summary,
+          summaryKeys: responseData.summary ? Object.keys(responseData.summary) : [],
+          hasImprovement: !!(responseData.summary && responseData.summary.improvement),
+          improvementKeys: responseData.summary?.improvement ? Object.keys(responseData.summary.improvement) : []
+        }
+      }, 'Final response validation before send');
+
+      // Força serialização controlada para evitar problemas de enumerabilidade
+      const serializedData = JSON.parse(JSON.stringify(responseData));
+
+      logger.debug({
+        requestId,
+        serializedCheck: {
+          originalHasAttempt: !!responseData.attempt,
+          serializedHasAttempt: !!serializedData.attempt,
+          originalAttemptKeys: responseData.attempt ? Object.keys(responseData.attempt) : [],
+          serializedAttemptKeys: serializedData.attempt ? Object.keys(serializedData.attempt) : [],
+          originalHasSummary: !!responseData.summary,
+          serializedHasSummary: !!serializedData.summary,
+          originalSummaryKeys: responseData.summary ? Object.keys(responseData.summary) : [],
+          serializedSummaryKeys: serializedData.summary ? Object.keys(serializedData.summary) : []
+        }
+      }, 'Serialization check completed');
+
+      return reply.send(serializedData);
     } catch (error) {
       const executionTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       
+      if (error instanceof Error && error.message.includes('Attempt not found')) {
+        logger.warn({
+          requestId,
+          operation: 'session_metrics_not_found',
+          userId: user.id,
+          attemptId: request.params.attemptId,
+          reason: 'attempt_not_found',
+          executionTime
+        }, 'Session metrics failed - attempt not found');
+
+        return reply.status(404).send({
+          error: 'Not found',
+          message: 'Attempt not found',
+        });
+      }
+
       if (error instanceof Error && error.message.includes('Invalid attempt')) {
         logger.warn({
           requestId,
@@ -257,7 +408,7 @@ export class MetricController {
           reason: 'invalid_attempt_or_unauthorized',
           executionTime
         }, 'Session metrics failed - invalid attempt');
-        
+
         return reply.status(403).send({
           error: 'Forbidden',
           message: 'Invalid attempt or unauthorized',
@@ -287,7 +438,14 @@ export class MetricController {
   ): Promise<void> => {
     const startTime = Date.now();
     const requestId = crypto.randomUUID();
-    const user = request.user as { id: string };
+    const user = request.user as { id: string } | undefined;
+
+    if (!user) {
+      return reply.status(401).send({
+        error: 'Unauthorized',
+        message: 'User not authenticated',
+      });
+    }
     
     logger.info({
       requestId,
@@ -312,7 +470,7 @@ export class MetricController {
         streamStarted: true
       }, 'Metrics stream started successfully');
       
-      return reply.send({
+      return reply.status(201).send({
         success: true,
         message: 'Metrics stream started',
       });
@@ -339,12 +497,19 @@ export class MetricController {
   };
 
   stopStream = async (
-    request: FastifyRequest<{ Params: { attemptId: string } }>,
+    request: FastifyRequest<{ Params: AttemptParamsDTO }>,
     reply: FastifyReply
   ): Promise<void> => {
     const startTime = Date.now();
     const requestId = crypto.randomUUID();
-    const user = request.user as { id: string };
+    const user = request.user as { id: string } | undefined;
+
+    if (!user) {
+      return reply.status(401).send({
+        error: 'Unauthorized',
+        message: 'User not authenticated',
+      });
+    }
     
     logger.info({
       requestId,
@@ -355,7 +520,10 @@ export class MetricController {
     }, 'Metrics stream stop request received');
 
     try {
-      this.streamMetricsUseCase.stopStream(user.id, request.params.attemptId);
+      // Validate attemptId format
+      const validatedParams = AttemptParamsSchema.parse(request.params);
+
+      this.streamMetricsUseCase.stopStream(user.id, validatedParams.attemptId);
       
       const executionTime = Date.now() - startTime;
       
@@ -367,14 +535,28 @@ export class MetricController {
         streamStopped: true
       }, 'Metrics stream stopped successfully');
       
-      return reply.send({
-        success: true,
-        message: 'Metrics stream stopped',
-      });
+      return reply.status(204).send();
     } catch (error) {
       const executionTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
+
+      if (error instanceof ZodError) {
+        logger.warn({
+          requestId,
+          operation: 'metrics_stream_stop_validation_failed',
+          userId: user.id,
+          attemptId: request.params.attemptId,
+          validationErrors: error.issues,
+          executionTime
+        }, 'Failed to stop metrics stream - validation failed');
+
+        return reply.status(400).send({
+          error: 'Bad Request',
+          message: 'Invalid attemptId format',
+          details: error.issues
+        });
+      }
+
       logger.error({
         requestId,
         operation: 'metrics_stream_stop_failed',
@@ -384,7 +566,7 @@ export class MetricController {
         stack: error instanceof Error ? error.stack : undefined,
         executionTime
       }, 'Failed to stop metrics stream');
-      
+
       return reply.status(500).send({
         error: 'Internal server error',
         message: 'Failed to stop metrics stream',

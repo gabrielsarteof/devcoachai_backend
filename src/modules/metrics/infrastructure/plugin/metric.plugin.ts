@@ -29,8 +29,7 @@ const metricPlugin: FastifyPluginAsync<MetricPluginOptions> = async function(
   const trackMetricsUseCase = new TrackMetricsUseCase(
     repository,
     calculator,
-    options.wsServer,
-    options.prisma
+    options.wsServer
   );
 
   const getSessionMetricsUseCase = new GetSessionMetricsUseCase(

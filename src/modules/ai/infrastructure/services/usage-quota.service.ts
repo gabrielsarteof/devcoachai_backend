@@ -9,9 +9,9 @@ export class UsageQuotaService implements IUsageQuotaService {
 
   async getUserQuota(userId: string): Promise<UserQuota> {
     try {
-      const usage = await this.usageTracker.getUsage(userId);
+      const usage = await this.usageTracker.getUserUsage(userId, 1);
 
-      // Limites padrão baseados no nível do usuário (implementar lógica específica se necessário)
+      // Limites padrão do sistema de cotas
       const dailyLimit = 10000;
       const monthlyLimit = 300000;
 
@@ -20,16 +20,19 @@ export class UsageQuotaService implements IUsageQuotaService {
       tomorrow.setDate(tomorrow.getDate() + 1);
       tomorrow.setHours(0, 0, 0, 0);
 
+      // Extração do uso total de tokens do histórico
+      const tokensUsed = usage?.total?.tokens || 0;
+
       return {
         daily: {
           limit: dailyLimit,
-          used: usage.tokens.daily,
-          remaining: Math.max(0, dailyLimit - usage.tokens.daily),
+          used: tokensUsed,
+          remaining: Math.max(0, dailyLimit - tokensUsed),
         },
         monthly: {
           limit: monthlyLimit,
-          used: usage.tokens.monthly,
-          remaining: Math.max(0, monthlyLimit - usage.tokens.monthly),
+          used: tokensUsed,
+          remaining: Math.max(0, monthlyLimit - tokensUsed),
         },
         resetAt: tomorrow,
       };

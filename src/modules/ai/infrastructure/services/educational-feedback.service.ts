@@ -129,12 +129,22 @@ export class EducationalFeedbackService implements IEducationalFeedbackService {
       const template = this.feedbackTemplates[validation.classification][level];
       const baseMessage = template.templates[Math.floor(Math.random() * template.templates.length)];
 
+      // Adapta a mensagem baseada no tipo de violação detectada
+      let contextMessage = baseMessage;
+
+      // Tratamento específico para prompt injection
+      if (context?.category === 'prompt_injection' ||
+          (validation.reasons.some(r => r.includes('engenharia social')) &&
+           validation.classification === 'BLOCKED')) {
+        contextMessage = 'Esta solicitação foi bloqueada devido a prompt injection detectado. ' + baseMessage;
+      }
+
       const feedback: EducationalFeedback = {
         feedbackId,
         userId: params.userId,
         level,
         context: {
-          whatHappened: baseMessage,
+          whatHappened: contextMessage,
           whyBlocked: validation.classification === 'BLOCKED'
             ? this.explainBlockReason(validation.reasons)
             : undefined,
@@ -194,8 +204,20 @@ export class EducationalFeedbackService implements IEducationalFeedbackService {
       'Conteúdo fora do tópico detectado':
         'Sua pergunta não está relacionada ao desafio atual.',
       'Padrões proibidos detectados':
-        'Sua pergunta contém padrões que indicam tentativa de obter código pronto.'
+        'Sua pergunta contém padrões que indicam tentativa de obter código pronto.',
+      'solution_seeking':
+        'Sua pergunta solicita diretamente a solução do problema.'
     };
+
+    // Identificação de tentativas de prompt injection
+    const hasPromptInjection = reasons.some(r =>
+      r.includes('engenharia social') || r.includes('prompt injection') || r === 'solution_seeking'
+    );
+
+    if (hasPromptInjection) {
+      return 'Esta solicitação foi bloqueada devido a prompt injection detectado. ' +
+        reasons.map(r => explanations[r] || r).join(' ');
+    }
 
     return reasons
       .map(r => explanations[r] || r)

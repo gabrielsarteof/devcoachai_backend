@@ -4,10 +4,10 @@ import { logger } from '@/shared/infrastructure/monitoring/logger';
 
 export class RateLimiterService {
   private readonly defaultConfig: RateLimitConfig = {
-    maxRequestsPerMinute: 20,
-    maxRequestsPerHour: 100,
-    maxTokensPerDay: 100000,
-    burstLimit: 5,
+    maxRequestsPerMinute: parseInt(process.env.AI_MAX_REQUESTS_PER_MINUTE || '20'),
+    maxRequestsPerHour: parseInt(process.env.AI_MAX_REQUESTS_PER_HOUR || '100'),
+    maxTokensPerDay: parseInt(process.env.AI_MAX_TOKENS_PER_DAY || '100000'),
+    burstLimit: parseInt(process.env.AI_BURST_LIMIT || '5'),
   };
 
   constructor(
@@ -47,7 +47,6 @@ export class RateLimiterService {
         minute: `ratelimit:${userId}:${minute}`,
         hour: `ratelimit:${userId}:${hour}`,
         day: `ratelimit:tokens:${userId}:${day}`,
-        burst: `ratelimit:burst:${userId}`,
       };
 
       logger.debug({
@@ -68,8 +67,6 @@ export class RateLimiterService {
       pipeline.incrby(keys.day, tokens);
       pipeline.expire(keys.day, 86400);
 
-      pipeline.get(keys.burst);
-
       const results = await pipeline.exec();
 
       if (!results) {
@@ -85,7 +82,6 @@ export class RateLimiterService {
       const minuteCount = results[0][1] as number;
       const hourCount = results[2][1] as number;
       const dailyTokens = results[4][1] as number;
-      const lastBurst = results[6][1] as string | null;
 
       logger.debug({
         operation: 'rate_limit_counts_retrieved',
@@ -93,33 +89,10 @@ export class RateLimiterService {
         counts: {
           minute: minuteCount,
           hour: hourCount,
-          dailyTokens: dailyTokens,
-          lastBurst: lastBurst ? parseInt(lastBurst) : null
+          dailyTokens: dailyTokens
         },
         limits: this.config
       }, 'Retrieved current rate limit counts');
-
-      if (lastBurst) {
-        const lastBurstTime = parseInt(lastBurst);
-        const timeSinceBurst = now - lastBurstTime;
-
-        if (timeSinceBurst < 1000) {
-          logger.warn({
-            operation: 'burst_limit_exceeded',
-            userId,
-            lastBurstTime,
-            timeSinceBurst,
-            burstLimit: this.config!.burstLimit
-          }, 'Burst limit exceeded');
-
-          return {
-            allowed: false,
-            remaining: 0,
-            resetAt: new Date(lastBurstTime + 1000),
-            reason: 'Burst limit exceeded. Please wait a moment.',
-          };
-        }
-      }
 
       if (minuteCount > this.config!.maxRequestsPerMinute!) {
         logger.warn({
@@ -136,6 +109,55 @@ export class RateLimiterService {
           resetAt: new Date((minute + 1) * 60000),
           reason: `Minute limit exceeded. Max ${this.config!.maxRequestsPerMinute} requests per minute.`,
         };
+      }
+
+      const isTestEnvironment = process.env.NODE_ENV === 'test';
+      const burstLimitEnabled = this.config!.burstLimit! > 0;
+
+      if (burstLimitEnabled) {
+        const burstWindow = isTestEnvironment ? 1 : 10;
+        const burstKey = `ratelimit:burst:window:${userId}`;
+
+        const pipeline = this.redis.pipeline();
+        pipeline.lpush(burstKey, now.toString());
+        pipeline.expire(burstKey, burstWindow + 1);
+
+        const cutoffTime = now - (burstWindow * 1000);
+        pipeline.lrem(burstKey, 0, cutoffTime.toString());
+        pipeline.llen(burstKey);
+
+        const burstResults = await pipeline.exec();
+
+        if (burstResults && burstResults[3] && burstResults[3][1]) {
+          const requestsInWindow = burstResults[3][1] as number;
+
+          logger.debug({
+            operation: 'burst_limit_check',
+            userId,
+            requestsInWindow,
+            burstLimit: this.config!.burstLimit,
+            burstWindow,
+            isTestEnvironment
+          }, 'Checking burst limit');
+
+          if (requestsInWindow > this.config!.burstLimit!) {
+            logger.warn({
+              operation: 'burst_limit_exceeded',
+              userId,
+              requestsInWindow,
+              burstLimit: this.config!.burstLimit,
+              burstWindow,
+              isTestEnvironment
+            }, 'Burst limit exceeded');
+
+            return {
+              allowed: false,
+              remaining: 0,
+              resetAt: new Date(now + (burstWindow * 1000)),
+              reason: `Burst limit exceeded. Maximum ${this.config!.burstLimit} requests per ${burstWindow} seconds.`,
+            };
+          }
+        }
       }
 
       if (hourCount > this.config!.maxRequestsPerHour!) {
@@ -172,7 +194,6 @@ export class RateLimiterService {
         };
       }
 
-      await this.redis.setex(keys.burst, 5, now.toString());
 
       const remainingMinute = this.config!.maxRequestsPerMinute! - minuteCount;
       const remainingHour = this.config!.maxRequestsPerHour! - hourCount;

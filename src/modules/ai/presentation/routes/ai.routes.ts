@@ -1,4 +1,5 @@
 import type { FastifyInstance, RouteHandlerMethod } from 'fastify';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 import { AIController } from '../controllers/ai.controller';
 import { AIGovernanceController } from '../controllers/ai-governance.controller';
 import {
@@ -16,16 +17,63 @@ export async function aiRoutes(
   governanceController: AIGovernanceController,
 ): Promise<void> {
 
+  // Endpoint para chat com IA
   fastify.post('/chat', {
     preHandler: [fastify.authenticate],
     schema: {
-      body: CreateAIInteractionSchema,
+      body: {
+        type: 'object',
+        properties: {
+          messages: {
+            type: 'array',
+            minItems: 1,
+            items: {
+              type: 'object',
+              properties: {
+                role: { type: 'string' },
+                content: { type: 'string' }
+              },
+              required: ['role', 'content']
+            }
+          },
+          challengeId: { type: 'string' },
+          attemptId: { type: 'string' },
+          model: { type: 'string' },
+          provider: { type: 'string', enum: ['openai', 'anthropic', 'google'] },
+          config: {
+            type: 'object',
+            properties: {
+              temperature: { type: 'number', minimum: 0, maximum: 2 },
+              maxTokens: { type: 'number', minimum: 1 },
+              stream: { type: 'boolean' },
+            },
+            additionalProperties: false,
+          },
+        },
+        required: ['messages'],
+        additionalProperties: false,
+      },
       response: {
         200: {
           type: 'object',
           properties: {
             success: { type: 'boolean' },
-            data: { type: 'object' },
+            data: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                content: { type: 'string' },
+                usage: {
+                  type: 'object',
+                  properties: {
+                    promptTokens: { type: 'number' },
+                    completionTokens: { type: 'number' },
+                    totalTokens: { type: 'number' }
+                  }
+                },
+                cost: { type: 'number' }
+              }
+            },
             usage: {
               type: 'object',
               properties: {
@@ -62,10 +110,23 @@ export async function aiRoutes(
     handler: aiController.chat as RouteHandlerMethod,
   });
 
+  // Endpoint para rastreamento de copy/paste
   fastify.post('/track-copy-paste', {
     preHandler: [fastify.authenticate],
     schema: {
-      body: TrackCopyPasteSchema,
+      body: {
+        type: 'object',
+        properties: {
+          attemptId: { type: 'string' },
+          action: { type: 'string', enum: ['copy', 'paste'] },
+          content: { type: 'string' },
+          sourceLines: { type: 'number', minimum: 1 },
+          targetLines: { type: 'number', minimum: 1 },
+          timestamp: { type: 'number' },
+        },
+        required: ['attemptId', 'action', 'content'],
+        additionalProperties: false,
+      },
       response: {
         200: {
           type: 'object',
@@ -92,9 +153,99 @@ export async function aiRoutes(
         200: {
           type: 'object',
           properties: {
-            usage: { type: 'object' },
-            quota: { type: 'object' },
-            limits: { type: 'object' },
+            usage: {
+              type: 'object',
+              properties: {
+                period: {
+                  type: 'object',
+                  properties: {
+                    startDate: { type: 'string' },
+                    endDate: { type: 'string' },
+                    days: { type: 'number' }
+                  }
+                },
+                tokens: {
+                  type: 'object',
+                  properties: {
+                    used: { type: 'number' },
+                    breakdown: { type: 'object' }
+                  }
+                },
+                requests: {
+                  type: 'object',
+                  properties: {
+                    total: { type: 'number' },
+                    breakdown: { type: 'object' }
+                  }
+                },
+                cost: {
+                  type: 'object',
+                  properties: {
+                    total: { type: 'number' },
+                    breakdown: { type: 'object' }
+                  }
+                }
+              }
+            },
+            quota: {
+              type: 'object',
+              properties: {
+                daily: {
+                  type: 'object',
+                  properties: {
+                    limit: { type: 'number' },
+                    used: { type: 'number' },
+                    remaining: { type: 'number' }
+                  }
+                },
+                monthly: {
+                  type: 'object',
+                  properties: {
+                    limit: { type: 'number' },
+                    used: { type: 'number' },
+                    remaining: { type: 'number' }
+                  }
+                },
+                resetAt: { type: 'string', format: 'date-time' }
+              }
+            },
+            limits: {
+              type: 'object',
+              properties: {
+                requestsPerMinute: {
+                  type: 'object',
+                  properties: {
+                    limit: { type: 'number' },
+                    used: { type: 'number' },
+                    remaining: { type: 'number' }
+                  }
+                },
+                requestsPerHour: {
+                  type: 'object',
+                  properties: {
+                    limit: { type: 'number' },
+                    used: { type: 'number' },
+                    remaining: { type: 'number' }
+                  }
+                },
+                tokensPerDay: {
+                  type: 'object',
+                  properties: {
+                    limit: { type: 'number' },
+                    used: { type: 'number' },
+                    remaining: { type: 'number' }
+                  }
+                },
+                resetTimes: {
+                  type: 'object',
+                  properties: {
+                    minute: { type: 'string', format: 'date-time' },
+                    hour: { type: 'string', format: 'date-time' },
+                    day: { type: 'string', format: 'date-time' }
+                  }
+                }
+              }
+            },
           },
         },
       },
@@ -109,7 +260,33 @@ export async function aiRoutes(
         200: {
           type: 'object',
           properties: {
-            models: { type: 'object' },
+            models: {
+              type: 'object',
+              additionalProperties: {
+                type: 'object',
+                properties: {
+                  models: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'string' },
+                        name: { type: 'string' },
+                        contextWindow: { type: 'number' },
+                        inputCost: { type: 'number' },
+                        outputCost: { type: 'number' },
+                        capabilities: {
+                          type: 'array',
+                          items: { type: 'string' }
+                        }
+                      }
+                    }
+                  },
+                  available: { type: 'boolean' },
+                  error: { type: 'string' }
+                }
+              }
+            },
           },
         },
       },
@@ -117,10 +294,33 @@ export async function aiRoutes(
     handler: aiController.getModels as RouteHandlerMethod,
   });
 
+  // Endpoint de validação de prompt para governança
   fastify.post('/governance/validate', {
     preHandler: [fastify.authenticate],
     schema: {
-      body: PromptValidationRequestSchema,
+      body: {
+        type: 'object',
+        properties: {
+          challengeId: { type: 'string' },
+          prompt: { type: 'string', minLength: 1, maxLength: 10000 },
+          userLevel: { type: 'number', minimum: 1, maximum: 10 },
+          attemptId: { type: 'string' },
+          config: {
+            type: 'object',
+            properties: {
+              strictMode: { type: 'boolean' },
+              contextSimilarityThreshold: { type: 'number', minimum: 0, maximum: 1 },
+              offTopicThreshold: { type: 'number', minimum: 0, maximum: 1 },
+              blockDirectSolutions: { type: 'boolean' },
+              allowedDeviationPercentage: { type: 'number', minimum: 0, maximum: 100 },
+              enableSemanticAnalysis: { type: 'boolean' },
+            },
+            additionalProperties: false,
+          },
+        },
+        required: ['challengeId', 'prompt'],
+        additionalProperties: false,
+      },
       response: {
         200: {
           type: 'object',
@@ -140,6 +340,7 @@ export async function aiRoutes(
               enum: ['ALLOW', 'THROTTLE', 'BLOCK', 'REVIEW'],
             },
             confidence: { type: 'number' },
+            relevanceScore: { type: 'number' },
             metadata: {
               type: 'object',
               nullable: true,
@@ -158,19 +359,35 @@ export async function aiRoutes(
     handler: governanceController.validatePrompt as RouteHandlerMethod,
   });
 
-  fastify.post('/governance/analyze-temporal', {
+
+  // Endpoint para análise temporal de comportamento
+  fastify.post('/governance/analyze-temporal-behavior', {
     preHandler: [fastify.authenticate],
     schema: {
-      body: AnalyzeTemporalBehaviorSchema,
+      body: {
+        type: 'object',
+        properties: {
+          userId: { type: 'string' },
+          timeWindow: { type: 'string', default: '1h' },
+          analysisType: { type: 'string', default: 'interaction_pattern' },
+          lookbackMinutes: { type: 'number', minimum: 1, maximum: 120 },
+        },
+        required: ['userId'],
+        additionalProperties: false,
+      },
       response: {
         200: {
           type: 'object',
           properties: {
-            overallRisk: { type: 'number' },
-            isGamingAttempt: { type: 'boolean' },
-            temporalPatterns: { type: 'array' },
-            behaviorMetrics: { type: 'object' },
-            recommendations: { type: 'array' },
+            analysis: {
+              type: 'object',
+              properties: {
+                patterns: { type: 'array' },
+                riskScore: { type: 'number' },
+                recommendations: { type: 'array' },
+                timeWindow: { type: 'string' },
+              },
+            },
           },
         },
         501: {
@@ -185,10 +402,76 @@ export async function aiRoutes(
     handler: governanceController.analyzeTemporalBehavior as RouteHandlerMethod,
   });
 
+  // Endpoint para feedback educacional
+  fastify.post('/governance/educational-feedback', {
+    preHandler: [fastify.authenticate],
+    schema: {
+      body: {
+        type: 'object',
+        properties: {
+          userId: { type: 'string' },
+          challengeId: { type: 'string' },
+          violationType: { type: 'string' },
+          context: { type: 'object' },
+        },
+        required: ['userId', 'challengeId', 'violationType'],
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            feedback: {
+              type: 'object',
+              properties: {
+                message: { type: 'string' },
+                suggestions: { type: 'array' },
+                educationalContent: { type: 'object' },
+              },
+            },
+          },
+        },
+        501: {
+          type: 'object',
+          properties: {
+            error: { type: 'string' },
+            message: { type: 'string' },
+          },
+        },
+      },
+    },
+    handler: governanceController.generateEducationalFeedback as RouteHandlerMethod,
+  });
+
+  // Endpoint alternativo para geração de feedback
   fastify.post('/governance/generate-feedback', {
     preHandler: [fastify.authenticate],
     schema: {
-      body: GenerateFeedbackRequestSchema,
+      body: {
+        type: 'object',
+        properties: {
+          challengeId: { type: 'string' },
+          riskScore: { type: 'number', minimum: 0, maximum: 100 },
+          reasons: { type: 'array', items: { type: 'string' } },
+          userLevel: { type: 'number', minimum: 1, maximum: 10 },
+          tone: { type: 'string', enum: ['encouraging', 'neutral', 'strict'] },
+          context: {
+            type: 'object',
+            properties: {
+              challengeId: { type: 'string' },
+              title: { type: 'string' },
+              keywords: { type: 'array', items: { type: 'string' } },
+              forbiddenPatterns: { type: 'array', items: { type: 'string' } },
+              category: { type: 'string' },
+              allowedTopics: { type: 'array', items: { type: 'string' } },
+              techStack: { type: 'array', items: { type: 'string' } },
+              learningObjectives: { type: 'array', items: { type: 'string' } },
+            },
+            additionalProperties: false,
+          },
+        },
+        required: ['challengeId', 'riskScore', 'reasons'],
+        additionalProperties: false,
+      },
       response: {
         200: {
           type: 'object',
@@ -211,31 +494,59 @@ export async function aiRoutes(
   });
 
   fastify.get('/governance/metrics', {
-    preHandler: [fastify.authenticate],
+    preHandler: [fastify.authenticate, fastify.authorize(['ARCHITECT', 'TECH_LEAD'])],
     schema: {
-      querystring: ValidationMetricsQuerySchema,
+      querystring: {
+        type: 'object',
+        properties: {
+          challengeId: { type: 'string' },
+          startDate: { type: 'string', format: 'date-time' },
+          endDate: { type: 'string', format: 'date-time' },
+        },
+        additionalProperties: false,
+      },
       response: {
         200: {
           type: 'object',
           properties: {
-            totalValidations: { type: 'number' },
-            blockedCount: { type: 'number' },
-            throttledCount: { type: 'number' },
-            allowedCount: { type: 'number' },
-            avgRiskScore: { type: 'number' },
-            avgConfidence: { type: 'number' },
-            avgProcessingTime: { type: 'number' },
-            topBlockedPatterns: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  pattern: { type: 'string' },
-                  count: { type: 'number' },
+            metrics: {
+              type: 'object',
+              properties: {
+                validationStats: {
+                  type: 'object',
+                  properties: {
+                    totalValidations: { type: 'number' },
+                    blockedCount: { type: 'number' },
+                    throttledCount: { type: 'number' },
+                    allowedCount: { type: 'number' },
+                    avgRiskScore: { type: 'number' },
+                    avgConfidence: { type: 'number' },
+                  },
+                },
+                blockingStats: {
+                  type: 'object',
+                  properties: {
+                    topBlockedPatterns: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          pattern: { type: 'string' },
+                          count: { type: 'number' },
+                        },
+                      },
+                    },
+                    riskDistribution: { type: 'object' },
+                  },
+                },
+                performanceMetrics: {
+                  type: 'object',
+                  properties: {
+                    avgProcessingTime: { type: 'number' },
+                  },
                 },
               },
             },
-            riskDistribution: { type: 'object' },
           },
         },
         501: {
@@ -251,26 +562,34 @@ export async function aiRoutes(
   });
 
   fastify.get('/governance/stats', {
-    preHandler: [fastify.authenticate],
+    preHandler: [fastify.authenticate, fastify.authorize(['ARCHITECT', 'TECH_LEAD'])],
     schema: {
       response: {
         200: {
           type: 'object',
           properties: {
-            cachedContexts: { type: 'number' },
-            avgKeywords: { type: 'number' },
-            avgForbiddenPatterns: { type: 'number' },
-            mostCommonCategories: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  category: { type: 'string' },
-                  count: { type: 'number' },
+            stats: {
+              type: 'object',
+              properties: {
+                totalValidations: { type: 'number' },
+                blockedAttempts: { type: 'number' },
+                successRate: { type: 'number' },
+                cachedContexts: { type: 'number' },
+                avgKeywords: { type: 'number' },
+                avgForbiddenPatterns: { type: 'number' },
+                mostCommonCategories: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      category: { type: 'string' },
+                      count: { type: 'number' },
+                    },
+                  },
                 },
+                cacheHitRate: { type: 'number' },
               },
             },
-            cacheHitRate: { type: 'number' },
           },
         },
         501: {
@@ -285,8 +604,80 @@ export async function aiRoutes(
     handler: governanceController.getStats as RouteHandlerMethod,
   });
 
+  // Endpoints administrativos para gestão de cache
+  fastify.post('/governance/refresh-challenge-cache', {
+    preHandler: [fastify.authenticate, fastify.authorize(['ARCHITECT', 'TECH_LEAD'])],
+    schema: {
+      body: {
+        type: 'object',
+        properties: {
+          challengeIds: {
+            type: 'array',
+            items: { type: 'string' },
+            minItems: 1,
+          },
+        },
+        required: ['challengeIds'],
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            refreshedChallenges: { type: 'array' },
+          },
+        },
+      },
+    },
+    handler: governanceController.refreshCache as RouteHandlerMethod,
+  });
+
+  fastify.post('/governance/prewarm-cache', {
+    preHandler: [fastify.authenticate, fastify.authorize(['ARCHITECT', 'TECH_LEAD'])],
+    schema: {
+      body: {
+        type: 'object',
+        properties: {
+          challengeIds: {
+            type: 'array',
+            items: { type: 'string' },
+            minItems: 1,
+          },
+        },
+        required: ['challengeIds'],
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            prewarmedChallenges: { type: 'array' },
+          },
+        },
+      },
+    },
+    handler: governanceController.prewarmCache as RouteHandlerMethod,
+  });
+
+  fastify.post('/governance/clear-validation-cache', {
+    preHandler: [fastify.authenticate, fastify.authorize(['ARCHITECT', 'TECH_LEAD'])],
+    schema: {
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+          },
+        },
+      },
+    },
+    handler: governanceController.clearCache as RouteHandlerMethod,
+  });
+
+  // Endpoints de compatibilidade para gestão de cache
   fastify.post('/governance/cache/refresh', {
-    preHandler: [fastify.authenticate],
+    preHandler: [fastify.authenticate, fastify.authorize(['ARCHITECT', 'TECH_LEAD'])],
     schema: {
       body: {
         type: 'object',
@@ -316,7 +707,7 @@ export async function aiRoutes(
   });
 
   fastify.post('/governance/cache/prewarm', {
-    preHandler: [fastify.authenticate],
+    preHandler: [fastify.authenticate, fastify.authorize(['ARCHITECT', 'TECH_LEAD'])],
     schema: {
       body: {
         type: 'object',
@@ -352,7 +743,7 @@ export async function aiRoutes(
   });
 
   fastify.delete('/governance/cache', {
-    preHandler: [fastify.authenticate],
+    preHandler: [fastify.authenticate, fastify.authorize(['ARCHITECT', 'TECH_LEAD'])],
     schema: {
       querystring: {
         type: 'object',
@@ -380,6 +771,46 @@ export async function aiRoutes(
     handler: governanceController.clearCache as RouteHandlerMethod,
   });
 
+  // Endpoint para análise de prompt
+  fastify.post('/governance/analyze-prompt', {
+    preHandler: [fastify.authenticate],
+    schema: {
+      body: {
+        type: 'object',
+        properties: {
+          prompt: { type: 'string', minLength: 1, maxLength: 10000 },
+          challengeId: { type: 'string' },
+        },
+        required: ['prompt'],
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            analysis: {
+              type: 'object',
+              properties: {
+                intent: { type: 'string' },
+                complexity: { type: 'string' },
+                educationalValue: { type: 'number' },
+                riskFactors: { type: 'array' },
+              },
+            },
+          },
+        },
+        501: {
+          type: 'object',
+          properties: {
+            error: { type: 'string' },
+            message: { type: 'string' },
+          },
+        },
+      },
+    },
+    handler: governanceController.analyzePrompt as RouteHandlerMethod,
+  });
+
+  // Endpoint alternativo para análise de prompt
   fastify.post('/governance/analyze', {
     preHandler: [fastify.authenticate],
     schema: {

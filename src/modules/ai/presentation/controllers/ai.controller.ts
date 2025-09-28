@@ -47,6 +47,7 @@ export class AIController {
     try {
       const result = await this.chatWithAIUseCase.execute(user.id, request.body);
 
+
       const executionTime = Date.now() - startTime;
 
       logger.info({
@@ -59,7 +60,7 @@ export class AIController {
         executionTime,
       }, 'AI chat completed successfully');
 
-      return reply.status(200).send({
+      const responseData = {
         success: true,
         data: {
           id: result.completion.id,
@@ -76,12 +77,15 @@ export class AIController {
           validated: true,
           challengeContext: !!request.body.challengeId,
         },
-      });
+      };
+
+
+      return reply.status(200).send(responseData);
     } catch (error) {
       const executionTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-      // Tratar diferentes tipos de erro com códigos HTTP específicos
+      // Tratamento de erros com códigos HTTP adequados
       if (errorMessage.includes('Rate limit')) {
         logger.warn({
           requestId,
@@ -95,6 +99,40 @@ export class AIController {
         return reply.status(429).send({
           error: 'Too Many Requests',
           message: errorMessage,
+        });
+      }
+
+      // Erros de API/provedor AI recebem status 500
+      if (errorMessage.includes('API Error') || errorMessage.includes('error-model') || errorMessage.includes('not supported by')) {
+        logger.warn({
+          requestId,
+          userId: user.id,
+          provider: request.body.provider,
+          model: request.body.model,
+          error: errorMessage,
+          reason: 'provider_api_error',
+          executionTime,
+        }, 'AI chat failed - provider API error');
+
+        return reply.status(500).send({
+          error: 'Internal server error',
+          message: 'Provider not available',
+        });
+      }
+
+      // Provedor inválido ou não disponível recebe status 400
+      if (errorMessage.includes('Provider') && errorMessage.includes('not available') || errorMessage.includes('Cannot create custom instance')) {
+        logger.warn({
+          requestId,
+          userId: user.id,
+          provider: request.body.provider,
+          error: errorMessage,
+          reason: 'invalid_provider',
+          executionTime,
+        }, 'AI chat failed - invalid provider');
+
+        return reply.status(400).send({
+          error: 'Invalid provider',
         });
       }
 

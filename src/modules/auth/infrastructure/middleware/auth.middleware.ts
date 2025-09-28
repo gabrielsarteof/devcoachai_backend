@@ -26,7 +26,7 @@ export class AuthMiddleware {
   ): Promise<void> => {
     try {
       const authHeader = request.headers.authorization;
-      
+
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return reply.status(401).send({
           error: 'Unauthorized',
@@ -104,7 +104,7 @@ export class AuthMiddleware {
         }
       }
     } catch {
-      // Ignore all errors in optional auth
+      // Ignora erros na autenticação opcional
     }
   };
 }

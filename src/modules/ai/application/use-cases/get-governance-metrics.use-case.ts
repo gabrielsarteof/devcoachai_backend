@@ -49,7 +49,26 @@ export class GetGovernanceMetricsUseCase {
         executionTime,
       }, 'Governance metrics retrieved successfully');
 
-      return metrics;
+      // Estrutura de resposta padronizada para métricas de governança
+      return {
+        metrics: {
+          validationStats: {
+            totalValidations: metrics.totalValidations,
+            blockedCount: metrics.blockedCount,
+            throttledCount: metrics.throttledCount,
+            allowedCount: metrics.allowedCount,
+            avgRiskScore: metrics.avgRiskScore,
+            avgConfidence: metrics.avgConfidence
+          },
+          blockingStats: {
+            topBlockedPatterns: metrics.topBlockedPatterns,
+            riskDistribution: metrics.riskDistribution
+          },
+          performanceMetrics: {
+            avgProcessingTime: metrics.avgProcessingTime
+          }
+        }
+      };
     } catch (error) {
       const executionTime = Date.now() - startTime;
 

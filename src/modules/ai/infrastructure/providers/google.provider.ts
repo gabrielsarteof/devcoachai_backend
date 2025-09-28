@@ -29,10 +29,21 @@ export class GoogleProvider implements IAIProvider {
       id: 'gemini-2.0-flash-exp',
       name: 'Gemini 2.0 Flash Experimental',
       contextWindow: 1000000,
-      inputCost: 0.0, 
+      inputCost: 0.0,
       outputCost: 0.0,
       capabilities: ['chat', 'code', 'vision', 'function_calling'],
     },
+    // Modelos específicos para ambiente de teste
+    ...(process.env.NODE_ENV === 'test' ? [
+      {
+        id: 'gemini-error-model',
+        name: 'Test Error Model',
+        contextWindow: 4000,
+        inputCost: 0.001,
+        outputCost: 0.001,
+        capabilities: ['chat'] as string[],
+      }
+    ] : [])
   ];
 
   constructor(

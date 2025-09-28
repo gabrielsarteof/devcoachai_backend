@@ -43,9 +43,9 @@ export class GetAIUsageUseCase {
         requestId,
         userId,
         days,
-        tokensUsed: usage.totalTokens,
-        requestsCount: usage.totalRequests,
-        totalCost: usage.totalCost,
+        tokensUsed: usage.total.tokens,
+        requestsCount: usage.total.requests,
+        totalCost: usage.total.cost,
         quotaRemaining: quota.daily.remaining,
         executionTime,
       }, 'AI usage retrieved successfully');
@@ -58,16 +58,16 @@ export class GetAIUsageUseCase {
             days,
           },
           tokens: {
-            used: usage.totalTokens,
-            breakdown: usage.tokensByProvider,
+            used: usage.total.tokens,
+            breakdown: usage.byProvider,
           },
           requests: {
-            total: usage.totalRequests,
-            breakdown: usage.requestsByProvider,
+            total: usage.total.requests,
+            breakdown: usage.byProvider,
           },
           cost: {
-            total: usage.totalCost,
-            breakdown: usage.costByProvider,
+            total: usage.total.cost,
+            breakdown: usage.byProvider,
           },
         },
         quota: {

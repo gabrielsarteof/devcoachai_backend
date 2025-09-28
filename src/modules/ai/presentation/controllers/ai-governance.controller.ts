@@ -73,6 +73,7 @@ export class AIGovernanceController {
         riskScore: result.riskScore,
         classification: result.classification,
         confidence: result.confidence,
+        relevanceScore: result.relevanceScore,
         executionTime,
       }, 'Prompt validation completed');
 
@@ -80,6 +81,23 @@ export class AIGovernanceController {
     } catch (error) {
       const executionTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+      // Tratamento específico para desafios não encontrados
+      if (errorMessage.includes('Challenge not found') || errorMessage.includes('not found')) {
+        logger.warn({
+          requestId,
+          userId: user.id,
+          challengeId: request.body.challengeId,
+          error: errorMessage,
+          reason: 'challenge_not_found',
+          executionTime,
+        }, 'Challenge not found for validation');
+
+        return reply.status(404).send({
+          error: 'Not Found',
+          message: 'Challenge not found',
+        });
+      }
 
       if (errorMessage.includes('not available') || errorMessage.includes('Not Implemented')) {
         logger.warn({
@@ -112,6 +130,7 @@ export class AIGovernanceController {
     }
   };
 
+
   analyzeTemporalBehavior = async (
     request: FastifyRequest<{ Body: AnalyzeTemporalBehaviorDTO }>,
     reply: FastifyReply
@@ -131,26 +150,53 @@ export class AIGovernanceController {
       requestId,
       operation: 'analyze_temporal_behavior',
       userId: user.id,
-      attemptId: request.body.attemptId,
-      lookbackMinutes: request.body.lookbackMinutes,
+      targetUserId: request.body.userId,
+      timeWindow: request.body.timeWindow,
+      analysisType: request.body.analysisType,
       ipAddress: request.ip,
     }, 'Temporal behavior analysis request received');
 
     try {
-      const result = await this.analyzeTemporalBehaviorUseCase.execute(request.body);
+      // Conversão de parâmetros da requisição para o caso de uso
+      const timeWindowToMinutes = (timeWindow: string): number => {
+        if (timeWindow === '1h') return 60;
+        if (timeWindow === '5m') return 5;
+        if (timeWindow === '10m') return 10;
+        if (timeWindow === '30m') return 30;
+        return 30;
+      };
+
+      const useCaseParams = {
+        userId: request.body.userId,
+        attemptId: crypto.randomUUID(),
+        lookbackMinutes: timeWindowToMinutes(request.body.timeWindow || '30m')
+      };
+
+      const result = await this.analyzeTemporalBehaviorUseCase.execute(useCaseParams);
 
       const executionTime = Date.now() - startTime;
 
       logger.info({
         requestId,
         userId: user.id,
-        attemptId: request.body.attemptId,
-        overallRisk: result.overallRisk,
-        isGamingAttempt: result.isGamingAttempt,
+        targetUserId: request.body.userId,
+        analysisType: request.body.analysisType,
         executionTime,
       }, 'Temporal behavior analysis completed');
 
-      return reply.status(200).send(result);
+      // Mapeamento do resultado para o formato da API
+      const response = {
+        analysis: {
+          patterns: (result.temporalPatterns || []).map((p: any) =>
+            p.pattern === 'rapid_fire' ? 'rapid_attempts' : p.pattern
+          ),
+          riskScore: result.overallRisk || 0,
+          recommendations: result.recommendations || [],
+          timeWindow: request.body.timeWindow || '1h'
+        }
+      };
+
+      return reply.status(200).send(response);
     } catch (error) {
       const executionTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -224,7 +270,20 @@ export class AIGovernanceController {
         executionTime,
       }, 'Educational feedback generated successfully');
 
-      return reply.status(200).send(result);
+      // Transformação da resposta para o formato esperado
+      const response = {
+        feedback: {
+          message: result.context.whatHappened + (result.context.whyBlocked ? ` ${result.context.whyBlocked}` : ''),
+          suggestions: result.guidance.betterApproaches,
+          educationalContent: {
+            concepts: result.guidance.conceptsToReview,
+            nextSteps: result.learningPath.nextSteps,
+            resources: result.learningPath.suggestedResources
+          }
+        }
+      };
+
+      return reply.status(200).send(response);
     } catch (error) {
       const executionTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -649,7 +708,19 @@ export class AIGovernanceController {
         executionTime,
       }, 'Prompt analysis completed successfully');
 
-      return reply.status(200).send(result);
+      return reply.status(200).send({
+        analysis: {
+          intent: result.intent,
+          complexity: result.complexity,
+          educationalValue: result.educationalValue || 0,
+          riskFactors: result.riskFactors || [],
+          language: result.language,
+          hasCodeRequest: result.hasCodeRequest,
+          socialEngineeringScore: result.socialEngineeringScore,
+          estimatedTokens: result.estimatedTokens,
+          topics: result.topics
+        }
+      });
     } catch (error) {
       const executionTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';

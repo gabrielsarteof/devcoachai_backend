@@ -1,13 +1,22 @@
 // tests/modules/ai/challenge-context.service.test.ts
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+// Mock do logger para testes
+vi.mock('@/shared/infrastructure/monitoring/logger', () => ({
+  logger: {
+    child: vi.fn().mockReturnThis(),
+    info: vi.fn(),
+    debug: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
+}));
 import { ChallengeContextService } from '@/modules/ai/infrastructure/services/challenge-context.service';
-import {
-  IChallengeContextService,
-} from '@/modules/ai/domain/services/prompt-validator.service.interface';
+import { IChallengeContextService } from '@/modules/ai/domain/services/challenge-context.service.interface';
 import { ChallengeContext } from '@/modules/ai/domain/types/governance.types';
 
-// Mock dependencies
+// Mocks das dependências
 const mockPrisma = {
   challenge: {
     findUnique: vi.fn(),
@@ -21,20 +30,9 @@ const mockRedis = {
   keys: vi.fn(),
 };
 
-const mockLogger = {
-  child: vi.fn().mockReturnThis(),
-  info: vi.fn(),
-  debug: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-};
 
-// Mock do logger global
-vi.mock('@/shared/infrastructure/monitoring/logger', () => ({
-  logger: mockLogger,
-}));
 
-// Mock do ChallengeEntity
+// Mock da entidade Challenge
 vi.mock('@/modules/challenges/domain/entities/challenge.entity', () => ({
   ChallengeEntity: {
     fromPrisma: vi.fn().mockReturnValue({
@@ -170,15 +168,15 @@ describe('ChallengeContextService', () => {
 
       const result = await service.getChallengeContext(challengeId);
 
-      // Tópicos base
+      // Tópicos base do sistema
       expect(result.allowedTopics).toContain('implementação');
       expect(result.allowedTopics).toContain('algoritmo');
       
-      // Tópicos específicos do backend
+      // Tópicos específicos de backend
       expect(result.allowedTopics).toContain('design de api');
       expect(result.allowedTopics).toContain('validação');
       
-      // Tópicos de dificuldade
+      // Tópicos por dificuldade
       expect(result.allowedTopics).toContain('avançado');
       expect(result.allowedTopics).toContain('complexo');
     });
@@ -200,15 +198,15 @@ describe('ChallengeContextService', () => {
 
       const result = await service.getChallengeContext(challengeId);
 
-      // Padrões base de segurança
+      // Padrões de segurança básicos
       expect(result.forbiddenPatterns).toContain('eval\\s*\\(');
       expect(result.forbiddenPatterns).toContain('__proto__');
       
-      // Padrões específicos do backend
+      // Padrões específicos de backend
       expect(result.forbiddenPatterns).toContain('DROP\\s+TABLE');
       expect(result.forbiddenPatterns).toContain('password.*=.*["\']');
       
-      // Padrões das armadilhas
+      // Padrões das armadilhas configuradas
       expect(result.forbiddenPatterns).toContain('password.*=.*["\']');
     });
 
@@ -240,7 +238,7 @@ describe('ChallengeContextService', () => {
 
       expect(result.category).toBe('FRONTEND');
       expect(result.allowedTopics).toContain('componente');
-      expect(result.allowedTopics).toContain('responsivo');
+      expect(result.allowedTopics).toContain('design responsivo');
       expect(result.allowedTopics).toContain('básico');
       expect(result.keywords).toContain('react');
       expect(result.keywords).toContain('responsivo');

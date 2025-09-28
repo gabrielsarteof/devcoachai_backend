@@ -23,21 +23,26 @@ export class PromptValidatorService implements IPromptValidatorService {
 
   // Padrões de solicitação direta de solução em português
   private readonly solutionPatterns = [
+    
     /solução\s+(completa|inteira|total)/i,
     /resolve\s+(esse|este|o)\s+(desafio|problema|exercício)/i,
-    /me\s+(dá|da|dê)\s+(a\s+)?(resposta|solução|código\s+completo)/i,
+    /me\s+(dá|da|dê)\s+(a\s+)?(resposta|solução|código\s+completo|implementação)/i,
     /escreve?\s+(todo|tudo|o\s+código\s+completo)/i,
     /implementação\s+(completa|total|inteira)/i,
     /faz\s+(tudo\s+)?pra\s+mim/i,
     /termina\s+(o\s+)?(desafio|exercício)/i,
     /resposta\s+completa/i,
     /código\s+(pronto|completo|final)/i,
+    /qual\s+(é|são)\s+(o|a)\s+(código|solução|implementação|resposta)/i,
+    /fornece\s+(o\s+)?(código|solução|implementação)/i,
+    /me\s+mostra\s+(a\s+)?(resposta|solução|implementação)/i,
     /me\s+ajuda\s+a\s+fazer\s+tudo/i,
     /quero\s+a\s+solução\s+pronta/i,
   ];
 
-  // Padrões de engenharia social em português
+  // Padrões de segurança multilíngue (português + inglês para ataques)
   private readonly socialEngineeringPatterns = [
+    // Português - ataques de engenharia social
     /ignora\s+(as\s+)?(instruções|regras)\s+(anteriores|acima)/i,
     /finge\s+(que|ser)/i,
     /age\s+como\s+se/i,
@@ -49,6 +54,14 @@ export class PromptValidatorService implements IPromptValidatorService {
     /sem\s+(restrições|limitações)/i,
     /você\s+deve\s+ignorar/i,
     /não\s+leve\s+em\s+conta/i,
+
+    // Inglês - bloqueio de ataques comuns (segurança)
+    /ignore\s+(all\s+)?(previous\s+)?(instructions|rules)/i,
+    /forget\s+(everything|all|the\s+context)/i,
+    /act\s+as\s+(if|unrestricted|developer)/i,
+    /pretend\s+(that|to\s+be)/i,
+    /(override|bypass)\s+(system|rules|restrictions)/i,
+    /(give|show)\s+me\s+(the\s+)?(complete|full|entire)\s+(solution|answer|code)/i,
   ];
 
   // Padrões off-topic em português
@@ -129,6 +142,7 @@ export class PromptValidatorService implements IPromptValidatorService {
 
       return result;
     } catch (error) {
+      console.log('PROMPT VALIDATION ERROR:', error);
       this.serviceLogger.error({
         validationId,
         challengeId: challengeContext.challengeId,
@@ -136,18 +150,21 @@ export class PromptValidatorService implements IPromptValidatorService {
         stack: error instanceof Error ? error.stack : undefined,
       }, 'Prompt validation failed');
 
-      return {
+      const errorResult: PromptValidationResult = {
         isValid: true,
         riskScore: 50,
         classification: 'WARNING',
         reasons: ['Validation error - proceeding with caution'],
         suggestedAction: 'THROTTLE',
-        confidence: 30,
+        confidence: 0.3, // Normalizar para 0-1
+        relevanceScore: 0.5, // Default para error case
         metadata: {
           error: true,
           timeTaken: Date.now() - startTime,
         },
       };
+
+      return errorResult;
     }
   }
 
@@ -372,7 +389,26 @@ export class PromptValidatorService implements IPromptValidatorService {
       .filter(r => !r.passed && r.reason)
       .map(r => r.reason!);
 
-    const confidence = this.calculateConfidence(results);
+    // Classificação específica para tentativas de obtenção de soluções diretas
+    const directSolutionResult = results.find(r => r.stepName === 'direct_solution_check');
+    if (directSolutionResult && !directSolutionResult.passed) {
+      reasons.push('solution_seeking');
+    }
+
+    // Detecção de padrões de solicitação de soluções em tentativas de engenharia social
+    const socialEngineeringResult = results.find(r => r.stepName === 'social_engineering_check');
+    if (socialEngineeringResult && !socialEngineeringResult.passed) {
+      // Identifica padrões de solicitação direta em tentativas de manipulação
+      const detectedPatterns = socialEngineeringResult.metadata?.patterns as string[] || [];
+      const hasSolutionPatterns = detectedPatterns.some(pattern =>
+        pattern.includes('solução') || pattern.includes('completa') || pattern.includes('me\\s+dá')
+      );
+      if (hasSolutionPatterns) {
+        reasons.push('solution_seeking');
+      }
+    }
+
+    const confidence = this.calculateConfidence(results, clampedRiskScore);
 
     const detectedPatterns: string[] = [];
     for (const result of results) {
@@ -381,13 +417,18 @@ export class PromptValidatorService implements IPromptValidatorService {
       }
     }
 
-    return {
+    // Expõe o score de relevância contextual para análise de qualidade
+    const contextResult = results.find(r => r.stepName === 'context_relevance_check');
+    const relevanceScore = contextResult?.metadata?.relevanceScore ?? 1.0;
+
+    const result: PromptValidationResult = {
       isValid: classification === 'SAFE',
       riskScore: clampedRiskScore,
       classification,
       reasons,
       suggestedAction,
       confidence,
+      relevanceScore,
       metadata: {
         detectedPatterns,
         stepResults: results.map(r => ({
@@ -397,26 +438,37 @@ export class PromptValidatorService implements IPromptValidatorService {
         })),
       },
     };
+
+    return result;
   }
 
-  private calculateConfidence(results: ValidationStepResult[]): number {
+  private calculateConfidence(results: ValidationStepResult[], riskScore: number): number {
     let confidence = 85;
-    
+
     const checksPerformed = results.length;
     if (checksPerformed < 4) confidence -= 20;
     else if (checksPerformed < 6) confidence -= 10;
-    
+
     const failedChecks = results.filter(r => !r.passed).length;
     const consistencyRatio = failedChecks / checksPerformed;
-    
-    if (consistencyRatio > 0.7) confidence += 10; 
-    else if (consistencyRatio < 0.3 && failedChecks > 0) confidence -= 15; 
-    
-    return Math.max(0, Math.min(100, confidence));
+
+    // Cálculo de confiança inversamente proporcional ao risco detectado
+    // Alto risco resulta em baixa confiança na classificação
+    if (riskScore >= 80) {
+      confidence = Math.max(5, 45 - riskScore * 0.5);
+    } else if (riskScore >= 50) {
+      confidence = Math.max(15, 65 - riskScore * 0.3);
+    }
+
+    if (consistencyRatio > 0.7) confidence += 10;
+    else if (consistencyRatio < 0.3 && failedChecks > 0) confidence -= 15;
+
+    // Normalização para escala 0-1
+    return Math.max(0, Math.min(100, confidence)) / 100;
   }
 
   private extractKeywords(text: string): Set<string> {
-    // Stop words em português
+    // Lista de stop words para filtragem de palavras irrelevantes
     const stopWords = new Set([
       'o', 'a', 'os', 'as', 'um', 'uma', 'uns', 'umas', 'de', 'do', 'da', 'dos', 'das',
       'para', 'por', 'com', 'sem', 'sob', 'sobre', 'em', 'no', 'na', 'nos', 'nas',
@@ -572,15 +624,31 @@ export class PromptValidatorService implements IPromptValidatorService {
   async analyzePrompt(prompt: string): Promise<PromptAnalysis> {
     const words = prompt.split(/\s+/).length;
     const hasCode = /\`\`\`|function|class|const|let|var|if|for|while/.test(prompt);
-    
+
     let intent: PromptAnalysis['intent'] = 'unclear';
+
+    // Priorização de verificações de segurança críticas
     if (this.solutionPatterns.some(p => p.test(prompt))) {
       intent = 'solution_seeking';
     } else if (this.socialEngineeringPatterns.some(p => p.test(prompt))) {
       intent = 'gaming';
     } else if (this.offTopicPatterns.some(p => p.test(prompt))) {
       intent = 'off_topic';
-    } else if (hasCode || /ajuda|explica|entender|aprender|como/i.test(prompt)) {
+    }
+    // Detecção multilíngue de intenções educacionais
+    else if (/(?:como\s+(?:posso\s+)?(?:aprender|entender|funciona|implementar|fazer)|ajuda|explica|explique|entender|aprender|ensina|tutorial|passo.*passo|conceito|learn|help\s+me\s+(?:learn|understand)|explain|teach|tutorial|step.*step|concept|how\s+(?:does|do|can\s+i)|understand|show\s+me)/i.test(prompt)) {
+      intent = 'educational';
+    }
+    // Identificação de consultas sobre definições e conceitos básicos
+    else if (/(?:what\s+is|what's|what\s+are|define|definition|meaning|o\s+que\s+é|o\s+que\s+são|qual\s+é|quais\s+são|defina|definição|significa)/i.test(prompt)) {
+      intent = 'learning';
+    }
+    // Reconhecimento de solicitações de orientação e melhorias
+    else if (/(?:how\s+(?:can\s+i\s+)?improve|guidance|suggestion|best\s+practice|recommendation|melhorar|orientação|sugestão|dica|recomendação|boas?\s+práticas?)/i.test(prompt)) {
+      intent = 'guidance';
+    }
+    // Fallback: presença de código indica propósito educacional
+    else if (hasCode) {
       intent = 'educational';
     }
 
@@ -592,14 +660,25 @@ export class PromptValidatorService implements IPromptValidatorService {
     }
     socialEngineeringScore = Math.min(100, socialEngineeringScore);
 
+    // Cálculo do valor educacional baseado no conteúdo analisado
+    let educationalValue = 0;
+    if (intent === 'learning') educationalValue = 0.8;
+    else if (intent === 'educational') educationalValue = 0.75;
+    else if (intent === 'guidance') educationalValue = 0.6;
+    else if (intent === 'solution_seeking') educationalValue = 0.2;
+    else if (intent === 'gaming') educationalValue = 0.1;
+    else educationalValue = 0.3; // unclear
+
     return {
       intent,
       topics: Array.from(this.extractKeywords(prompt)).slice(0, 10),
       complexity: words < 20 ? 'simple' : words < 50 ? 'moderate' : 'complex',
       estimatedTokens: Math.ceil(prompt.length / 4),
-      language: 'pt', // português
+      language: 'pt',
       hasCodeRequest: hasCode,
       socialEngineeringScore,
+      educationalValue,
+      riskFactors: socialEngineeringScore > 0 ? ['social_engineering'] : [],
     };
   }
 

@@ -38,7 +38,7 @@ export class PrewarmCacheUseCase {
         success: true,
         message: 'Cache prewarm initiated',
         processed: challengeIds.length,
-        challengeIds,
+        prewarmedChallenges: challengeIds,
         initiatedAt: new Date().toISOString(),
       };
     } catch (error) {

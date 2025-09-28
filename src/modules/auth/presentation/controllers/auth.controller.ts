@@ -33,7 +33,10 @@ export class AuthController {
       };
 
       const result = await this.registerUseCase.execute(validatedData, metadata);
-      return reply.status(201).send(result);
+      return reply.status(201).send({
+        success: true,
+        data: result
+      });
     } catch (error) {
       // Erros de validação Zod
       if (error instanceof ZodError) {
@@ -75,7 +78,10 @@ export class AuthController {
       };
 
       const result = await this.loginUseCase.execute(validatedData, metadata);
-      return reply.send(result);
+      return reply.send({
+        success: true,
+        data: result
+      });
     } catch (error) {
       // Erros de validação Zod
       if (error instanceof ZodError) {
@@ -146,8 +152,11 @@ export class AuthController {
         validatedData.refreshToken,
         metadata
       );
-      
-      return reply.send(result);
+
+      return reply.send({
+        success: true,
+        data: result
+      });
     } catch (error) {
       // Erros de validação Zod
       if (error instanceof ZodError) {
@@ -220,7 +229,10 @@ export class AuthController {
         });
       }
 
-      return reply.send(userProfile);
+      return reply.send({
+        success: true,
+        data: userProfile
+      });
     } catch (error) {
       return reply.status(500).send({
         error: 'Internal server error',

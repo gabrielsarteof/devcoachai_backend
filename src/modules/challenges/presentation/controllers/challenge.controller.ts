@@ -68,7 +68,10 @@ export class ChallengeController {
         challengeCreated: true
       }, 'Challenge created successfully');
 
-      return reply.status(201).send(challenge);
+      return reply.status(201).send({
+        success: true,
+        data: challenge
+      });
     } catch (error) {
       const executionTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -458,7 +461,10 @@ export class ChallengeController {
         challengeStarted: true
       }, result.resumed ? 'Challenge resumed successfully' : 'Challenge started successfully');
 
-      return reply.send(result);
+      return reply.status(201).send({
+        success: true,
+        data: result
+      });
     } catch (error) {
       const executionTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -552,7 +558,7 @@ export class ChallengeController {
         solutionSubmitted: true
       }, result.passed ? 'Solution submitted and passed!' : 'Solution submitted but did not pass');
 
-      // Log achievement event if passed
+      // Registra evento de conquista para desafios concluídos
       if (result.passed) {
         logger.info({
           userId: user.id,
@@ -679,7 +685,7 @@ export class ChallengeController {
         codeAnalyzed: true
       }, 'Code analysis completed successfully');
 
-      // Log security warnings if critical traps found
+      // Registra avisos de segurança para armadilhas críticas detectadas
       if (criticalTraps > 0) {
         logger.warn({
           userId: user.id,

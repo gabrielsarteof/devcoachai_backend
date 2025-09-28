@@ -53,10 +53,20 @@ export class LoginUseCase {
         throw new Error(messages.auth.invalidCredentials);
       }
 
-      await this.prisma.user.update({
-        where: { id: user.id },
-        data: { lastLoginAt: new Date() },
-      });
+      try {
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: { lastLoginAt: new Date() },
+        });
+      } catch (updateError) {
+        // Falha no update não impede o login
+        logger.warn({
+          userId: user.id,
+          email: data.email,
+          error: updateError instanceof Error ? updateError.message : 'Unknown update error',
+          executionTime: Date.now() - startTime
+        }, 'Failed to update lastLoginAt, but login will continue');
+      }
 
       const { accessToken, refreshToken } = await this.jwtService.generateTokenPair({
         sub: user.id,

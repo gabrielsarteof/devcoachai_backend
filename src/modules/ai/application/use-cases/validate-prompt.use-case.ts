@@ -63,9 +63,14 @@ export class ValidatePromptUseCase {
         userLevel = user ? this.calculateUserLevel(user) : 1;
       }
 
+      // Validação de existência do challenge
       const challengeContext = await this.challengeContextService.getChallengeContext(
         data.challengeId
       );
+
+      if (!challengeContext) {
+        throw new Error(`Challenge not found: ${data.challengeId}`);
+      }
 
       const config: ValidationConfig = {
         ...this.defaultConfig,
@@ -111,7 +116,7 @@ export class ValidatePromptUseCase {
       return result;
     } catch (error) {
       const processingTime = Date.now() - startTime;
-      
+
       this.logger.error({
         validationId,
         userId: data.userId,
@@ -120,20 +125,28 @@ export class ValidatePromptUseCase {
         stack: error instanceof Error ? error.stack : undefined,
         processingTime,
       }, 'Prompt validation failed');
-      
-      return {
+
+      // Propaga erros específicos para tratamento adequado no controller
+      if (error instanceof Error && error.message.includes('Challenge not found')) {
+        throw error;
+      }
+
+      const errorResult: PromptValidationResult = {
         isValid: true,
         riskScore: 50,
         classification: 'WARNING',
         reasons: ['Validation system error - proceeding with caution'],
         suggestedAction: 'THROTTLE',
-        confidence: 30,
+        confidence: 0.3,
+        relevanceScore: 0.5,
         metadata: {
           error: true,
           validationId,
           timeTaken: processingTime,
         },
       };
+
+      return errorResult;
     }
   }
 
@@ -302,7 +315,7 @@ export class ValidatePromptUseCase {
       }, 'Failed to update governance metrics');
     }
 
-    // Em produção, integrar com sistema de alertas 
+    // Integração com sistema de alertas em produção 
     if (process.env.SENTRY_DSN) {
     }
   }

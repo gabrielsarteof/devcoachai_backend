@@ -42,7 +42,7 @@ export class UsageTrackerService {
           provider: data.provider.toUpperCase() as any,
           model: data.model,
           messages: [],
-          responseLength: data.outputTokens * 4, 
+          responseLength: data.outputTokens * 4,
           codeLinesGenerated: 0,
           inputTokens: data.inputTokens,
           outputTokens: data.outputTokens,
@@ -149,29 +149,49 @@ export class UsageTrackerService {
     }
   }
 
-  async getUserUsage(userId: string, days: number = 30): Promise<{
+  async getUserUsage(userId: string, startDateOrDays: Date | number = 30, endDate?: Date): Promise<{
     total: { requests: number; tokens: number; cost: number };
     byProvider: Record<string, { requests: number; tokens: number; cost: number }>;
     daily: Array<{ date: string; requests: number; tokens: number; cost: number }>;
   }> {
     const startTime = Date.now();
-    
+
+    // Suporte para parâmetros flexíveis: dates ou número de dias
+    let actualStartDate: Date;
+    let actualEndDate: Date;
+    let days: number;
+
+    if (startDateOrDays instanceof Date && endDate) {
+      // Modo: intervalo de datas específico
+      actualStartDate = startDateOrDays;
+      actualEndDate = endDate;
+      days = Math.ceil((actualEndDate.getTime() - actualStartDate.getTime()) / 86400000);
+    } else {
+      // Modo: últimos N dias
+      days = typeof startDateOrDays === 'string' ? parseInt(startDateOrDays) : (startDateOrDays as number);
+      if (isNaN(days) || days <= 0) {
+        days = 30;
+      }
+      actualEndDate = new Date();
+      actualStartDate = new Date(actualEndDate.getTime() - days * 86400000);
+    }
+
     logger.info({
       operation: 'get_user_usage',
       userId,
-      days
+      days,
+      startDate: actualStartDate.toISOString(),
+      endDate: actualEndDate.toISOString()
     }, 'Getting user usage statistics');
 
     try {
-      const endDate = new Date();
-      const startDate = new Date(endDate.getTime() - days * 86400000);
 
       const interactions = await this.prisma.aIInteraction.findMany({
         where: {
           userId,
           createdAt: {
-            gte: startDate,
-            lte: endDate,
+            gte: actualStartDate,
+            lte: actualEndDate,
           },
         },
         select: {
@@ -225,7 +245,7 @@ export class UsageTrackerService {
         userId,
         days,
         interactionsFound: interactions.length,
-        dateRange: { startDate, endDate },
+        dateRange: { startDate: actualStartDate, endDate: actualEndDate },
         total: {
           requests: total.requests,
           tokens: total.tokens,
@@ -362,7 +382,7 @@ export class UsageTrackerService {
         provider,
         days,
         interactionsFound: interactions.length,
-        dateRange: { startDate, endDate },
+        dateRange: { startDate: actualStartDate, endDate: actualEndDate },
         total: {
           requests: total.requests,
           tokens: total.tokens,
@@ -505,7 +525,7 @@ export class UsageTrackerService {
         days,
         interactionsFound: interactions.length,
         uniqueUsers: userStats.size,
-        dateRange: { startDate, endDate },
+        dateRange: { startDate: actualStartDate, endDate: actualEndDate },
         total: {
           requests: total.requests,
           tokens: total.tokens,

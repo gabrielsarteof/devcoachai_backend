@@ -5,6 +5,7 @@ export interface PromptValidationResult {
   reasons: string[];
   suggestedAction: 'ALLOW' | 'THROTTLE' | 'BLOCK' | 'REVIEW';
   confidence: number; // 0-100
+  relevanceScore: number; // 0-1, relevância contextual
   metadata?: {
     relevanceScore?: number;
     contextOverlap?: number;
@@ -67,13 +68,15 @@ export interface ValidationStepResult {
 }
 
 export interface PromptAnalysis {
-  intent: 'educational' | 'solution_seeking' | 'gaming' | 'off_topic' | 'unclear';
+  intent: 'educational' | 'solution_seeking' | 'gaming' | 'off_topic' | 'unclear' | 'learning' | 'guidance';
   topics: string[];
   complexity: 'simple' | 'moderate' | 'complex';
   estimatedTokens: number;
   language: string;
   hasCodeRequest: boolean;
-  socialEngineeringScore: number; 
+  socialEngineeringScore: number;
+  educationalValue?: number;
+  riskFactors?: string[];
 }
 
 export interface SemanticAnalysisResult {

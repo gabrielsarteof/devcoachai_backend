@@ -9,10 +9,10 @@ export class RateLimitInfoService implements IRateLimitInfoService {
 
   async getUserLimits(userId: string): Promise<RateLimitInfo> {
     try {
-      const limits = await this.rateLimiter.getUserLimits(userId);
+      const quota = await this.rateLimiter.getRemainingQuota(userId);
       const now = new Date();
 
-      // Calculamos os tempos de reset baseados no horário atual
+      // Cálculo dos horários de reset para diferentes períodos
       const nextMinute = new Date(now);
       nextMinute.setSeconds(0, 0);
       nextMinute.setMinutes(nextMinute.getMinutes() + 1);
@@ -25,21 +25,28 @@ export class RateLimitInfoService implements IRateLimitInfoService {
       nextDay.setHours(0, 0, 0, 0);
       nextDay.setDate(nextDay.getDate() + 1);
 
+      // Limites padrão do sistema de rate limiting
+      const defaultLimits = {
+        requestsPerMinute: 20,
+        requestsPerHour: 100,
+        tokensPerDay: 10000
+      };
+
       return {
         requestsPerMinute: {
-          limit: limits.requestsPerMinute || 10,
-          used: limits.currentUsage?.requestsThisMinute || 0,
-          remaining: Math.max(0, (limits.requestsPerMinute || 10) - (limits.currentUsage?.requestsThisMinute || 0)),
+          limit: defaultLimits.requestsPerMinute,
+          used: Math.max(0, defaultLimits.requestsPerMinute - quota.requests.minute),
+          remaining: quota.requests.minute,
         },
         requestsPerHour: {
-          limit: limits.requestsPerHour || 100,
-          used: limits.currentUsage?.requestsThisHour || 0,
-          remaining: Math.max(0, (limits.requestsPerHour || 100) - (limits.currentUsage?.requestsThisHour || 0)),
+          limit: defaultLimits.requestsPerHour,
+          used: Math.max(0, defaultLimits.requestsPerHour - quota.requests.hour),
+          remaining: quota.requests.hour,
         },
         tokensPerDay: {
-          limit: limits.tokensPerDay || 10000,
-          used: limits.currentUsage?.tokensToday || 0,
-          remaining: Math.max(0, (limits.tokensPerDay || 10000) - (limits.currentUsage?.tokensToday || 0)),
+          limit: defaultLimits.tokensPerDay,
+          used: Math.max(0, defaultLimits.tokensPerDay - quota.tokens.daily),
+          remaining: quota.tokens.daily,
         },
         resetTimes: {
           minute: nextMinute,
@@ -58,11 +65,17 @@ export class RateLimitInfoService implements IRateLimitInfoService {
 
   async getCurrentUsage(userId: string): Promise<{ requests: number; tokens: number }> {
     try {
-      const limits = await this.rateLimiter.getUserLimits(userId);
+      const quota = await this.rateLimiter.getRemainingQuota(userId);
+
+      // Limites de referência para cálculo de uso atual
+      const defaultLimits = {
+        requestsPerHour: 100,
+        tokensPerDay: 10000
+      };
 
       return {
-        requests: limits.currentUsage?.requestsThisHour || 0,
-        tokens: limits.currentUsage?.tokensToday || 0,
+        requests: Math.max(0, defaultLimits.requestsPerHour - quota.requests.hour),
+        tokens: Math.max(0, defaultLimits.tokensPerDay - quota.tokens.daily),
       };
     } catch (error) {
       logger.error({

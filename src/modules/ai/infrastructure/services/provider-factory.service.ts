@@ -19,7 +19,11 @@ export class ProviderFactoryService implements IAIProviderFactory {
       operation: 'register_ai_providers',
       hasOpenAI: !!process.env.OPENAI_API_KEY,
       hasAnthropic: !!process.env.ANTHROPIC_API_KEY,
-      hasGoogle: !!process.env.GOOGLE_API_KEY
+      hasGoogle: !!process.env.GOOGLE_API_KEY,
+      nodeEnv: process.env.NODE_ENV,
+      openaiKey: process.env.OPENAI_API_KEY ? 'SET' : 'NOT_SET',
+      anthropicKey: process.env.ANTHROPIC_API_KEY ? 'SET' : 'NOT_SET',
+      googleKey: process.env.GOOGLE_API_KEY ? 'SET' : 'NOT_SET'
     }, 'Registering AI providers');
 
     try {

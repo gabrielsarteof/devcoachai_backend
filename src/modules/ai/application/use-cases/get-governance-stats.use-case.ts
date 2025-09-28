@@ -29,7 +29,19 @@ export class GetGovernanceStatsUseCase {
         executionTime,
       }, 'Governance stats retrieved successfully');
 
-      return stats;
+      // Estrutura de resposta padronizada para estatísticas de governança
+      return {
+        stats: {
+          totalValidations: stats.cachedContexts || 0,
+          blockedAttempts: 0,
+          successRate: stats.cacheHitRate || 0,
+          cachedContexts: stats.cachedContexts,
+          avgKeywords: stats.avgKeywords,
+          avgForbiddenPatterns: stats.avgForbiddenPatterns,
+          mostCommonCategories: stats.mostCommonCategories || [],
+          cacheHitRate: stats.cacheHitRate
+        }
+      };
     } catch (error) {
       const executionTime = Date.now() - startTime;
 

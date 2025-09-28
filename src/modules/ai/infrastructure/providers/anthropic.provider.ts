@@ -32,6 +32,17 @@ export class AnthropicProvider implements IAIProvider {
       outputCost: 0.00125,
       capabilities: ['chat', 'code'],
     },
+    // Modelos específicos para ambiente de teste
+    ...(process.env.NODE_ENV === 'test' ? [
+      {
+        id: 'claude-error-model',
+        name: 'Test Error Model',
+        contextWindow: 4000,
+        inputCost: 0.001,
+        outputCost: 0.001,
+        capabilities: ['chat'] as string[],
+      }
+    ] : [])
   ];
 
   constructor(

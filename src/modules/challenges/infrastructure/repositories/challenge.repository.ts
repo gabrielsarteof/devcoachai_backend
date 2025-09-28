@@ -472,6 +472,15 @@ export class ChallengeRepository implements IChallengeRepository {
     }, 'Creating challenge attempt');
 
     try {
+      // Validação de existência do usuário
+      const user = await this.prisma.user.findUnique({
+        where: { id: data.userId }
+      });
+
+      if (!user) {
+        throw new Error(`User not found: ${data.userId}`);
+      }
+
       const previousAttempts = await this.getUserAttempts(data.userId, data.challengeId);
       const attemptNumber = previousAttempts.length + 1;
 

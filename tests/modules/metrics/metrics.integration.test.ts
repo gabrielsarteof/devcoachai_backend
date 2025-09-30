@@ -90,10 +90,11 @@ describe('Metrics Module Integration Tests', () => {
 
     expect(techLeadResponse.statusCode).toBe(201);
     const techLeadBody = JSON.parse(techLeadResponse.body);
-    techLeadUser = techLeadBody.user;
+    const techLeadData = techLeadBody.data || techLeadBody;
+    techLeadUser = techLeadData.user;
     techLeadTokens = {
-      accessToken: techLeadBody.accessToken,
-      refreshToken: techLeadBody.refreshToken,
+      accessToken: techLeadData.accessToken,
+      refreshToken: techLeadData.refreshToken,
     };
 
     await prisma.user.update({
@@ -112,9 +113,10 @@ describe('Metrics Module Integration Tests', () => {
 
     expect(techLeadLoginResponse.statusCode).toBe(200);
     const techLeadLoginBody = JSON.parse(techLeadLoginResponse.body);
+    const techLeadLoginData = techLeadLoginBody.data || techLeadLoginBody;
     techLeadTokens = {
-      accessToken: techLeadLoginBody.accessToken,
-      refreshToken: techLeadLoginBody.refreshToken,
+      accessToken: techLeadLoginData.accessToken,
+      refreshToken: techLeadLoginData.refreshToken,
     };
 
     const juniorResponseA = await app.inject({
@@ -130,10 +132,11 @@ describe('Metrics Module Integration Tests', () => {
 
     expect(juniorResponseA.statusCode).toBe(201);
     const juniorBodyA = JSON.parse(juniorResponseA.body);
-    juniorUserA = juniorBodyA.user;
+    const juniorDataA = juniorBodyA.data || juniorBodyA;
+    juniorUserA = juniorDataA.user;
     juniorTokensA = {
-      accessToken: juniorBodyA.accessToken,
-      refreshToken: juniorBodyA.refreshToken,
+      accessToken: juniorDataA.accessToken,
+      refreshToken: juniorDataA.refreshToken,
     };
 
     const juniorResponseB = await app.inject({
@@ -149,10 +152,11 @@ describe('Metrics Module Integration Tests', () => {
 
     expect(juniorResponseB.statusCode).toBe(201);
     const juniorBodyB = JSON.parse(juniorResponseB.body);
-    juniorUserB = juniorBodyB.user;
+    const juniorDataB = juniorBodyB.data || juniorBodyB;
+    juniorUserB = juniorDataB.user;
     juniorTokensB = {
-      accessToken: juniorBodyB.accessToken,
-      refreshToken: juniorBodyB.refreshToken,
+      accessToken: juniorDataB.accessToken,
+      refreshToken: juniorDataB.refreshToken,
     };
 
     const challengeData = {
@@ -223,7 +227,8 @@ describe('Metrics Module Integration Tests', () => {
     });
 
     if (createChallengeResponse.statusCode === 201) {
-      testChallenge = JSON.parse(createChallengeResponse.body);
+      const challengeBody = JSON.parse(createChallengeResponse.body);
+      testChallenge = challengeBody.data || challengeBody;
     } else {
       console.error('Failed to create test challenge:', createChallengeResponse.body);
     }
@@ -245,9 +250,10 @@ describe('Metrics Module Integration Tests', () => {
           },
         });
 
-        expect(startResponse.statusCode).toBe(200);
+        expect(startResponse.statusCode).toBe(201);
         const startBody = JSON.parse(startResponse.body);
-        attemptId = startBody.attemptId;
+        const startData = startBody.data || startBody;
+        attemptId = startData.attemptId;
       });
 
       it('should track metrics successfully', async () => {
@@ -352,9 +358,10 @@ describe('Metrics Module Integration Tests', () => {
           },
         });
 
-        expect(startResponse.statusCode).toBe(200);
+        expect(startResponse.statusCode).toBe(201);
         const otherAttemptBody = JSON.parse(startResponse.body);
-        const otherAttemptId = otherAttemptBody.attemptId;
+        const otherAttemptData = otherAttemptBody.data || otherAttemptBody;
+        const otherAttemptId = otherAttemptData.attemptId;
 
         const response = await app.inject({
           method: 'POST',
@@ -818,21 +825,23 @@ describe('Metrics Module Integration Tests', () => {
 
           expect(anotherCompanyUser.statusCode).toBe(201);
           const otherUserBody = JSON.parse(anotherCompanyUser.body);
+          const otherUserData = otherUserBody.data || otherUserBody;
 
           const otherAttemptResponse = await app.inject({
             method: 'POST',
             url: `/challenges/${testChallenge.id}/start`,
             headers: {
-              authorization: `Bearer ${otherUserBody.accessToken}`,
+              authorization: `Bearer ${otherUserData.accessToken}`,
             },
             payload: {
               language: 'javascript',
             },
           });
 
-          expect(otherAttemptResponse.statusCode).toBe(200);
+          expect(otherAttemptResponse.statusCode).toBe(201);
           const otherAttemptBody = JSON.parse(otherAttemptResponse.body);
-          const otherAttemptId = otherAttemptBody.attemptId;
+          const otherAttemptData = otherAttemptBody.data || otherAttemptBody;
+          const otherAttemptId = otherAttemptData.attemptId;
 
           const response = await app.inject({
             method: 'POST',
@@ -952,9 +961,10 @@ describe('Metrics Module Integration Tests', () => {
           },
         });
 
-        expect(startResponse.statusCode).toBe(200);
+        expect(startResponse.statusCode).toBe(201);
         const startBody = JSON.parse(startResponse.body);
-        attemptId = startBody.attemptId;
+        const startData = startBody.data || startBody;
+        attemptId = startData.attemptId;
 
         // Create some metric snapshots for the attempt
         await prisma.metricSnapshot.createMany({
@@ -1015,9 +1025,10 @@ describe('Metrics Module Integration Tests', () => {
           },
         });
 
-        expect(startResponse.statusCode).toBe(200);
+        expect(startResponse.statusCode).toBe(201);
         const otherAttemptBody = JSON.parse(startResponse.body);
-        const otherAttemptId = otherAttemptBody.attemptId;
+        const otherAttemptData = otherAttemptBody.data || otherAttemptBody;
+        const otherAttemptId = otherAttemptData.attemptId;
 
         const response = await app.inject({
           method: 'GET',
@@ -1317,9 +1328,10 @@ describe('Metrics Module Integration Tests', () => {
             return;
           }
 
-          expect(secondAttemptResponse.statusCode).toBe(200);
+          expect(secondAttemptResponse.statusCode).toBe(201);
           const secondAttemptBody = JSON.parse(secondAttemptResponse.body);
-          const secondAttemptId = secondAttemptBody.attemptId;
+          const secondAttemptData = secondAttemptBody.data || secondAttemptBody;
+          const secondAttemptId = secondAttemptData.attemptId;
 
           // Add metrics to second attempt
           await prisma.metricSnapshot.create({
@@ -1462,9 +1474,10 @@ describe('Metrics Module Integration Tests', () => {
           },
         });
 
-        expect(startResponse.statusCode).toBe(200);
+        expect(startResponse.statusCode).toBe(201);
         const startBody = JSON.parse(startResponse.body);
-        attemptId = startBody.attemptId;
+        const startData = startBody.data || startBody;
+        attemptId = startData.attemptId;
       });
 
       it('should start metrics stream successfully', async () => {
@@ -1536,9 +1549,10 @@ describe('Metrics Module Integration Tests', () => {
           },
         });
 
-        expect(startResponse.statusCode).toBe(200);
+        expect(startResponse.statusCode).toBe(201);
         const startBody = JSON.parse(startResponse.body);
-        attemptId = startBody.attemptId;
+        const startData = startBody.data || startBody;
+        attemptId = startData.attemptId;
       });
 
       it('should stop metrics stream successfully', async () => {
@@ -1610,9 +1624,10 @@ describe('Metrics Module Integration Tests', () => {
         },
       });
 
-      expect(startResponse.statusCode).toBe(200);
+      expect(startResponse.statusCode).toBe(201);
       const startBody = JSON.parse(startResponse.body);
-      attemptId = startBody.attemptId;
+      const startData = startBody.data || startBody;
+      attemptId = startData.attemptId;
     });
 
     it('should handle concurrent metrics tracking requests gracefully', async () => {
@@ -2009,9 +2024,10 @@ describe('Metrics Module Integration Tests', () => {
         },
       });
 
-      expect(startResponse.statusCode).toBe(200);
+      expect(startResponse.statusCode).toBe(201);
       const startBody = JSON.parse(startResponse.body);
-      attemptId = startBody.attemptId;
+      const startData = startBody.data || startBody;
+      attemptId = startData.attemptId;
     });
 
     it('should recover gracefully from temporary database unavailability', async () => {

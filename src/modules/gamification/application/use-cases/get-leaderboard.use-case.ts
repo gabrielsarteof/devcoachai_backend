@@ -4,13 +4,13 @@ import { LeaderboardType, LeaderboardScope, LeaderboardPeriod } from '../../doma
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 
 export const GetLeaderboardSchema = z.object({
-  type: z.nativeEnum(LeaderboardType),
-  scope: z.nativeEnum(LeaderboardScope),
+  type: z.nativeEnum(LeaderboardType).default(LeaderboardType.XP_TOTAL),
+  scope: z.nativeEnum(LeaderboardScope).default(LeaderboardScope.GLOBAL),
   scopeId: z.string().optional(),
   period: z.nativeEnum(LeaderboardPeriod).default(LeaderboardPeriod.ALL_TIME),
   page: z.number().int().min(1).default(1),
   limit: z.number().int().min(1).max(100).default(20),
-  includeUser: z.string().cuid().optional(),
+  includeUser: z.string().min(1).optional(),
 });
 
 export type GetLeaderboardDTO = z.infer<typeof GetLeaderboardSchema>;
@@ -31,6 +31,7 @@ export interface GetLeaderboardResult {
     lastActivity?: Date;
   }>;
   userRanking?: {
+    userId: string;
     position: number;
     score: number;
     percentile: number;

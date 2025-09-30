@@ -3,8 +3,8 @@ import { NotificationService } from '../../domain/services/notification.service'
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 
 export const AcknowledgeNotificationSchema = z.object({
-  notificationId: z.string().cuid(),
-  userId: z.string().cuid(),
+  notificationId: z.string().min(1),
+  userId: z.string().min(1),
   actionTaken: z.string().optional(),
 });
 

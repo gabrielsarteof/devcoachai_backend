@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { StreakEntity } from '../../domain/entities/streak.entity';
 import { IStreakRepository } from '../../domain/repositories/streak.repository.interface';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
+import { randomUUID } from 'crypto';
 
 export class StreakRepository implements IStreakRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -18,7 +19,7 @@ export class StreakRepository implements IStreakRepository {
     if (!streak) return null;
 
     const streakData = {
-      id: crypto.randomUUID(),
+      id: randomUUID(),
       userId,
       currentStreak: streak.currentStreak,
       longestStreak: streak.currentStreak, 
@@ -67,7 +68,7 @@ export class StreakRepository implements IStreakRepository {
 
     return users.map(user => {
       const streakData = {
-        id: crypto.randomUUID(),
+        id: randomUUID(),
         userId: user.id,
         currentStreak: user.currentStreak,
         longestStreak: user.currentStreak,
@@ -100,7 +101,7 @@ export class StreakRepository implements IStreakRepository {
 
     return users.map(user => {
       const streakData = {
-        id: crypto.randomUUID(),
+        id: randomUUID(),
         userId: user.id,
         currentStreak: user.currentStreak,
         longestStreak: user.currentStreak,

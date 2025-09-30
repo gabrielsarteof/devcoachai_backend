@@ -4,7 +4,7 @@ import { BadgeEntity } from '../../domain/entities/badge.entity';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 
 export const GetUserBadgesSchema = z.object({
-  userId: z.string().cuid(),
+  userId: z.string().min(1),
 });
 
 export type GetUserBadgesDTO = z.infer<typeof GetUserBadgesSchema>;

@@ -2,6 +2,7 @@ import { Badge as PrismaBadge, Rarity } from '@prisma/client';
 import { BadgeCategory } from '../enums/badge-category.enum';
 import { BadgeRequirementVO, BadgeRequirement } from '../value-objects/badge-requirement.vo';
 import { z } from 'zod';
+import { randomUUID } from 'crypto';
 
 export const BadgePropsSchema = z.object({
   id: z.string().cuid(),
@@ -29,7 +30,7 @@ export class BadgeEntity {
     const requirement = BadgeRequirementVO.create(data.requirement);
     
     const props: BadgeProps = {
-      id: crypto.randomUUID(),
+      id: randomUUID(),
       ...data,
       requirement,
     };

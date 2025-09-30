@@ -41,6 +41,14 @@ export class NotificationRepository implements INotificationRepository {
   }
 
   async markAsRead(id: string, userId: string): Promise<void> {
+    const notification = await this.prisma.notification.findFirst({
+      where: { id, userId }
+    });
+
+    if (!notification) {
+      throw new Error(`Notification with id ${id} not found for user ${userId}`);
+    }
+
     await this.prisma.notification.updateMany({
       where: { id, userId, readAt: null },
       data: { readAt: new Date() },

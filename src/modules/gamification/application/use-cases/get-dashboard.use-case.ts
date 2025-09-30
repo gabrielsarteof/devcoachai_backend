@@ -10,8 +10,9 @@ import { ICacheService } from '../../infrastructure/services/cache.service';
 import { LeaderboardType, LeaderboardScope, LeaderboardPeriod } from '../../domain/enums/leaderboard.enum';
 
 export const GetDashboardSchema = z.object({
-  userId: z.string().cuid(),
+  userId: z.string().min(1),
   includeDetails: z.boolean().default(true),
+  period: z.string().default('all-time'),
 });
 
 export type GetDashboardDTO = z.infer<typeof GetDashboardSchema>;
@@ -71,7 +72,7 @@ export interface DashboardResponse {
 }
 
 export class GetDashboardUseCase {
-  private readonly CACHE_TTL = 600; 
+  private readonly CACHE_TTL = 600;
 
   constructor(
     private readonly badgeService: BadgeService,
@@ -91,18 +92,39 @@ export class GetDashboardUseCase {
 
     try {
       const cacheKey = `dashboard:${userId}:${includeDetails}`;
+
+      logger.info({ operation: 'get_dashboard_cache_check', userId, cacheKey }, 'Checking dashboard cache');
       const cached = await this.cache.get<DashboardResponse>(cacheKey);
-      
+
       if (cached) {
         logger.debug({ userId, cacheKey }, 'Dashboard cache hit');
         return cached;
       }
 
+      logger.info({ operation: 'get_dashboard_fetching_data', userId }, 'Fetching dashboard data');
+
+      const userLevelDataPromise = this.xpRepository.getUserLevelData(userId).catch(err => {
+        logger.error({ operation: 'get_dashboard_userdata_failed', userId, error: err.message }, 'Failed to get user level data');
+        throw err;
+      });
+
+      const streakStatusPromise = this.streakManager.getStreakStatus(userId).catch(err => {
+        logger.error({ operation: 'get_dashboard_streak_failed', userId, error: err.message }, 'Failed to get streak status');
+        throw err;
+      });
+
+      const unreadCountPromise = this.notificationService.getUnreadCount(userId).catch(err => {
+        logger.error({ operation: 'get_dashboard_notifications_failed', userId, error: err.message }, 'Failed to get unread count');
+        throw err;
+      });
+
       const [userLevelData, streakStatus, unreadCount] = await Promise.all([
-        this.xpRepository.getUserLevelData(userId),
-        this.streakManager.getStreakStatus(userId),
-        this.notificationService.getUnreadCount(userId)
+        userLevelDataPromise,
+        streakStatusPromise,
+        unreadCountPromise
       ]);
+
+      logger.info({ operation: 'get_dashboard_data_fetched', userId, userLevelData }, 'Dashboard data fetched successfully');
 
       const levelProgress = this.levelService.calculateLevel(userLevelData.totalXp);
 
@@ -110,11 +132,30 @@ export class GetDashboardUseCase {
       let ranking: RankingData = { global: 0, company: 0, weeklyChange: 0 };
 
       if (includeDetails) {
+        logger.info({ operation: 'get_dashboard_fetching_details', userId }, 'Fetching detailed data');
+
+        const userBadgesPromise = this.badgeService.getUserBadges(userId).catch(err => {
+          logger.error({ operation: 'get_dashboard_userbadges_failed', userId, error: err.message }, 'Failed to get user badges');
+          throw err;
+        });
+
+        const allBadgesPromise = this.badgeService.getAllBadges().catch(err => {
+          logger.error({ operation: 'get_dashboard_allbadges_failed', userId, error: err.message }, 'Failed to get all badges');
+          throw err;
+        });
+
+        const globalRankingPromise = this.getGlobalRanking(userId).catch(err => {
+          logger.error({ operation: 'get_dashboard_ranking_failed', userId, error: err.message }, 'Failed to get global ranking');
+          throw err;
+        });
+
         const [userBadges, allBadges, globalRanking] = await Promise.all([
-          this.badgeService.getUserBadges(userId),
-          this.badgeService.getAllBadges(),
-          this.getGlobalRanking(userId)
+          userBadgesPromise,
+          allBadgesPromise,
+          globalRankingPromise
         ]);
+
+        logger.info({ operation: 'get_dashboard_details_fetched', userId, userBadges: userBadges.length, allBadges: allBadges.length }, 'Detailed data fetched successfully');
 
         badgesData = {
           recent: userBadges.slice(0, 3).map(b => ({
@@ -156,7 +197,7 @@ export class GetDashboardUseCase {
         ranking,
         dailyGoal: {
           xpTarget: Math.max(50, userLevelData.currentLevel * 25),
-          xpEarned: 0, 
+          xpEarned: 0,
           completed: false,
           completionPercentage: 0
         },
@@ -200,8 +241,8 @@ export class GetDashboardUseCase {
 
       return {
         global: result.userRanking?.position || 0,
-        company: 0, // Escalabilidade: implementar quando tiver companyId
-        weeklyChange: 0 // Escalabilidade: implementar mudança semanal
+        company: 0,
+        weeklyChange: 0
       };
     } catch (error) {
       logger.error({ userId, error }, 'Failed to get global ranking');

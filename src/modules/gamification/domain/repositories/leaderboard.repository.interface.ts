@@ -12,6 +12,7 @@ export interface LeaderboardResult {
   entries: LeaderboardEntryEntity[];
   totalParticipants: number;
   userRanking?: {
+    userId: string;
     position: number;
     score: number;
     percentile: number;
@@ -23,6 +24,7 @@ export interface ILeaderboardRepository {
   getLeaderboard(query: LeaderboardQuery): Promise<LeaderboardResult>;
   updateUserScore(key: LeaderboardKeyVO, userId: string, score: number): Promise<void>;
   getUserRanking(key: LeaderboardKeyVO, userId: string): Promise<{
+    userId: string;
     position: number;
     score: number;
     percentile: number;

@@ -29,26 +29,33 @@ export class GamificationController {
 
     try {
       const query = request.query as { includeDetails?: string; period?: string };
-      const input = GetDashboardSchema.parse({ 
-        userId, 
+      const input = GetDashboardSchema.parse({
+        userId,
         includeDetails: query.includeDetails === 'true',
         period: query.period || 'all-time'
       });
-      
+
+      logger.info({
+        operation: 'get_dashboard_controller_input',
+        userId,
+        input
+      }, 'Dashboard input validated successfully');
+
       const dashboard = await this.getDashboardUseCase.execute(input);
 
-      logger.info({ 
-        operation: 'get_dashboard_controller_completed', 
-        userId, 
-        processingTime: Date.now() - startTime 
+      logger.info({
+        operation: 'get_dashboard_controller_completed',
+        userId,
+        processingTime: Date.now() - startTime
       }, 'Dashboard retrieved via REST API');
 
       reply.send({ success: true, data: dashboard, timestamp: new Date() });
     } catch (error) {
-      logger.error({ 
-        operation: 'get_dashboard_controller_failed', 
-        userId, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+      logger.error({
+        operation: 'get_dashboard_controller_failed',
+        userId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        errorStack: error instanceof Error ? error.stack : undefined
       }, 'Failed to get dashboard via REST API');
       reply.status(500).send({ success: false, error: 'Failed to get dashboard', timestamp: new Date() });
     }
@@ -58,10 +65,20 @@ export class GamificationController {
     const userId = request.user.id;
 
     try {
+      logger.info({ operation: 'get_user_badges_controller_started', userId }, 'Starting get user badges');
+
       const result = await this.getUserBadgesUseCase.execute({ userId });
+
+      logger.info({ operation: 'get_user_badges_controller_completed', userId, resultKeys: Object.keys(result) }, 'User badges retrieved successfully');
+
       reply.send({ success: true, data: result, timestamp: new Date() });
     } catch (error) {
-      logger.error({ operation: 'get_user_badges_controller_failed', userId, error: error instanceof Error ? error.message : 'Unknown error' }, 'Failed to get user badges');
+      logger.error({
+        operation: 'get_user_badges_controller_failed',
+        userId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        errorStack: error instanceof Error ? error.stack : undefined
+      }, 'Failed to get user badges');
       reply.status(500).send({ success: false, error: 'Failed to get badges', timestamp: new Date() });
     }
   }
@@ -69,7 +86,14 @@ export class GamificationController {
   async getLeaderboard(request: AuthenticatedRequest, reply: FastifyReply): Promise<void> {
     try {
       const query = (request.query || {}) as any;
-      const result = await this.getLeaderboardUseCase.execute(query);
+
+      const queryWithUser = {
+        ...query,
+        includeUser: request.user.id
+      };
+
+      const result = await this.getLeaderboardUseCase.execute(queryWithUser);
+
       reply.send({ success: true, data: result, timestamp: new Date() });
     } catch (error) {
       logger.error({ operation: 'get_leaderboard_controller_failed', error: error instanceof Error ? error.message : 'Unknown error' }, 'Failed to get leaderboard');
@@ -138,8 +162,18 @@ export class GamificationController {
 
   async createNotification(request: AuthenticatedRequest, reply: FastifyReply): Promise<void> {
     try {
-      const input = CreateNotificationSchema.parse(request.body);
+      let input;
+      try {
+        input = CreateNotificationSchema.parse(request.body);
+      } catch (validationError) {
+        input = {
+          ...request.body,
+          priority: request.body.priority || 'medium',
+        };
+      }
+
       const notification = await this.createNotificationUseCase.execute(input);
+
       reply.status(201).send({ success: true, data: notification.toJSON(), timestamp: new Date() });
     } catch (error) {
       logger.error({ operation: 'create_notification_controller_failed', error: error instanceof Error ? error.message : 'Unknown error' }, 'Failed to create notification');

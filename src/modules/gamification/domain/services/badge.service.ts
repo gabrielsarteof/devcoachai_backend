@@ -39,11 +39,12 @@ export class BadgeService {
 
         const requirement = badge.getRequirement();
         const strategy = this.strategyFactory.getStrategy(requirement.getType());
+
         const evaluation = await strategy.evaluate(requirement.getValue(), context);
 
         if (evaluation.unlocked) {
           newlyUnlocked.push(badge);
-        } else if (evaluation.progress > 0) {
+        } else {
           progressMap.set(badge.getId(), evaluation.progress);
         }
       }
@@ -86,13 +87,27 @@ export class BadgeService {
 
   async getAllBadges(): Promise<BadgeEntity[]> {
     const cacheKey = 'badges:all';
+
+    logger.info({ operation: 'get_all_badges_started', cacheKey }, 'Getting all badges');
+
     let badges = await this.cache.get<BadgeEntity[]>(cacheKey);
-    
+
     if (!badges) {
+      logger.info({ operation: 'get_all_badges_cache_miss' }, 'Cache miss, fetching from repository');
+
       badges = await this.repository.findAll();
+
+      logger.info({
+        operation: 'get_all_badges_repository_result',
+        badgeCount: badges.length,
+        badgeIds: badges.map(b => b.getId()).slice(0, 5)
+      }, 'Repository returned badges');
+
       await this.cache.set(cacheKey, badges, this.CACHE_TTL);
+    } else {
+      logger.info({ operation: 'get_all_badges_cache_hit', badgeCount: badges.length }, 'Cache hit');
     }
-    
+
     return badges;
   }
 
@@ -102,12 +117,15 @@ export class BadgeService {
 
   private async invalidateUserCache(userId: string): Promise<void> {
     const patterns = [`user:${userId}:badges*`, `badges:*`];
-    
+    const allKeys = new Set<string>();
+
     for (const pattern of patterns) {
       const keys = await this.cache.keys(pattern);
-      for (const key of keys) {
-        await this.cache.del(key.replace('gamification:', ''));
-      }
+      keys.forEach(key => allKeys.add(key));
+    }
+
+    for (const key of allKeys) {
+      await this.cache.del(key.replace('gamification:', ''));
     }
   }
 }

@@ -51,7 +51,7 @@ export class LeaderboardRepository implements ILeaderboardRepository {
         return LeaderboardEntryEntity.fromPrismaUser(user, score, position);
       });
 
-      let userRanking: { position: number; score: number; percentile: number } | undefined;
+      let userRanking: { userId: string; position: number; score: number; percentile: number } | undefined;
       if (includeUser) {
         const ranking = await this.getUserRanking(key, includeUser);
         userRanking = ranking || undefined;
@@ -92,6 +92,7 @@ export class LeaderboardRepository implements ILeaderboardRepository {
   }
 
   async getUserRanking(key: LeaderboardKeyVO, userId: string): Promise<{
+    userId: string;
     position: number;
     score: number;
     percentile: number;
@@ -128,6 +129,7 @@ export class LeaderboardRepository implements ILeaderboardRepository {
     const percentile = Math.round(((totalUsers - position) / totalUsers) * 100);
 
     return {
+      userId,
       position,
       score,
       percentile,

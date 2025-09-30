@@ -20,6 +20,7 @@
     "test:challenges": "vitest tests/modules/challenges",
     "test:metrics": "vitest tests/modules/metrics",
     "test:ai": "vitest --config vitest.ai.config.ts",
+    "test:gamification": "vitest tests/modules/gamification",
     "test:coverage": "vitest run --coverage",
     "test:setup": "docker-compose -f docker-compose.test.yml up -d && timeout /t 10 && npm run db:push:test",
     "test:teardown": "docker-compose -f docker-compose.test.yml down -v",

@@ -4,12 +4,12 @@ import Redis from 'ioredis';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 
-// Plugins dos módulos
 import authPlugin from '../../src/modules/auth/infrastructure/plugin/auth.plugin';
 import challengePlugin from '../../src/modules/challenges/infrastructure/plugin/challenge.plugin';
 import websocketPlugin from '../../src/shared/infrastructure/websocket/websocket.plugin';
 import metricPlugin from '../../src/modules/metrics/infrastructure/plugin/metric.plugin';
 import aiPlugin from '../../src/modules/ai/infrastructure/plugin/ai.plugin';
+import gamificationPlugin from '../../src/modules/gamification/infrastructure/plugin/gamification.plugin';
 
 export async function buildTestApp(): Promise<{
   app: FastifyInstance;
@@ -42,11 +42,11 @@ export async function buildTestApp(): Promise<{
     await app.register(helmet, { contentSecurityPolicy: false });
     await app.register(cors, { origin: true, credentials: true });
 
-    // Registro de plugins em ordem de dependência
     await app.register(authPlugin, { prisma, redis });
     await app.register(websocketPlugin, { prisma, redis });
     await app.register(challengePlugin, { prisma, redis });
     await app.register(aiPlugin, { prisma, redis });
+    await app.register(gamificationPlugin, { prisma, redis, wsServer: app.ws });
     await app.register(metricPlugin, { prisma, redis, wsServer: app.ws });
 
     await app.ready();
@@ -90,9 +90,7 @@ export async function cleanupTestApp(
 }
 
 export async function cleanTestData(prisma: PrismaClient): Promise<void> {
-  // Limpeza de dados de teste em ordem de dependência reversa
   try {
-    // Tabelas de relação e dependências
     await prisma.trapDetection.deleteMany();
     await prisma.metricSnapshot.deleteMany();
     await prisma.codeEvent.deleteMany();
@@ -101,32 +99,25 @@ export async function cleanTestData(prisma: PrismaClient): Promise<void> {
     await prisma.validationRule.deleteMany();
     await prisma.governanceMetrics.deleteMany();
 
-    // Tentativas de desafio
     await prisma.challengeAttempt.deleteMany();
 
-    // Relacionamentos de usuário
     await prisma.xPTransaction.deleteMany();
     await prisma.userBadge.deleteMany();
     await prisma.certificate.deleteMany();
     await prisma.notification.deleteMany();
     await prisma.userMetrics.deleteMany();
 
-    // Desafios
     await prisma.challenge.deleteMany();
 
-    // Badges
     await prisma.badge.deleteMany();
 
-    // Usuários
     await prisma.user.deleteMany();
 
-    // Times e empresas
     await prisma.team.deleteMany();
     await prisma.billing.deleteMany();
     await prisma.company.deleteMany();
   } catch (error) {
     console.error('Error during test data cleanup:', error);
-    // Fallback: limpeza via TRUNCATE
     try {
       await prisma.$executeRaw`TRUNCATE TABLE "TrapDetection", "MetricSnapshot", "CodeEvent", "AIInteraction", "ValidationLog", "ValidationRule", "GovernanceMetrics", "ChallengeAttempt", "XPTransaction", "UserBadge", "Certificate", "Notification", "UserMetrics", "Challenge", "Badge", "User", "Team", "Billing", "Company" RESTART IDENTITY CASCADE`;
     } catch (truncateError) {
@@ -135,16 +126,11 @@ export async function cleanTestData(prisma: PrismaClient): Promise<void> {
   }
 }
 
-// Funções auxiliares para isolamento de testes
-
-// Geração de IDs únicos para testes
 export function generateTestId(): string {
   return `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
-// Limpeza de dados com isolamento Redis
 export async function cleanTestDataWithRedis(prisma: PrismaClient, redis: Redis, testId?: string): Promise<void> {
-  // Limpeza seletiva do Redis por testId
   if (testId) {
     try {
       const keys = await redis.keys(`*${testId}*`);
@@ -162,11 +148,9 @@ export async function cleanTestDataWithRedis(prisma: PrismaClient, redis: Redis,
     }
   }
 
-  // Limpeza padrão do Prisma
   await cleanTestData(prisma);
 }
 
-// Criação de usuário de teste com ID único
 export async function createTestUser(
   app: FastifyInstance,
   testId: string,

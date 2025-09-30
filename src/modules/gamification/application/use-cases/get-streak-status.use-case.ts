@@ -3,7 +3,7 @@ import { StreakManagerService } from '../../domain/services/streak-manager.servi
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 
 export const GetStreakStatusSchema = z.object({
-  userId: z.string().cuid(),
+  userId: z.string().min(1),
 });
 
 export type GetStreakStatusDTO = z.infer<typeof GetStreakStatusSchema>;

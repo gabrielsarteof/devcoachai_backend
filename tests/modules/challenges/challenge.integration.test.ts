@@ -38,7 +38,6 @@ describe('Challenge Module Integration Tests', () => {
   });
 
   beforeEach(async () => {
-    // Limpar dados respeitando dependências do banco
     try {
       await prisma.trapDetection.deleteMany();
       await prisma.metricSnapshot.deleteMany();
@@ -74,7 +73,6 @@ describe('Challenge Module Integration Tests', () => {
     seniorTokens = { accessToken: '', refreshToken: '' };
     testChallenge = null;
 
-    // Criar usuários de teste com timestamp único
     const timestamp = Date.now();
 
     const techLeadResponse = await app.inject({
@@ -90,10 +88,10 @@ describe('Challenge Module Integration Tests', () => {
 
     expect(techLeadResponse.statusCode).toBe(201);
     const techLeadBody = JSON.parse(techLeadResponse.body);
-    techLeadUser = techLeadBody.user;
+    techLeadUser = techLeadBody.data?.user || techLeadBody.user;
     techLeadTokens = {
-      accessToken: techLeadBody.accessToken,
-      refreshToken: techLeadBody.refreshToken,
+      accessToken: techLeadBody.data?.accessToken || techLeadBody.accessToken,
+      refreshToken: techLeadBody.data?.refreshToken || techLeadBody.refreshToken,
     };
 
     await prisma.user.update({
@@ -113,8 +111,8 @@ describe('Challenge Module Integration Tests', () => {
     expect(techLeadLoginResponse.statusCode).toBe(200);
     const techLeadLoginBody = JSON.parse(techLeadLoginResponse.body);
     techLeadTokens = {
-      accessToken: techLeadLoginBody.accessToken,
-      refreshToken: techLeadLoginBody.refreshToken,
+      accessToken: techLeadLoginBody.data?.accessToken || techLeadLoginBody.accessToken,
+      refreshToken: techLeadLoginBody.data?.refreshToken || techLeadLoginBody.refreshToken,
     };
 
     const juniorResponse = await app.inject({
@@ -130,10 +128,10 @@ describe('Challenge Module Integration Tests', () => {
 
     expect(juniorResponse.statusCode).toBe(201);
     const juniorBody = JSON.parse(juniorResponse.body);
-    juniorUser = juniorBody.user;
+    juniorUser = juniorBody.data?.user || juniorBody.user;
     juniorTokens = {
-      accessToken: juniorBody.accessToken,
-      refreshToken: juniorBody.refreshToken,
+      accessToken: juniorBody.data?.accessToken || juniorBody.accessToken,
+      refreshToken: juniorBody.data?.refreshToken || juniorBody.refreshToken,
     };
 
     const seniorResponse = await app.inject({
@@ -149,10 +147,10 @@ describe('Challenge Module Integration Tests', () => {
 
     expect(seniorResponse.statusCode).toBe(201);
     const seniorBody = JSON.parse(seniorResponse.body);
-    seniorUser = seniorBody.user;
+    seniorUser = seniorBody.data?.user || seniorBody.user;
     seniorTokens = {
-      accessToken: seniorBody.accessToken,
-      refreshToken: seniorBody.refreshToken,
+      accessToken: seniorBody.data?.accessToken || seniorBody.accessToken,
+      refreshToken: seniorBody.data?.refreshToken || seniorBody.refreshToken,
     };
 
     await prisma.user.update({
@@ -172,8 +170,8 @@ describe('Challenge Module Integration Tests', () => {
     expect(seniorLoginResponse.statusCode).toBe(200);
     const seniorLoginBody = JSON.parse(seniorLoginResponse.body);
     seniorTokens = {
-      accessToken: seniorLoginBody.accessToken,
-      refreshToken: seniorLoginBody.refreshToken,
+      accessToken: seniorLoginBody.data?.accessToken || seniorLoginBody.accessToken,
+      refreshToken: seniorLoginBody.data?.refreshToken || seniorLoginBody.refreshToken,
     };
 
     const challengeData = {
@@ -244,9 +242,14 @@ describe('Challenge Module Integration Tests', () => {
     });
 
     if (createChallengeResponse.statusCode === 201) {
-      testChallenge = JSON.parse(createChallengeResponse.body);
+      const responseBody = JSON.parse(createChallengeResponse.body);
+      testChallenge = responseBody.data || responseBody;
     } else {
-      console.error('Failed to create test challenge:', createChallengeResponse.body);
+      console.error('Failed to create test challenge:', {
+        statusCode: createChallengeResponse.statusCode,
+        body: createChallengeResponse.body
+      });
+      throw new Error(`Failed to create test challenge: ${createChallengeResponse.statusCode}`);
     }
   });
 
@@ -307,13 +310,13 @@ describe('Challenge Management (Admin Routes)', () => {
 
       expect(response.statusCode).toBe(201);
       const body = JSON.parse(response.body);
-      expect(body.slug).toBe('new-challenge');
-      expect(body.title).toBe('New Challenge');
-      expect(body.difficulty).toBe(Difficulty.MEDIUM);
-      expect(body.category).toBe(Category.FRONTEND);
-      expect(body.baseXp).toBe(100);
+      const challenge = body.data || body;
+      expect(challenge.slug).toBe('new-challenge');
+      expect(challenge.title).toBe('New Challenge');
+      expect(challenge.difficulty).toBe(Difficulty.MEDIUM);
+      expect(challenge.category).toBe(Category.FRONTEND);
+      expect(challenge.baseXp).toBe(100);
 
-      // Verify in database
       const dbChallenge = await prisma.challenge.findUnique({
         where: { slug: 'new-challenge' },
       });
@@ -377,7 +380,6 @@ describe('Challenge Management (Admin Routes)', () => {
       const body = JSON.parse(response.body);
       expect(body.error).toBe('Forbidden');
 
-      // Verify not in database
       const dbChallenge = await prisma.challenge.findUnique({
         where: { slug: 'unauthorized-challenge' },
       });
@@ -386,7 +388,7 @@ describe('Challenge Management (Admin Routes)', () => {
 
     it('should fail when creating challenge with duplicate slug', async () => {
       const duplicateData = {
-        slug: 'test-challenge', // Same as the one created in beforeEach
+        slug: 'test-challenge',
         title: 'Duplicate Challenge',
         description: 'Should fail due to duplicate slug',
         difficulty: Difficulty.HARD,
@@ -464,13 +466,13 @@ describe('Challenge Management (Admin Routes)', () => {
           {
             input: 'test2',
             expectedOutput: 'output2',
-            weight: 0.5, // Total: 0.8, should be 1.0
+            weight: 0.5,
             description: 'Test case 2',
           },
           {
             input: 'test3',
             expectedOutput: 'output3',
-            weight: 0.0, // Total: 0.8, still invalid
+            weight: 0.0,
             description: 'Test case 3',
           },
         ],
@@ -503,7 +505,6 @@ describe('Challenge Management (Admin Routes)', () => {
 
     it('should return 400 when creating challenge with invalid body', async () => {
       const invalidData = {
-        // Missing required fields: title, description, etc.
         slug: 'invalid-challenge',
         difficulty: Difficulty.EASY,
         category: Category.BACKEND,
@@ -544,9 +545,8 @@ describe('Challenge Management (Admin Routes)', () => {
       const body = JSON.parse(response.body);
       expect(body.title).toBe('Updated Test Challenge');
       expect(body.estimatedMinutes).toBe(45);
-      expect(body.slug).toBe('test-challenge'); // Unchanged
+      expect(body.slug).toBe('test-challenge');
 
-      // Verify in database
       const dbChallenge = await prisma.challenge.findUnique({
         where: { id: testChallenge.id },
       });
@@ -592,7 +592,6 @@ describe('Challenge Management (Admin Routes)', () => {
     });
 
     it('should return 409 when updating challenge with existing slug', async () => {
-      // Create a second challenge with a different slug
       const secondChallenge = {
         slug: 'second-challenge',
         title: 'Second Challenge',
@@ -635,9 +634,8 @@ describe('Challenge Management (Admin Routes)', () => {
         payload: secondChallenge,
       });
 
-      // Try to update the first challenge to use the second challenge's slug
       const updateData = {
-        slug: 'second-challenge', // This slug should already exist
+        slug: 'second-challenge',
       };
 
       const response = await app.inject({
@@ -649,8 +647,6 @@ describe('Challenge Management (Admin Routes)', () => {
         payload: updateData,
       });
 
-      // The test expects either 409 (Conflict) or the system may validate and allow the update
-      // Let's check if the update was successful instead
       expect(response.statusCode).toBe(200);
     });
   });
@@ -667,7 +663,6 @@ describe('Challenge Management (Admin Routes)', () => {
 
       expect(response.statusCode).toBe(204);
 
-      // Verify deletion in database
       const dbChallenge = await prisma.challenge.findUnique({
         where: { id: testChallenge.id },
       });
@@ -687,7 +682,6 @@ describe('Challenge Management (Admin Routes)', () => {
       const body = JSON.parse(response.body);
       expect(body.error).toBe('Forbidden');
 
-      // Verify still exists in database
       const dbChallenge = await prisma.challenge.findUnique({
         where: { id: testChallenge.id },
       });
@@ -724,16 +718,16 @@ describe('User Interaction (Authenticated Routes)', () => {
         },
       });
 
-      expect(response.statusCode).toBe(200);
+      expect(response.statusCode).toBe(201);
       const body = JSON.parse(response.body);
-      expect(body).toHaveProperty('attemptId');
-      expect(body).toHaveProperty('sessionId');
-      expect(body.resumed).toBe(false);
-      expect(body.starterCode).toBe(testChallenge.starterCode);
+      const data = body.data || body;
+      expect(data).toHaveProperty('attemptId');
+      expect(data).toHaveProperty('sessionId');
+      expect(data.resumed).toBe(false);
+      expect(data.starterCode).toBe(testChallenge.starterCode);
 
-      // Verify attempt in database
       const attempt = await prisma.challengeAttempt.findUnique({
-        where: { id: body.attemptId },
+        where: { id: data.attemptId },
       });
       expect(attempt).toBeTruthy();
       expect(attempt?.userId).toBe(juniorUser.id);
@@ -750,7 +744,7 @@ describe('User Interaction (Authenticated Routes)', () => {
           authorization: `Bearer ${juniorTokens.accessToken}`,
         },
         payload: {
-          language: 'rust', // Not in the test challenge's languages array
+          language: 'rust',
         },
       });
 
@@ -761,7 +755,6 @@ describe('User Interaction (Authenticated Routes)', () => {
     });
 
     it('should resume existing attempt if one is IN_PROGRESS', async () => {
-      // Start first attempt
       const firstResponse = await app.inject({
         method: 'POST',
         url: `/challenges/${testChallenge.id}/start`,
@@ -772,10 +765,9 @@ describe('User Interaction (Authenticated Routes)', () => {
           language: 'javascript',
         },
       });
-      expect(firstResponse.statusCode).toBe(200);
+      expect(firstResponse.statusCode).toBe(201);
       const firstBody = JSON.parse(firstResponse.body);
 
-      // Try to start again - should resume
       const secondResponse = await app.inject({
         method: 'POST',
         url: `/challenges/${testChallenge.id}/start`,
@@ -787,11 +779,13 @@ describe('User Interaction (Authenticated Routes)', () => {
         },
       });
 
-      expect(secondResponse.statusCode).toBe(200);
+      expect(secondResponse.statusCode).toBe(201);
       const secondBody = JSON.parse(secondResponse.body);
-      expect(secondBody.attemptId).toBe(firstBody.attemptId);
-      expect(secondBody.sessionId).toBe(firstBody.sessionId);
-      expect(secondBody.resumed).toBe(true);
+      const secondData = secondBody.data || secondBody;
+      const firstData = firstBody.data || firstBody;
+      expect(secondData.attemptId).toBe(firstData.attemptId);
+      expect(secondData.sessionId).toBe(firstData.sessionId);
+      expect(secondData.resumed).toBe(true);
     });
 
     it('should return 401 when starting challenge without authentication', async () => {
@@ -813,7 +807,6 @@ describe('User Interaction (Authenticated Routes)', () => {
     let attemptId: string;
 
     beforeEach(async () => {
-      // Start a challenge attempt first
       const startResponse = await app.inject({
         method: 'POST',
         url: `/challenges/${testChallenge.id}/start`,
@@ -825,9 +818,10 @@ describe('User Interaction (Authenticated Routes)', () => {
         },
       });
 
-      expect(startResponse.statusCode).toBe(200);
+      expect(startResponse.statusCode).toBe(201);
       const startBody = JSON.parse(startResponse.body);
-      attemptId = startBody.attemptId;
+      const startData = startBody.data || startBody;
+      attemptId = startData.attemptId;
     });
 
     it('should successfully submit a correct solution', async () => {
@@ -845,9 +839,6 @@ describe('User Interaction (Authenticated Routes)', () => {
         },
       });
 
-      // Note: The actual execution would depend on Judge0 service
-      // In a real test, you might want to mock the Judge0Service
-      // For now, we expect it to either succeed or fail based on service availability
       expect([200, 500]).toContain(response.statusCode);
 
       if (response.statusCode === 200) {
@@ -860,7 +851,6 @@ describe('User Interaction (Authenticated Routes)', () => {
     });
 
     it('should fail when submitting to already completed attempt', async () => {
-      // Mark attempt as completed
       await prisma.challengeAttempt.update({
         where: { id: attemptId },
         data: { status: 'COMPLETED' },
@@ -891,7 +881,7 @@ describe('User Interaction (Authenticated Routes)', () => {
         method: 'POST',
         url: '/challenges/submit',
         headers: {
-          authorization: `Bearer ${seniorTokens.accessToken}`, // Different user
+          authorization: `Bearer ${seniorTokens.accessToken}`,
         },
         payload: {
           challengeId: testChallenge.id,
@@ -928,7 +918,6 @@ describe('User Interaction (Authenticated Routes)', () => {
     let attemptId: string;
 
     beforeEach(async () => {
-      // Start a challenge attempt
       const startResponse = await app.inject({
         method: 'POST',
         url: `/challenges/${testChallenge.id}/start`,
@@ -940,9 +929,10 @@ describe('User Interaction (Authenticated Routes)', () => {
         },
       });
 
-      expect(startResponse.statusCode).toBe(200);
+      expect(startResponse.statusCode).toBe(201);
       const startBody = JSON.parse(startResponse.body);
-      attemptId = startBody.attemptId;
+      const startData = startBody.data || startBody;
+      attemptId = startData.attemptId;
     });
 
     it('should analyze code and detect traps', async () => {
@@ -955,7 +945,7 @@ describe('User Interaction (Authenticated Routes)', () => {
         payload: {
           challengeId: testChallenge.id,
           attemptId,
-          code: 'function sum(a, b) { return a - b; }', // Contains the trap!
+          code: 'function sum(a, b) { return a - b; }',
           checkpointTime: 60,
         },
       });
@@ -967,7 +957,6 @@ describe('User Interaction (Authenticated Routes)', () => {
       expect(body).toHaveProperty('feedback');
       expect(body).toHaveProperty('warnings');
 
-      // Should detect the subtraction trap
       expect(body.trapsDetected.length).toBeGreaterThan(0);
       expect(body.trapsDetected[0].trapId).toBe('trap1');
     });
@@ -978,7 +967,7 @@ describe('User Interaction (Authenticated Routes)', () => {
         url: '/challenges/analyze',
         payload: {
           challengeId: testChallenge.id,
-          attemptId: attemptId, // Use the existing attemptId from beforeEach
+          attemptId: attemptId,
           code: 'function test() { return a + b; }',
           checkpointTime: 30,
         },
@@ -990,7 +979,6 @@ describe('User Interaction (Authenticated Routes)', () => {
     });
 
     it('should return 403 when analyzing code from another user attempt', async () => {
-      // Create another user's attempt
       const anotherUserStartResponse = await app.inject({
         method: 'POST',
         url: `/challenges/${testChallenge.id}/start`,
@@ -1001,11 +989,11 @@ describe('User Interaction (Authenticated Routes)', () => {
           language: 'javascript',
         },
       });
-      expect(anotherUserStartResponse.statusCode).toBe(200);
+      expect(anotherUserStartResponse.statusCode).toBe(201);
       const anotherUserBody = JSON.parse(anotherUserStartResponse.body);
-      const anotherUserAttemptId = anotherUserBody.attemptId;
+      const anotherUserData = anotherUserBody.data || anotherUserBody;
+      const anotherUserAttemptId = anotherUserData.attemptId;
 
-      // Try to analyze the other user's attempt with junior user token
       const response = await app.inject({
         method: 'POST',
         url: '/challenges/analyze',
@@ -1041,7 +1029,6 @@ describe('Challenge Discovery (Public Routes)', () => {
       expect(Array.isArray(body.challenges)).toBe(true);
       expect(body.challenges.length).toBeGreaterThan(0);
 
-      // Check that completed field is not present for anonymous users
       const challenge = body.challenges[0];
       expect(challenge).not.toHaveProperty('completed');
     });
@@ -1060,10 +1047,9 @@ describe('Challenge Discovery (Public Routes)', () => {
       expect(body).toHaveProperty('challenges');
       expect(Array.isArray(body.challenges)).toBe(true);
 
-      // Check that completed field is present
       const challenge = body.challenges[0];
       expect(challenge).toHaveProperty('completed');
-      expect(challenge.completed).toBe(false); // Junior hasn't completed any challenges
+      expect(challenge.completed).toBe(false);
     });
 
     it('should filter challenges by difficulty', async () => {
@@ -1115,7 +1101,7 @@ describe('Challenge Discovery (Public Routes)', () => {
       expect(body).toHaveProperty('attempts');
       expect(body.challenge.id).toBe(testChallenge.id);
       expect(body.challenge.slug).toBe('test-challenge');
-      expect(body.attempts).toEqual([]); // No attempts for anonymous user
+      expect(body.attempts).toEqual([]);
     });
 
     it('should get challenge by slug', async () => {
@@ -1131,7 +1117,6 @@ describe('Challenge Discovery (Public Routes)', () => {
     });
 
     it('should include user attempts when authenticated', async () => {
-      // First, create an attempt
       await app.inject({
         method: 'POST',
         url: `/challenges/${testChallenge.id}/start`,
@@ -1143,7 +1128,6 @@ describe('Challenge Discovery (Public Routes)', () => {
         },
       });
 
-      // Now get the challenge
       const response = await app.inject({
         method: 'GET',
         url: `/challenges/${testChallenge.id}`,

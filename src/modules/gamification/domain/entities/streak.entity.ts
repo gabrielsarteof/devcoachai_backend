@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
+import { randomUUID } from 'crypto';
 
 export const StreakPropsSchema = z.object({
   id: z.string().cuid(),
@@ -34,12 +35,12 @@ export class StreakEntity {
   private constructor(private readonly props: StreakProps) {}
 
   static create(data: Omit<StreakProps, 'id' | 'createdAt' | 'updatedAt'>): StreakEntity {
-    const props = StreakPropsSchema.parse({
-      id: crypto.randomUUID(),
+    const props: StreakProps = {
+      id: randomUUID(),
       ...data,
       createdAt: new Date(),
       updatedAt: new Date(),
-    });
+    };
 
     logger.info({
       operation: 'streak_entity_created',
@@ -141,10 +142,19 @@ export class StreakEntity {
     return 2 - this.props.freezesUsed;
   }
 
-  willExpireAt(config: StreakConfig): Date {
+  willExpireAt(config?: StreakConfig): Date {
+    const defaultConfig: StreakConfig = {
+      minXpForStreak: 5,
+      minTimeForStreak: 300,
+      graceHours: 4,
+      freezeLimit: 2,
+      weekendProtection: true,
+    };
+
+    const activeConfig = config || defaultConfig;
     const expireDate = new Date(this.props.lastActivityDate);
     expireDate.setDate(expireDate.getDate() + 1);
-    expireDate.setHours(config.graceHours, 0, 0, 0);
+    expireDate.setHours(activeConfig.graceHours, 0, 0, 0);
     return expireDate;
   }
 

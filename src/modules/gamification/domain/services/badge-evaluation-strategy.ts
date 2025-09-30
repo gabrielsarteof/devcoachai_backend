@@ -31,8 +31,9 @@ export class XPEvaluationStrategy implements IBadgeEvaluationStrategy {
       return { unlocked: false, progress: 0 };
     }
 
-    const progress = Math.min(100, (context.totalXP / requirement.threshold) * 100);
-    const unlocked = context.totalXP >= requirement.threshold;
+    const xpRequirement = requirement as Extract<BadgeRequirement, { type: 'xp' }>;
+    const progress = Math.min(100, (context.totalXP / xpRequirement.threshold) * 100);
+    const unlocked = context.totalXP >= xpRequirement.threshold;
 
     return { unlocked, progress };
   }
@@ -44,8 +45,9 @@ export class LevelEvaluationStrategy implements IBadgeEvaluationStrategy {
       return { unlocked: false, progress: 0 };
     }
 
-    const progress = Math.min(100, (context.currentLevel / requirement.threshold) * 100);
-    const unlocked = context.currentLevel >= requirement.threshold;
+    const levelRequirement = requirement as Extract<BadgeRequirement, { type: 'level' }>;
+    const progress = Math.min(100, (context.currentLevel / levelRequirement.threshold) * 100);
+    const unlocked = context.currentLevel >= levelRequirement.threshold;
 
     return { unlocked, progress };
   }
@@ -57,7 +59,8 @@ export class ChallengeEvaluationStrategy implements IBadgeEvaluationStrategy {
       return { unlocked: false, progress: 0 };
     }
 
-    const threshold = requirement.challengeCount;
+    const challengeRequirement = requirement as Extract<BadgeRequirement, { type: 'challenges' }>;
+    const threshold = challengeRequirement.challengeCount;
     const progress = Math.min(100, (context.challengesCompleted / threshold) * 100);
     const unlocked = context.challengesCompleted >= threshold;
 

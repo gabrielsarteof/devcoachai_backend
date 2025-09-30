@@ -1,5 +1,6 @@
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 import { XPSource } from '@/shared/domain/enums';
+import { randomUUID } from 'crypto';
 
 export interface XPTransactionProps {
   id: string;
@@ -39,7 +40,7 @@ export class XPTransactionEntity {
     );
 
     const props: XPTransactionProps = {
-      id: crypto.randomUUID(),
+      id: randomUUID(),
       userId: data.userId,
       amount: finalAmount,
       source: data.source,

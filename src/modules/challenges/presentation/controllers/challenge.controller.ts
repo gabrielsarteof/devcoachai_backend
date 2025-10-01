@@ -7,11 +7,13 @@ import { DeleteChallengeUseCase } from '../../application/use-cases/delete-chall
 import { StartChallengeUseCase } from '../../application/use-cases/start-challenge.use-case';
 import { SubmitSolutionUseCase } from '../../application/use-cases/submit-solution.use-case';
 import { AnalyzeCodeUseCase } from '../../application/use-cases/analyze-code.use-case';
-import { CreateChallengeDTO } from '../../domain/schemas/challenge.schema';
-import { SubmitSolutionDTO } from '../../application/use-cases/submit-solution.use-case';
-import { AnalyzeCodeDTO } from '../../application/use-cases/analyze-code.use-case';
+import { CreateChallengeDTO, CreateChallengeSchema } from '../../domain/schemas/challenge.schema';
+import { SubmitSolutionDTO, SubmitSolutionSchema } from '../../application/use-cases/submit-solution.use-case';
+import { AnalyzeCodeDTO, AnalyzeCodeSchema } from '../../application/use-cases/analyze-code.use-case';
 import { ChallengeFilters } from '../../domain/repositories/challenge.repository.interface';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
+import { ChallengeError, ValidationError } from '../../domain/errors';
+import { ZodError } from 'zod';
 
 export class ChallengeController {
   constructor(
@@ -32,29 +34,31 @@ export class ChallengeController {
     const startTime = Date.now();
     const requestId = crypto.randomUUID();
     const user = request.user as { id: string; email: string; role: string } | undefined;
-    
-    logger.info({
-      requestId,
-      operation: 'challenge_creation_request',
-      userId: user?.id,
-      userRole: user?.role,
-      slug: request.body.slug,
-      title: request.body.title,
-      difficulty: request.body.difficulty,
-      category: request.body.category,
-      estimatedMinutes: request.body.estimatedMinutes,
-      languages: request.body.languages,
-      testCasesCount: request.body.testCases.length,
-      trapsCount: request.body.traps.length,
-      baseXp: request.body.baseXp,
-      ipAddress: request.ip
-    }, 'Challenge creation request received');
 
     try {
-      const challenge = await this.createChallengeUseCase.execute(request.body);
-      
+      const validatedData = CreateChallengeSchema.parse(request.body);
+
+      logger.info({
+        requestId,
+        operation: 'challenge_creation_request',
+        userId: user?.id,
+        userRole: user?.role,
+        slug: validatedData.slug,
+        title: validatedData.title,
+        difficulty: validatedData.difficulty,
+        category: validatedData.category,
+        estimatedMinutes: validatedData.estimatedMinutes,
+        languages: validatedData.languages,
+        testCasesCount: validatedData.testCases.length,
+        trapsCount: validatedData.traps.length,
+        baseXp: validatedData.baseXp,
+        ipAddress: request.ip
+      }, 'Challenge creation request received');
+
+      const challenge = await this.createChallengeUseCase.execute(validatedData);
+
       const executionTime = Date.now() - startTime;
-      
+
       logger.info({
         requestId,
         challengeId: challenge.id,
@@ -74,49 +78,21 @@ export class ChallengeController {
       });
     } catch (error) {
       const executionTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
-      if (error instanceof Error && error.message.includes('weights must sum to 1.0')) {
-        logger.warn({
-          requestId,
-          operation: 'challenge_creation_invalid_weights',
-          userId: user?.id,
-          slug: request.body.slug,
-          error: errorMessage,
-          reason: 'invalid_test_case_weights',
-          executionTime
-        }, 'Challenge creation failed - invalid test case weights');
-        
-        return reply.status(500).send({
-          error: 'Internal server error',
-          message: error.message,
-        });
+
+      if (error instanceof ZodError) {
+        const validationError = new ValidationError(error);
+        return reply.status(validationError.statusCode).send(validationError.toJSON());
       }
 
-      if (error instanceof Error && error.message.includes('already exists')) {
-        logger.warn({
-          requestId,
-          operation: 'challenge_creation_conflict',
-          userId: user?.id,
-          slug: request.body.slug,
-          error: errorMessage,
-          reason: 'slug_already_exists',
-          executionTime
-        }, 'Challenge creation failed - slug already exists');
-        
-        return reply.status(409).send({
-          error: 'Conflict',
-          message: error.message,
-        });
+      if (error instanceof ChallengeError) {
+        return reply.status(error.statusCode).send(error.toJSON());
       }
 
       logger.error({
         requestId,
         operation: 'challenge_creation_failed',
         userId: user?.id,
-        slug: request.body.slug,
-        title: request.body.title,
-        error: errorMessage,
+        error: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined,
         executionTime
       }, 'Challenge creation failed');
@@ -166,24 +142,15 @@ export class ChallengeController {
         challengeRetrieved: true
       }, 'Challenge retrieved successfully');
 
-      return reply.send(result);
+      return reply.send({
+        success: true,
+        data: result
+      });
     } catch (error) {
       const executionTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
-      if (error instanceof Error && (error.message.includes('not found') || error.message.includes('não encontrado'))) {
-        logger.warn({
-          requestId,
-          operation: 'challenge_not_found',
-          idOrSlug: request.params.idOrSlug,
-          userId: user?.id,
-          executionTime
-        }, 'Challenge not found');
-        
-        return reply.status(404).send({
-          error: 'Not found',
-          message: error.message,
-        });
+
+      if (error instanceof ChallengeError) {
+        return reply.status(error.statusCode).send(error.toJSON());
       }
 
       logger.error({
@@ -191,7 +158,7 @@ export class ChallengeController {
         operation: 'challenge_get_failed',
         idOrSlug: request.params.idOrSlug,
         userId: user?.id,
-        error: errorMessage,
+        error: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined,
         executionTime
       }, 'Failed to retrieve challenge');
@@ -244,17 +211,28 @@ export class ChallengeController {
         challengesListed: true
       }, 'Challenges listed successfully');
 
-      return reply.send({ challenges });
+      return reply.send({
+        success: true,
+        data: {
+          challenges,
+          total: challenges.length,
+          limit: request.query.limit || 20,
+          offset: request.query.offset || 0
+        }
+      });
     } catch (error) {
       const executionTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
+
+      if (error instanceof ChallengeError) {
+        return reply.status(error.statusCode).send(error.toJSON());
+      }
+
       logger.error({
         requestId,
         operation: 'challenges_list_failed',
         userId: user?.id,
         filters: request.query,
-        error: errorMessage,
+        error: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined,
         executionTime
       }, 'Failed to list challenges');
@@ -310,24 +288,15 @@ export class ChallengeController {
         challengeUpdated: true
       }, 'Challenge updated successfully');
 
-      return reply.send(challenge);
+      return reply.send({
+        success: true,
+        data: challenge
+      });
     } catch (error) {
       const executionTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
-      if (error instanceof Error && (error.message.includes('not found') || error.message.includes('não encontrado'))) {
-        logger.warn({
-          requestId,
-          operation: 'challenge_update_not_found',
-          challengeId: request.params.id,
-          userId: user?.id,
-          executionTime
-        }, 'Challenge update failed - challenge not found');
-        
-        return reply.status(404).send({
-          error: 'Not found',
-          message: error.message,
-        });
+
+      if (error instanceof ChallengeError) {
+        return reply.status(error.statusCode).send(error.toJSON());
       }
 
       logger.error({
@@ -336,7 +305,7 @@ export class ChallengeController {
         challengeId: request.params.id,
         userId: user?.id,
         fieldsToUpdate: Object.keys(request.body),
-        error: errorMessage,
+        error: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined,
         executionTime
       }, 'Challenge update failed');
@@ -384,21 +353,9 @@ export class ChallengeController {
       return reply.status(204).send();
     } catch (error) {
       const executionTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
-      if (error instanceof Error && (error.message.includes('not found') || error.message.includes('não encontrado'))) {
-        logger.warn({
-          requestId,
-          operation: 'challenge_deletion_not_found',
-          challengeId: request.params.id,
-          userId: user?.id,
-          executionTime
-        }, 'Challenge deletion failed - challenge not found');
-        
-        return reply.status(404).send({
-          error: 'Not found',
-          message: error.message,
-        });
+
+      if (error instanceof ChallengeError) {
+        return reply.status(error.statusCode).send(error.toJSON());
       }
 
       logger.error({
@@ -406,7 +363,7 @@ export class ChallengeController {
         operation: 'challenge_deletion_failed',
         challengeId: request.params.id,
         userId: user?.id,
-        error: errorMessage,
+        error: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined,
         executionTime,
         criticalOperationFailed: true
@@ -467,38 +424,9 @@ export class ChallengeController {
       });
     } catch (error) {
       const executionTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
-      if (error instanceof Error && (error.message.includes('not found') || error.message.includes('não encontrado'))) {
-        logger.warn({
-          requestId,
-          operation: 'challenge_start_not_found',
-          challengeId: request.params.id,
-          userId: user.id,
-          language: request.body.language,
-          executionTime
-        }, 'Challenge start failed - challenge not found');
-        
-        return reply.status(404).send({
-          error: 'Not found',
-          message: error.message,
-        });
-      }
 
-      if (error instanceof Error && (error.message.includes('not supported') || error.message.includes('não suportado'))) {
-        logger.warn({
-          requestId,
-          operation: 'challenge_start_language_unsupported',
-          challengeId: request.params.id,
-          userId: user.id,
-          language: request.body.language,
-          executionTime
-        }, 'Challenge start failed - language not supported');
-        
-        return reply.status(400).send({
-          error: 'Bad request',
-          message: error.message,
-        });
+      if (error instanceof ChallengeError) {
+        return reply.status(error.statusCode).send(error.toJSON());
       }
 
       logger.error({
@@ -507,7 +435,7 @@ export class ChallengeController {
         challengeId: request.params.id,
         userId: user.id,
         language: request.body.language,
-        error: errorMessage,
+        error: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined,
         executionTime
       }, 'Challenge start failed');
@@ -526,20 +454,22 @@ export class ChallengeController {
     const startTime = Date.now();
     const requestId = crypto.randomUUID();
     const user = request.user as { id: string };
-    
-    logger.info({
-      requestId,
-      operation: 'solution_submission_request',
-      challengeId: request.body.challengeId,
-      attemptId: request.body.attemptId,
-      userId: user.id,
-      language: request.body.language,
-      codeLength: request.body.code.length,
-      ipAddress: request.ip
-    }, 'Solution submission request received');
 
     try {
-      const result = await this.submitSolutionUseCase.execute(user.id, request.body);
+      const validatedData = SubmitSolutionSchema.parse(request.body);
+
+      logger.info({
+        requestId,
+        operation: 'solution_submission_request',
+        challengeId: validatedData.challengeId,
+        attemptId: validatedData.attemptId,
+        userId: user.id,
+        language: validatedData.language,
+        codeLength: validatedData.code.length,
+        ipAddress: request.ip
+      }, 'Solution submission request received');
+
+      const result = await this.submitSolutionUseCase.execute(user.id, validatedData);
       
       const executionTime = Date.now() - startTime;
       
@@ -570,67 +500,27 @@ export class ChallengeController {
         }, 'CHALLENGE COMPLETED EVENT');
       }
 
-      return reply.send(result);
+      return reply.send({
+        success: true,
+        data: result
+      });
     } catch (error) {
       const executionTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
-      if (error instanceof Error && (error.message.includes('not found') || error.message.includes('não encontrado'))) {
-        logger.warn({
-          requestId,
-          operation: 'solution_submission_not_found',
-          challengeId: request.body.challengeId,
-          attemptId: request.body.attemptId,
-          userId: user.id,
-          executionTime
-        }, 'Solution submission failed - challenge or attempt not found');
-        
-        return reply.status(404).send({
-          error: 'Not found',
-          message: error.message,
-        });
+
+      if (error instanceof ZodError) {
+        const validationError = new ValidationError(error);
+        return reply.status(validationError.statusCode).send(validationError.toJSON());
       }
 
-      if (error instanceof Error && error.message.includes('já completado')) {
-        logger.warn({
-          requestId,
-          operation: 'solution_submission_already_completed',
-          challengeId: request.body.challengeId,
-          attemptId: request.body.attemptId,
-          userId: user.id,
-          executionTime
-        }, 'Solution submission failed - attempt already completed');
-        
-        return reply.status(400).send({
-          error: 'Bad request',
-          message: error.message,
-        });
-      }
-
-      if (error instanceof Error && (error.message.includes('Invalid attempt') || error.message.includes('Tentativa inválida'))) {
-        logger.warn({
-          requestId,
-          operation: 'solution_submission_invalid_attempt',
-          challengeId: request.body.challengeId,
-          attemptId: request.body.attemptId,
-          userId: user.id,
-          executionTime
-        }, 'Solution submission failed - invalid attempt');
-        
-        return reply.status(403).send({
-          error: 'Forbidden',
-          message: error.message,
-        });
+      if (error instanceof ChallengeError) {
+        return reply.status(error.statusCode).send(error.toJSON());
       }
 
       logger.error({
         requestId,
         operation: 'solution_submission_failed',
-        challengeId: request.body.challengeId,
-        attemptId: request.body.attemptId,
         userId: user.id,
-        language: request.body.language,
-        error: errorMessage,
+        error: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined,
         executionTime
       }, 'Solution submission failed');
@@ -649,20 +539,22 @@ export class ChallengeController {
     const startTime = Date.now();
     const requestId = crypto.randomUUID();
     const user = request.user as { id: string };
-    
-    logger.info({
-      requestId,
-      operation: 'code_analysis_request',
-      challengeId: request.body.challengeId,
-      attemptId: request.body.attemptId,
-      userId: user.id,
-      codeLength: request.body.code.length,
-      checkpointTime: request.body.checkpointTime,
-      ipAddress: request.ip
-    }, 'Code analysis request received');
 
     try {
-      const result = await this.analyzeCodeUseCase.execute(user.id, request.body);
+      const validatedData = AnalyzeCodeSchema.parse(request.body);
+
+      logger.info({
+        requestId,
+        operation: 'code_analysis_request',
+        challengeId: validatedData.challengeId,
+        attemptId: validatedData.attemptId,
+        userId: user.id,
+        codeLength: validatedData.code.length,
+        checkpointTime: validatedData.checkpointTime,
+        ipAddress: request.ip
+      }, 'Code analysis request received');
+
+      const result = await this.analyzeCodeUseCase.execute(user.id, validatedData);
       
       const executionTime = Date.now() - startTime;
       
@@ -696,34 +588,27 @@ export class ChallengeController {
         }, 'Critical security vulnerabilities detected in code analysis');
       }
 
-      return reply.send(result);
+      return reply.send({
+        success: true,
+        data: result
+      });
     } catch (error) {
       const executionTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
-      if (error instanceof Error && (error.message.includes('Invalid attempt') || error.message.includes('Tentativa inválida'))) {
-        logger.warn({
-          requestId,
-          operation: 'code_analysis_invalid_attempt',
-          challengeId: request.body.challengeId,
-          attemptId: request.body.attemptId,
-          userId: user.id,
-          executionTime
-        }, 'Code analysis failed - invalid attempt');
-        
-        return reply.status(403).send({
-          error: 'Forbidden',
-          message: error.message,
-        });
+
+      if (error instanceof ZodError) {
+        const validationError = new ValidationError(error);
+        return reply.status(validationError.statusCode).send(validationError.toJSON());
+      }
+
+      if (error instanceof ChallengeError) {
+        return reply.status(error.statusCode).send(error.toJSON());
       }
 
       logger.error({
         requestId,
         operation: 'code_analysis_failed',
-        challengeId: request.body.challengeId,
-        attemptId: request.body.attemptId,
         userId: user.id,
-        error: errorMessage,
+        error: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined,
         executionTime
       }, 'Code analysis failed');

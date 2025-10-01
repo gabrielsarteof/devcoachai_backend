@@ -1,6 +1,6 @@
 import { IChallengeRepository } from '../../domain/repositories/challenge.repository.interface';
-import { messages } from '@/shared/constants/messages';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
+import { ChallengeNotFoundError, LanguageNotSupportedError } from '../../domain/errors';
 
 export class StartChallengeUseCase {
   constructor(private readonly repository: IChallengeRepository) {}
@@ -24,7 +24,7 @@ export class StartChallengeUseCase {
           reason: 'challenge_not_found',
           executionTime: Date.now() - startTime
         }, 'Challenge start failed - challenge not found');
-        throw new Error(messages.challenge.notFound);
+        throw new ChallengeNotFoundError();
       }
 
       if (!challenge.languages.includes(language)) {
@@ -36,7 +36,7 @@ export class StartChallengeUseCase {
           reason: 'language_not_supported',
           executionTime: Date.now() - startTime
         }, 'Challenge start failed - language not supported');
-        throw new Error(`Language ${language} not supported for this challenge`);
+        throw new LanguageNotSupportedError(language);
       }
 
       const attempts = await this.repository.getUserAttempts(userId, challengeId);

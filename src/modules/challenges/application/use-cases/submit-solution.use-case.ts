@@ -2,9 +2,14 @@ import { IChallengeRepository } from '../../domain/repositories/challenge.reposi
 import { Judge0Service } from '../../infrastructure/services/judge0.service';
 import { ChallengeEntity } from '../../domain/entities/challenge.entity';
 import { PrismaClient } from '@prisma/client';
-import { messages } from '@/shared/constants/messages';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 import { z } from 'zod';
+import {
+  ChallengeNotFoundError,
+  InvalidAttemptError,
+  AttemptAlreadyCompletedError,
+  LanguageNotSupportedError
+} from '../../domain/errors';
 
 export const SubmitSolutionSchema = z.object({
   challengeId: z.string().cuid(),
@@ -43,7 +48,7 @@ export class SubmitSolutionUseCase {
           reason: 'challenge_not_found',
           executionTime: Date.now() - startTime
         }, 'Solution submission failed - challenge not found');
-        throw new Error(messages.challenge.notFound);
+        throw new ChallengeNotFoundError();
       }
 
       const attempt = await this.prisma.challengeAttempt.findUnique({
@@ -57,7 +62,7 @@ export class SubmitSolutionUseCase {
           reason: 'invalid_attempt_or_unauthorized',
           executionTime: Date.now() - startTime
         }, 'Solution submission failed - invalid attempt');
-        throw new Error('Invalid attempt');
+        throw new InvalidAttemptError();
       }
 
       if (attempt.status === 'COMPLETED') {
@@ -68,7 +73,7 @@ export class SubmitSolutionUseCase {
           reason: 'attempt_already_completed',
           executionTime: Date.now() - startTime
         }, 'Solution submission failed - attempt already completed');
-        throw new Error(messages.challenge.alreadyCompleted);
+        throw new AttemptAlreadyCompletedError();
       }
 
       if (!challenge.languages.includes(data.language)) {
@@ -80,7 +85,7 @@ export class SubmitSolutionUseCase {
           reason: 'language_not_supported',
           executionTime: Date.now() - startTime
         }, 'Solution submission failed - language not supported');
-        throw new Error(`Language ${data.language} not supported for this challenge`);
+        throw new LanguageNotSupportedError(data.language);
       }
 
       const entity = ChallengeEntity.fromPrisma(challenge);

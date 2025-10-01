@@ -1,7 +1,7 @@
 import { IChallengeRepository } from '../../domain/repositories/challenge.repository.interface';
 import { ChallengeEntity } from '../../domain/entities/challenge.entity';
-import { messages } from '@/shared/constants/messages';
 import { ChallengeAttempt } from '@prisma/client';
+import { ChallengeNotFoundError } from '../../domain/errors';
 
 export class GetChallengeUseCase {
   constructor(private readonly repository: IChallengeRepository) {}
@@ -11,7 +11,7 @@ export class GetChallengeUseCase {
                      await this.repository.findById(slugOrId);
 
     if (!challenge) {
-      throw new Error(messages.challenge.notFound);
+      throw new ChallengeNotFoundError();
     }
 
     const entity = ChallengeEntity.fromPrisma(challenge);

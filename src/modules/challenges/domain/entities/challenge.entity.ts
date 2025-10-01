@@ -133,7 +133,7 @@ export class ChallengeEntity {
     }, 'Parsing challenge traps');
 
     try {
-      const trapsData = JSON.parse(this.props.traps as string) as any[];
+      const trapsData = (typeof this.props.traps === 'string' ? JSON.parse(this.props.traps) : this.props.traps) as any[];
       const traps = trapsData.map((trap: any) => validateTrap(trap));
       
       logger.info({
@@ -167,8 +167,8 @@ export class ChallengeEntity {
     }, 'Parsing challenge test cases');
 
     try {
-      const testCases = JSON.parse(this.props.testCases as string);
-      
+      const testCases = typeof this.props.testCases === 'string' ? JSON.parse(this.props.testCases) : this.props.testCases;
+
       logger.info({
         challengeId: this.props.id,
         slug: this.props.slug,
@@ -200,8 +200,8 @@ export class ChallengeEntity {
     }, 'Calculating challenge score');
 
     try {
-      const target = JSON.parse(this.props.targetMetrics as string);
-      
+      const target = typeof this.props.targetMetrics === 'string' ? JSON.parse(this.props.targetMetrics) : this.props.targetMetrics;
+
       logger.debug({
         challengeId: this.props.id,
         targetMetrics: target,
@@ -320,10 +320,10 @@ export class ChallengeEntity {
     try {
       const jsonData = {
         ...this.props,
-        testCases: JSON.parse(this.props.testCases as string),
-        hints: JSON.parse(this.props.hints as string),
-        traps: JSON.parse(this.props.traps as string),
-        targetMetrics: JSON.parse(this.props.targetMetrics as string),
+        testCases: typeof this.props.testCases === 'string' ? JSON.parse(this.props.testCases) : this.props.testCases,
+        hints: typeof this.props.hints === 'string' ? JSON.parse(this.props.hints) : this.props.hints,
+        traps: typeof this.props.traps === 'string' ? JSON.parse(this.props.traps) : this.props.traps,
+        targetMetrics: typeof this.props.targetMetrics === 'string' ? JSON.parse(this.props.targetMetrics) : this.props.targetMetrics,
       };
 
       logger.debug({

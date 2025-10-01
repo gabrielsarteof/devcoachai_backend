@@ -2,9 +2,9 @@ import { IChallengeRepository } from '../../domain/repositories/challenge.reposi
 import { TrapDetectorService } from '../../domain/services/trap-detector.service';
 import { ChallengeEntity } from '../../domain/entities/challenge.entity';
 import { PrismaClient } from '@prisma/client';
-import { messages } from '@/shared/constants/messages';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 import { z } from 'zod';
+import { InvalidAttemptError, ChallengeNotFoundError } from '../../domain/errors';
 
 export const AnalyzeCodeSchema = z.object({
   challengeId: z.string().cuid(),
@@ -29,12 +29,12 @@ export class AnalyzeCodeUseCase {
       });
 
       if (!attempt || attempt.userId !== userId) {
-        throw new Error('Invalid attempt');
+        throw new InvalidAttemptError();
       }
 
       const challenge = await this.repository.findById(data.challengeId);
       if (!challenge) {
-        throw new Error(messages.challenge.notFound);
+        throw new ChallengeNotFoundError();
       }
 
       const entity = ChallengeEntity.fromPrisma(challenge);

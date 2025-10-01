@@ -49,7 +49,7 @@ export const CreateChallengeSchema = z.object({
     maxDI: z.number().min(0).max(100).default(40),
     minPR: z.number().min(0).max(100).default(70),
     minCS: z.number().min(0).max(10).default(8),
-  }),
+  }).optional().default({ maxDI: 40, minPR: 70, minCS: 8 }),
 });
 
 export type CreateChallengeDTO = z.infer<typeof CreateChallengeSchema>;

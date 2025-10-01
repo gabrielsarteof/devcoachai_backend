@@ -1,7 +1,12 @@
 import { IChallengeRepository } from '../../domain/repositories/challenge.repository.interface';
 import { CreateChallengeDTO } from '../../domain/schemas/challenge.schema';
-import { messages } from '@/shared/constants/messages';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
+import {
+  ChallengeNotFoundError,
+  ChallengeSlugExistsError,
+  InvalidTestCaseWeightsError,
+  DuplicateTrapIdsError
+} from '../../domain/errors';
 
 export class UpdateChallengeUseCase {
   constructor(private readonly repository: IChallengeRepository) {}
@@ -26,7 +31,7 @@ export class UpdateChallengeUseCase {
           reason: 'challenge_not_found',
           executionTime: Date.now() - startTime
         }, 'Challenge update failed - challenge not found');
-        throw new Error(messages.challenge.notFound);
+        throw new ChallengeNotFoundError();
       }
 
       if (data.slug && data.slug !== existing.slug) {
@@ -40,7 +45,7 @@ export class UpdateChallengeUseCase {
             reason: 'slug_already_exists',
             executionTime: Date.now() - startTime
           }, 'Challenge update failed - slug already exists');
-          throw new Error(`Challenge with slug '${data.slug}' already exists`);
+          throw new ChallengeSlugExistsError(data.slug);
         }
       }
 
@@ -55,7 +60,7 @@ export class UpdateChallengeUseCase {
             reason: 'invalid_test_case_weights',
             executionTime: Date.now() - startTime
           }, 'Challenge update failed - test case weights must sum to 1.0');
-          throw new Error('Test case weights must sum to 1.0');
+          throw new InvalidTestCaseWeightsError();
         }
       }
 
@@ -69,7 +74,7 @@ export class UpdateChallengeUseCase {
             reason: 'duplicate_trap_ids',
             executionTime: Date.now() - startTime
           }, 'Challenge update failed - trap IDs must be unique');
-          throw new Error('Trap IDs must be unique');
+          throw new DuplicateTrapIdsError();
         }
       }
 

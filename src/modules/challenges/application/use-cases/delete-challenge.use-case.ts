@@ -1,6 +1,6 @@
 import { IChallengeRepository } from '../../domain/repositories/challenge.repository.interface';
-import { messages } from '@/shared/constants/messages';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
+import { ChallengeNotFoundError } from '../../domain/errors';
 
 export class DeleteChallengeUseCase {
   constructor(private readonly repository: IChallengeRepository) {}
@@ -21,7 +21,7 @@ export class DeleteChallengeUseCase {
           reason: 'challenge_not_found',
           executionTime: Date.now() - startTime
         }, 'Challenge deletion failed - challenge not found');
-        throw new Error(messages.challenge.notFound);
+        throw new ChallengeNotFoundError();
       }
 
       logger.warn({

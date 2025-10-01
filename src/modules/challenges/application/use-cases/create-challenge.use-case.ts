@@ -1,6 +1,11 @@
 import { IChallengeRepository } from '../../domain/repositories/challenge.repository.interface';
 import { CreateChallengeDTO } from '../../domain/schemas/challenge.schema';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
+import {
+  ChallengeSlugExistsError,
+  InvalidTestCaseWeightsError,
+  DuplicateTrapIdsError
+} from '../../domain/errors';
 
 export class CreateChallengeUseCase {
   constructor(private readonly repository: IChallengeRepository) {}
@@ -30,7 +35,7 @@ export class CreateChallengeUseCase {
           reason: 'slug_already_exists',
           executionTime: Date.now() - startTime
         }, 'Challenge creation failed - slug already exists');
-        throw new Error(`Challenge with slug '${data.slug}' already exists`);
+        throw new ChallengeSlugExistsError(data.slug);
       }
 
       const totalWeight = data.testCases.reduce((sum, tc) => sum + tc.weight, 0);
@@ -42,7 +47,7 @@ export class CreateChallengeUseCase {
           reason: 'invalid_test_case_weights',
           executionTime: Date.now() - startTime
         }, 'Challenge creation failed - test case weights must sum to 1.0');
-        throw new Error('Test case weights must sum to 1.0');
+        throw new InvalidTestCaseWeightsError();
       }
 
       const trapIds = new Set(data.traps.map(t => t.id));
@@ -54,7 +59,7 @@ export class CreateChallengeUseCase {
           reason: 'duplicate_trap_ids',
           executionTime: Date.now() - startTime
         }, 'Challenge creation failed - trap IDs must be unique');
-        throw new Error('Trap IDs must be unique');
+        throw new DuplicateTrapIdsError();
       }
 
       const challenge = await this.repository.create(data);

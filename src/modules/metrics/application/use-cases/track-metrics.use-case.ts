@@ -4,6 +4,11 @@ import { WebSocketServer } from '@/shared/infrastructure/websocket/socket.server
 import { CodeMetrics, ChecklistItem } from '../../domain/types/metric.types';
 import { TrackMetricsDTO } from '../../domain/schemas/metric.schema';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
+import {
+  InvalidAttemptError,
+  MetricsDataInconsistentError,
+  InvalidMetricsDataError
+} from '../../domain/errors';
 
 export class TrackMetricsUseCase {
   constructor(
@@ -40,7 +45,7 @@ export class TrackMetricsUseCase {
           reason: 'invalid_attempt_or_unauthorized',
           executionTime: Date.now() - startTime
         }, 'Metrics tracking failed - invalid attempt');
-        throw new Error('Invalid attempt');
+        throw new InvalidAttemptError();
       }
 
       // Validação 2: Consistência dos dados
@@ -53,7 +58,7 @@ export class TrackMetricsUseCase {
           reason: 'invalid_lines_ratio',
           executionTime: Date.now() - startTime
         }, 'Metrics tracking failed - AI lines exceed total lines');
-        throw new Error('Lines from AI cannot exceed total lines');
+        throw new MetricsDataInconsistentError('AI lines cannot exceed total lines');
       }
 
       // Validação 3: Consistência dos resultados de testes
@@ -66,7 +71,7 @@ export class TrackMetricsUseCase {
           reason: 'invalid_test_ratio',
           executionTime: Date.now() - startTime
         }, 'Metrics tracking failed - passed tests exceed total tests');
-        throw new Error('Tests passed cannot exceed total tests');
+        throw new MetricsDataInconsistentError('Passed tests cannot exceed total tests');
       }
 
       // Validação 4: Consistência do tempo de sessão
@@ -80,7 +85,7 @@ export class TrackMetricsUseCase {
           reason: 'invalid_time_breakdown',
           executionTime: Date.now() - startTime
         }, 'Metrics tracking failed - time breakdown exceeds session time');
-        throw new Error('Time breakdown cannot exceed session time');
+        throw new MetricsDataInconsistentError('Time breakdown cannot exceed session time');
       }
 
       // Validação 5: Validação dos itens de checklist
@@ -95,7 +100,7 @@ export class TrackMetricsUseCase {
           reason: 'invalid_checklist_items',
           executionTime: Date.now() - startTime
         }, 'Metrics tracking failed - invalid checklist items');
-        throw new Error('Invalid checklist items found');
+        throw new InvalidMetricsDataError('Invalid checklist items');
       }
 
       const codeMetrics: CodeMetrics = {

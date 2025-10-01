@@ -2,6 +2,11 @@ import { IMetricRepository } from '../../domain/repositories/metric.repository.i
 import { MetricAggregatorService } from '../../domain/services/metric-aggregator.service';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 import { PrismaClient } from '@prisma/client';
+import {
+  AttemptNotFoundError,
+  InvalidAttemptError,
+  InvalidMetricsDataError
+} from '../../domain/errors';
 
 export class GetSessionMetricsUseCase {
   constructor(
@@ -35,17 +40,17 @@ export class GetSessionMetricsUseCase {
       }, 'Attempt lookup completed');
 
       if (!attempt) {
-        throw new Error('Attempt not found');
+        throw new AttemptNotFoundError();
       }
 
       if (attempt.userId !== userId) {
-        throw new Error('Invalid attempt or unauthorized');
+        throw new InvalidAttemptError();
       }
 
       const metrics = await this.repository.findByAttempt(attemptId);
 
       if (!Array.isArray(metrics)) {
-        throw new Error('Failed to retrieve metrics data');
+        throw new InvalidMetricsDataError('Failed to retrieve metrics data');
       }
 
       // Calcular tendências com fallback em caso de erro

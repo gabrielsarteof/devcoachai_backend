@@ -10,6 +10,10 @@ import {
   AttemptParamsDTO,
   AttemptParamsSchema
 } from '../../domain/schemas/metric.schema';
+import {
+  MetricError,
+  ValidationError
+} from '../../domain/errors';
 
 export class MetricController {
   constructor(
@@ -24,20 +28,13 @@ export class MetricController {
   ): Promise<void> => {
     const startTime = Date.now();
     const requestId = crypto.randomUUID();
-    const user = request.user as { id: string; email: string; role: string } | undefined;
-
-    if (!user) {
-      return reply.status(401).send({
-        error: 'Unauthorized',
-        message: 'User not authenticated',
-      });
-    }
+    const user = request.user as { id: string; email: string; role: string };
 
     logger.info({
       requestId,
       operation: 'metrics_tracking_request',
-      userId: user?.id,
-      userRole: user?.role,
+      userId: user.id,
+      userRole: user.role,
       attemptId: request.body.attemptId,
       sessionTime: request.body.sessionTime,
       metrics: {
@@ -155,44 +152,36 @@ export class MetricController {
       });
     } catch (error) {
       const executionTime = Date.now() - startTime;
+
+      if (error instanceof ZodError) {
+        const validationError = new ValidationError(error);
+        logger.warn({
+          requestId,
+          operation: 'metrics_tracking_validation_failed',
+          userId: user.id,
+          validationErrors: validationError.details,
+          executionTime
+        }, 'Metrics tracking failed - validation error');
+        return reply.status(validationError.statusCode).send(validationError.toJSON());
+      }
+
+      if (error instanceof MetricError) {
+        logger.warn({
+          requestId,
+          operation: 'metrics_tracking_domain_error',
+          userId: user.id,
+          attemptId: request.body.attemptId,
+          errorCode: error.code,
+          executionTime
+        }, 'Metrics tracking failed - domain error');
+        return reply.status(error.statusCode).send(error.toJSON());
+      }
+
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-      if (error instanceof Error && error.message === 'Invalid attempt') {
-        logger.warn({
-          requestId,
-          operation: 'metrics_tracking_invalid_attempt',
-          userId: user?.id,
-          attemptId: request.body.attemptId,
-          reason: 'invalid_attempt_or_unauthorized',
-          executionTime
-        }, 'Metrics tracking failed - invalid attempt');
-
-        return reply.status(403).send({
-          error: 'Forbidden',
-          message: 'Invalid attempt or unauthorized',
-        });
-      }
-
-      if (error instanceof Error && error.message.includes('not found')) {
-        logger.warn({
-          requestId,
-          operation: 'metrics_tracking_not_found',
-          userId: user?.id,
-          attemptId: request.body.attemptId,
-          reason: 'attempt_not_found',
-          executionTime
-        }, 'Metrics tracking failed - attempt not found');
-
-        return reply.status(404).send({
-          error: 'Not found',
-          message: error.message,
-        });
-      }
-
       logger.error({
         requestId,
         operation: 'metrics_tracking_failed',
-        userId: user?.id,
+        userId: user.id,
         attemptId: request.body.attemptId,
         sessionTime: request.body.sessionTime,
         error: errorMessage,
@@ -213,15 +202,8 @@ export class MetricController {
   ): Promise<void> => {
     const startTime = Date.now();
     const requestId = crypto.randomUUID();
-    const user = request.user as { id: string } | undefined;
+    const user = request.user as { id: string };
 
-    if (!user) {
-      return reply.status(401).send({
-        error: 'Unauthorized',
-        message: 'User not authenticated',
-      });
-    }
-    
     logger.debug({
       requestId,
       operation: 'session_metrics_request',
@@ -381,40 +363,32 @@ export class MetricController {
       return reply.send(serializedData);
     } catch (error) {
       const executionTime = Date.now() - startTime;
+
+      if (error instanceof ZodError) {
+        const validationError = new ValidationError(error);
+        logger.warn({
+          requestId,
+          operation: 'session_metrics_validation_failed',
+          userId: user.id,
+          validationErrors: validationError.details,
+          executionTime
+        }, 'Session metrics failed - validation error');
+        return reply.status(validationError.statusCode).send(validationError.toJSON());
+      }
+
+      if (error instanceof MetricError) {
+        logger.warn({
+          requestId,
+          operation: 'session_metrics_domain_error',
+          userId: user.id,
+          attemptId: request.params.attemptId,
+          errorCode: error.code,
+          executionTime
+        }, 'Session metrics failed - domain error');
+        return reply.status(error.statusCode).send(error.toJSON());
+      }
+
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
-      if (error instanceof Error && error.message.includes('Attempt not found')) {
-        logger.warn({
-          requestId,
-          operation: 'session_metrics_not_found',
-          userId: user.id,
-          attemptId: request.params.attemptId,
-          reason: 'attempt_not_found',
-          executionTime
-        }, 'Session metrics failed - attempt not found');
-
-        return reply.status(404).send({
-          error: 'Not found',
-          message: 'Attempt not found',
-        });
-      }
-
-      if (error instanceof Error && error.message.includes('Invalid attempt')) {
-        logger.warn({
-          requestId,
-          operation: 'session_metrics_invalid_attempt',
-          userId: user.id,
-          attemptId: request.params.attemptId,
-          reason: 'invalid_attempt_or_unauthorized',
-          executionTime
-        }, 'Session metrics failed - invalid attempt');
-
-        return reply.status(403).send({
-          error: 'Forbidden',
-          message: 'Invalid attempt or unauthorized',
-        });
-      }
-
       logger.error({
         requestId,
         operation: 'session_metrics_failed',
@@ -438,15 +412,8 @@ export class MetricController {
   ): Promise<void> => {
     const startTime = Date.now();
     const requestId = crypto.randomUUID();
-    const user = request.user as { id: string } | undefined;
+    const user = request.user as { id: string };
 
-    if (!user) {
-      return reply.status(401).send({
-        error: 'Unauthorized',
-        message: 'User not authenticated',
-      });
-    }
-    
     logger.info({
       requestId,
       operation: 'metrics_stream_start_request',
@@ -476,8 +443,32 @@ export class MetricController {
       });
     } catch (error) {
       const executionTime = Date.now() - startTime;
+
+      if (error instanceof ZodError) {
+        const validationError = new ValidationError(error);
+        logger.warn({
+          requestId,
+          operation: 'metrics_stream_start_validation_failed',
+          userId: user.id,
+          validationErrors: validationError.details,
+          executionTime
+        }, 'Stream start failed - validation error');
+        return reply.status(validationError.statusCode).send(validationError.toJSON());
+      }
+
+      if (error instanceof MetricError) {
+        logger.warn({
+          requestId,
+          operation: 'metrics_stream_start_domain_error',
+          userId: user.id,
+          attemptId: request.body.attemptId,
+          errorCode: error.code,
+          executionTime
+        }, 'Stream start failed - domain error');
+        return reply.status(error.statusCode).send(error.toJSON());
+      }
+
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
       logger.error({
         requestId,
         operation: 'metrics_stream_start_failed',
@@ -488,7 +479,7 @@ export class MetricController {
         stack: error instanceof Error ? error.stack : undefined,
         executionTime
       }, 'Failed to start metrics stream');
-      
+
       return reply.status(500).send({
         error: 'Internal server error',
         message: 'Failed to start metrics stream',
@@ -502,15 +493,8 @@ export class MetricController {
   ): Promise<void> => {
     const startTime = Date.now();
     const requestId = crypto.randomUUID();
-    const user = request.user as { id: string } | undefined;
+    const user = request.user as { id: string };
 
-    if (!user) {
-      return reply.status(401).send({
-        error: 'Unauthorized',
-        message: 'User not authenticated',
-      });
-    }
-    
     logger.info({
       requestId,
       operation: 'metrics_stream_stop_request',
@@ -538,25 +522,33 @@ export class MetricController {
       return reply.status(204).send();
     } catch (error) {
       const executionTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
       if (error instanceof ZodError) {
+        const validationError = new ValidationError(error);
         logger.warn({
           requestId,
           operation: 'metrics_stream_stop_validation_failed',
           userId: user.id,
           attemptId: request.params.attemptId,
-          validationErrors: error.issues,
+          validationErrors: validationError.details,
           executionTime
-        }, 'Failed to stop metrics stream - validation failed');
-
-        return reply.status(400).send({
-          error: 'Bad Request',
-          message: 'Invalid attemptId format',
-          details: error.issues
-        });
+        }, 'Stream stop failed - validation error');
+        return reply.status(validationError.statusCode).send(validationError.toJSON());
       }
 
+      if (error instanceof MetricError) {
+        logger.warn({
+          requestId,
+          operation: 'metrics_stream_stop_domain_error',
+          userId: user.id,
+          attemptId: request.params.attemptId,
+          errorCode: error.code,
+          executionTime
+        }, 'Stream stop failed - domain error');
+        return reply.status(error.statusCode).send(error.toJSON());
+      }
+
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       logger.error({
         requestId,
         operation: 'metrics_stream_stop_failed',

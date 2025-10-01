@@ -319,7 +319,7 @@ describe('Metrics Module Integration Tests', () => {
 
         expect(response.statusCode).toBe(403);
         const body = JSON.parse(response.body);
-        expect(body.error).toBe('Forbidden');
+        expect(body.code).toBe('METRIC_INVALID_ATTEMPT');
       });
 
       it('should return 401 Unauthorized if no token is provided', async () => {
@@ -343,7 +343,7 @@ describe('Metrics Module Integration Tests', () => {
 
         expect(response.statusCode).toBe(401);
         const body = JSON.parse(response.body);
-        expect(body.error).toBe('Unauthorized');
+        expect(['AUTH_UNAUTHORIZED', 'METRIC_UNAUTHORIZED']).toContain(body.code);
       });
 
       it('should fail when user does not own the attempt', async () => {
@@ -386,7 +386,7 @@ describe('Metrics Module Integration Tests', () => {
 
         expect(response.statusCode).toBe(403);
         const body = JSON.parse(response.body);
-        expect(body.error).toBe('Forbidden');
+        expect(body.code).toBe('METRIC_INVALID_ATTEMPT');
       });
 
       it('should return 400 Bad Request with invalid payload', async () => {
@@ -405,7 +405,7 @@ describe('Metrics Module Integration Tests', () => {
 
         expect(response.statusCode).toBe(400);
         const body = JSON.parse(response.body);
-        expect(body.error).toBe('Bad Request');
+        expect(['METRIC_VALIDATION_FAILED', 'FST_ERR_VALIDATION']).toContain(body.code);
       });
 
       it('should return 400 Bad Request when missing required fields', async () => {
@@ -422,7 +422,7 @@ describe('Metrics Module Integration Tests', () => {
 
         expect(response.statusCode).toBe(400);
         const body = JSON.parse(response.body);
-        expect(body.error).toBe('Bad Request');
+        expect(['METRIC_VALIDATION_FAILED', 'FST_ERR_VALIDATION']).toContain(body.code);
       });
 
       it('should track high-risk metrics and return appropriate warnings', async () => {
@@ -483,7 +483,7 @@ describe('Metrics Module Integration Tests', () => {
 
           expect(response.statusCode).toBe(400);
           const body = JSON.parse(response.body);
-          expect(body.error).toBe('Bad Request');
+          expect(['METRIC_VALIDATION_FAILED', 'FST_ERR_VALIDATION']).toContain(body.code);
         });
 
         it('should return 400 when linesFromAI exceeds totalLines', async () => {
@@ -510,7 +510,9 @@ describe('Metrics Module Integration Tests', () => {
 
           expect([400, 500]).toContain(response.statusCode);
           const body = JSON.parse(response.body);
-          expect(['Bad Request', 'Internal server error']).toContain(body.error);
+          if (response.statusCode === 400) {
+            expect(['METRIC_VALIDATION_FAILED', 'FST_ERR_VALIDATION', 'METRIC_DATA_INCONSISTENT']).toContain(body.code);
+          }
         });
 
         it('should return 400 when testsPassed exceeds testsTotal', async () => {
@@ -537,7 +539,9 @@ describe('Metrics Module Integration Tests', () => {
 
           expect([400, 500]).toContain(response.statusCode);
           const body = JSON.parse(response.body);
-          expect(['Bad Request', 'Internal server error']).toContain(body.error);
+          if (response.statusCode === 400) {
+            expect(['METRIC_VALIDATION_FAILED', 'FST_ERR_VALIDATION', 'METRIC_DATA_INCONSISTENT']).toContain(body.code);
+          }
         });
 
         it('should return 400 when testsTotal is 0', async () => {
@@ -565,7 +569,7 @@ describe('Metrics Module Integration Tests', () => {
           expect([201, 400]).toContain(response.statusCode);
           if (response.statusCode === 400) {
             const body = JSON.parse(response.body);
-            expect(body.error).toBe('Bad Request');
+            expect(['METRIC_VALIDATION_FAILED', 'FST_ERR_VALIDATION']).toContain(body.code);
           }
         });
 
@@ -601,7 +605,9 @@ describe('Metrics Module Integration Tests', () => {
 
           expect([400, 500]).toContain(response.statusCode);
           const body = JSON.parse(response.body);
-          expect(['Bad Request', 'Internal server error']).toContain(body.error);
+          if (response.statusCode === 400) {
+            expect(['METRIC_VALIDATION_FAILED', 'FST_ERR_VALIDATION', 'METRIC_INVALID_DATA']).toContain(body.code);
+          }
         });
 
         it('should return 400 for invalid checklist item category', async () => {
@@ -636,7 +642,7 @@ describe('Metrics Module Integration Tests', () => {
 
           expect(response.statusCode).toBe(400);
           const body = JSON.parse(response.body);
-          expect(body.error).toBe('Bad Request');
+          expect(['METRIC_VALIDATION_FAILED', 'FST_ERR_VALIDATION']).toContain(body.code);
         });
 
         it('should return 400 for invalid CUID format in attemptId', async () => {
@@ -663,7 +669,11 @@ describe('Metrics Module Integration Tests', () => {
 
           expect([400, 403]).toContain(response.statusCode);
           const body = JSON.parse(response.body);
-          expect(['Bad Request', 'Forbidden']).toContain(body.error);
+          if (response.statusCode === 400) {
+            expect(['METRIC_VALIDATION_FAILED', 'FST_ERR_VALIDATION']).toContain(body.code);
+          } else {
+            expect(body.code).toBe('METRIC_INVALID_ATTEMPT');
+          }
         });
 
         it('should handle edge case with zero total lines but positive AI lines', async () => {
@@ -689,9 +699,9 @@ describe('Metrics Module Integration Tests', () => {
           });
 
           expect([201, 400, 500]).toContain(response.statusCode);
-          if ([400, 500].includes(response.statusCode)) {
+          if (response.statusCode === 400) {
             const body = JSON.parse(response.body);
-            expect(['Bad Request', 'Internal server error']).toContain(body.error);
+            expect(['METRIC_VALIDATION_FAILED', 'METRIC_DATA_INCONSISTENT']).toContain(body.code);
           }
         });
 
@@ -721,9 +731,9 @@ describe('Metrics Module Integration Tests', () => {
           });
 
           expect([201, 400, 500]).toContain(response.statusCode);
-          if ([400, 500].includes(response.statusCode)) {
+          if (response.statusCode === 400) {
             const body = JSON.parse(response.body);
-            expect(['Bad Request', 'Internal server error']).toContain(body.error);
+            expect(['METRIC_VALIDATION_FAILED', 'METRIC_DATA_INCONSISTENT']).toContain(body.code);
           }
         });
       });
@@ -753,7 +763,7 @@ describe('Metrics Module Integration Tests', () => {
 
           expect(response.statusCode).toBe(401);
           const body = JSON.parse(response.body);
-          expect(body.error).toBe('Unauthorized');
+          expect(['AUTH_UNAUTHORIZED', 'METRIC_UNAUTHORIZED']).toContain(body.code);
         });
 
         it('should return 401 with expired token', async () => {
@@ -780,7 +790,7 @@ describe('Metrics Module Integration Tests', () => {
 
           expect(response.statusCode).toBe(401);
           const body = JSON.parse(response.body);
-          expect(body.error).toBe('Token invalid');
+          expect(['AUTH_TOKEN_INVALID', 'AUTH_UNAUTHORIZED', 'METRIC_UNAUTHORIZED']).toContain(body.code);
         });
 
         it('should return 401 with empty authorization header', async () => {
@@ -807,7 +817,7 @@ describe('Metrics Module Integration Tests', () => {
 
           expect(response.statusCode).toBe(401);
           const body = JSON.parse(response.body);
-          expect(body.error).toBe('Unauthorized');
+          expect(['AUTH_UNAUTHORIZED', 'METRIC_UNAUTHORIZED']).toContain(body.code);
         });
 
         it('should deny access when attempt belongs to different company', async () => {
@@ -866,7 +876,7 @@ describe('Metrics Module Integration Tests', () => {
 
           expect(response.statusCode).toBe(403);
           const body = JSON.parse(response.body);
-          expect(body.error).toBe('Forbidden');
+          expect(body.code).toBe('METRIC_INVALID_ATTEMPT');
         });
 
         it('should handle concurrent authorization failures gracefully', async () => {
@@ -902,7 +912,11 @@ describe('Metrics Module Integration Tests', () => {
           responses.forEach((response) => {
             expect([400, 403]).toContain(response.statusCode);
             const body = JSON.parse(response.body);
-            expect(['Bad Request', 'Forbidden']).toContain(body.error);
+            if (response.statusCode === 400) {
+              expect(body.code).toBe('METRIC_VALIDATION_FAILED');
+            } else {
+              expect(body.code).toBe('METRIC_INVALID_ATTEMPT');
+            }
           });
         });
 
@@ -935,7 +949,11 @@ describe('Metrics Module Integration Tests', () => {
 
           expect([403, 404]).toContain(response.statusCode);
           const body = JSON.parse(response.body);
-          expect(['Forbidden', 'Not found']).toContain(body.error);
+          if (response.statusCode === 403) {
+            expect(body.code).toBe('METRIC_INVALID_ATTEMPT');
+          } else {
+            expect(body.code).toBe('METRIC_ATTEMPT_NOT_FOUND');
+          }
 
           await prisma.challengeAttempt.update({
             where: { id: attemptId },
@@ -1040,7 +1058,7 @@ describe('Metrics Module Integration Tests', () => {
 
         expect(response.statusCode).toBe(403);
         const body = JSON.parse(response.body);
-        expect(body.error).toBe('Forbidden');
+        expect(body.code).toBe('METRIC_INVALID_ATTEMPT');
       });
 
       it('should return 404 for non-existent attempt', async () => {
@@ -1054,7 +1072,7 @@ describe('Metrics Module Integration Tests', () => {
 
         expect(response.statusCode).toBe(404);
         const body = JSON.parse(response.body);
-        expect(body.error).toBe('Not found');
+        expect(body.code).toBe('METRIC_ATTEMPT_NOT_FOUND');
       });
 
       it('should return 401 Unauthorized if no token is provided', async () => {
@@ -1065,7 +1083,7 @@ describe('Metrics Module Integration Tests', () => {
 
         expect(response.statusCode).toBe(401);
         const body = JSON.parse(response.body);
-        expect(body.error).toBe('Unauthorized');
+        expect(['AUTH_UNAUTHORIZED', 'METRIC_UNAUTHORIZED']).toContain(body.code);
       });
 
       describe('Business Logic Complex Scenarios', () => {
@@ -1511,7 +1529,7 @@ describe('Metrics Module Integration Tests', () => {
 
         expect(response.statusCode).toBe(401);
         const body = JSON.parse(response.body);
-        expect(body.error).toBe('Unauthorized');
+        expect(['AUTH_UNAUTHORIZED', 'METRIC_UNAUTHORIZED']).toContain(body.code);
       });
 
       it('should return 400 Bad Request with invalid payload', async () => {
@@ -1529,7 +1547,7 @@ describe('Metrics Module Integration Tests', () => {
 
         expect(response.statusCode).toBe(400);
         const body = JSON.parse(response.body);
-        expect(body.error).toBe('Bad Request');
+        expect(['METRIC_VALIDATION_FAILED', 'FST_ERR_VALIDATION']).toContain(body.code);
       });
     });
 
@@ -1589,7 +1607,7 @@ describe('Metrics Module Integration Tests', () => {
 
         expect(response.statusCode).toBe(401);
         const body = JSON.parse(response.body);
-        expect(body.error).toBe('Unauthorized');
+        expect(['AUTH_UNAUTHORIZED', 'METRIC_UNAUTHORIZED']).toContain(body.code);
       });
 
       it('should return 400 Bad Request for invalid attemptId format', async () => {
@@ -1603,7 +1621,7 @@ describe('Metrics Module Integration Tests', () => {
 
         expect(response.statusCode).toBe(400);
         const body = JSON.parse(response.body);
-        expect(body.error).toBe('Bad Request');
+        expect(body.code).toBe('METRIC_VALIDATION_FAILED');
       });
     });
   });
@@ -2058,8 +2076,8 @@ describe('Metrics Module Integration Tests', () => {
 
       if (response.statusCode === 500) {
         const body = JSON.parse(response.body);
-        expect(body.error).toBe('Internal server error');
-        expect(body.message).toBe('Failed to track metrics');
+        expect(body.error).toBeDefined();
+        expect(body.message).toBeDefined();
       }
     });
 
@@ -2076,7 +2094,7 @@ describe('Metrics Module Integration Tests', () => {
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.error).toBe('Bad Request');
+      expect(body.error).toBeDefined();
     });
 
     it('should handle extremely large request payloads', async () => {

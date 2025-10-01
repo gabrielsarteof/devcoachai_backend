@@ -59,10 +59,10 @@ export const TrackMetricsSchema = z.object({
   manualCodingTime: z.number().int().min(0).optional(),
   debugTime: z.number().int().min(0).optional(),
 }).refine((data) => data.linesFromAI <= data.totalLines, {
-  message: "linesFromAI cannot exceed totalLines",
+  message: "AI lines cannot exceed total lines",
   path: ["linesFromAI"],
 }).refine((data) => data.testsPassed <= data.testsTotal, {
-  message: "testsPassed cannot exceed testsTotal",
+  message: "Passed tests cannot exceed total tests",
   path: ["testsPassed"],
 }).refine((data) => {
   if (data.totalLines === 0) {
@@ -70,7 +70,7 @@ export const TrackMetricsSchema = z.object({
   }
   return true;
 }, {
-  message: "Cannot have AI lines when total lines is 0",
+  message: "AI lines must be zero when total lines is zero",
   path: ["linesFromAI"],
 }).refine((data) => {
   const timeBreakdown = (data.aiUsageTime || 0) + (data.manualCodingTime || 0) + (data.debugTime || 0);
@@ -79,7 +79,7 @@ export const TrackMetricsSchema = z.object({
   }
   return true;
 }, {
-  message: "Time breakdown cannot exceed total session time",
+  message: "Time breakdown cannot exceed session time",
   path: ["sessionTime"],
 });
 

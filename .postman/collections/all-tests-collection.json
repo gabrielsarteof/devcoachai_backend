@@ -1,0 +1,405 @@
+{
+	"info": {
+		"_postman_id": "master-test-collection-001",
+		"name": "DevCoach AI - All Tests (Master)",
+		"description": "🚀 **Master Test Collection** - Comprehensive API test suite\n\nThis collection provides automated testing for the DevCoach AI API with proper dependency management and execution ordering.\n\n**How to Use:**\n1. Select the appropriate environment (dev/staging/production)\n2. Click \"Run Collection\" in Postman\n3. All tests will execute in sequence with automatic token handling\n\n**Features:**\n- Automatic health checks before testing\n- Smart token management across requests\n- Detailed logging and error reporting\n- Execution statistics and summary reports\n- Global pre-request and test scripts\n\n**Requirements:**\n- API server must be running\n- Database must be accessible\n- Environment properly configured\n\n**Environment Variables (Auto-managed):**\n- `accessToken` - JWT access token\n- `refreshToken` - JWT refresh token\n- `userId` - Authenticated user ID\n- Additional context variables as needed",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "master-collection"
+	},
+	"item": [
+		{
+			"name": "🏥 0. Health Check",
+			"description": "Verify API is running before starting tests",
+			"item": [
+				{
+					"name": "API Health Check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('API is healthy', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response time is acceptable', function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(1000);",
+									"});",
+									"",
+									"console.log('✅ API is running and healthy');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": ["{{baseUrl}}"],
+							"path": ["health"]
+						},
+						"description": "Check if API is running and accessible"
+					}
+				}
+			]
+		},
+		{
+			"name": "🔐 1. Authentication Module",
+			"description": "Run authentication tests to establish session",
+			"item": [
+				{
+					"name": "Register New User",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Generate unique test email",
+									"const timestamp = Date.now();",
+									"const testEmail = `test.user.${timestamp}@example.com`;",
+									"pm.environment.set('testEmail', testEmail);",
+									"",
+									"console.log(`📧 Generated test email: ${testEmail}`);"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('User registered successfully', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Response contains tokens and user data', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('success', true);",
+									"    pm.expect(responseJson.data).to.have.property('user');",
+									"    pm.expect(responseJson.data).to.have.property('accessToken');",
+									"    pm.expect(responseJson.data).to.have.property('refreshToken');",
+									"});",
+									"",
+									"pm.test('Tokens saved to environment', function () {",
+									"    const responseJson = pm.response.json();",
+									"    const accessToken = responseJson.data.accessToken;",
+									"    const refreshToken = responseJson.data.refreshToken;",
+									"    const userId = responseJson.data.user.id;",
+									"    ",
+									"    pm.environment.set('accessToken', accessToken);",
+									"    pm.environment.set('refreshToken', refreshToken);",
+									"    pm.environment.set('userId', userId);",
+									"    ",
+									"    pm.expect(accessToken).to.be.a('string').and.not.empty;",
+									"    pm.expect(refreshToken).to.be.a('string').and.not.empty;",
+									"    pm.expect(userId).to.be.a('string').and.not.empty;",
+									"});",
+									"",
+									"console.log('✅ User registered and authenticated');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"TestPass@123\",\n  \"acceptTerms\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "register"]
+						}
+					}
+				},
+				{
+					"name": "Get Current User Profile",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Profile retrieved successfully', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Profile contains user data', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('success', true);",
+									"    pm.expect(responseJson.data).to.have.property('id');",
+									"    pm.expect(responseJson.data).to.have.property('email');",
+									"    pm.expect(responseJson.data).to.have.property('name');",
+									"    pm.expect(responseJson.data).to.not.have.property('password');",
+									"});",
+									"",
+									"console.log('✅ User profile retrieved');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/auth/me",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "me"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "✅ 2. Final Summary",
+			"description": "Generate test execution summary",
+			"item": [
+				{
+					"name": "Test Summary Report",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Generate comprehensive test summary",
+									"console.log('\\n' + '='.repeat(70));",
+									"console.log('📊 TEST EXECUTION SUMMARY');",
+									"console.log('='.repeat(70));",
+									"",
+									"const environment = pm.environment.get('environment') || 'Unknown';",
+									"const baseUrl = pm.environment.get('baseUrl');",
+									"const userId = pm.environment.get('userId');",
+									"const accessToken = pm.environment.get('accessToken');",
+									"const totalRequests = pm.environment.get('totalRequests') || 0;",
+									"const successfulRequests = pm.environment.get('successfulRequests') || 0;",
+									"const failedRequests = pm.environment.get('failedRequests') || 0;",
+									"",
+									"console.log('\\n🌍 Environment Configuration:');",
+									"console.log(`   Environment: ${environment}`);",
+									"console.log(`   API URL: ${baseUrl}`);",
+									"console.log(`   User ID: ${userId || 'Not set'}`);",
+									"console.log(`   Auth Token: ${accessToken ? 'Set ✅' : 'Not set ❌'}`);",
+									"",
+									"console.log('\\n📊 Execution Statistics:');",
+									"console.log(`   Total Requests: ${totalRequests}`);",
+									"console.log(`   Successful: ${successfulRequests} ✅`);",
+									"console.log(`   Failed: ${failedRequests} ❌`);",
+									"",
+									"if (totalRequests > 0) {",
+									"    const successRate = ((successfulRequests / totalRequests) * 100).toFixed(2);",
+									"    console.log(`   Success Rate: ${successRate}%`);",
+									"}",
+									"",
+									"console.log('\\n📦 Test Modules:');",
+									"console.log('   ✅ All configured modules executed');",
+									"",
+									"console.log('\\n' + '='.repeat(70));",
+									"if (failedRequests === 0) {",
+									"    console.log('🎉 All tests completed successfully!');",
+									"} else {",
+									"    console.log('⚠️  Some tests failed. Please review the results above.');",
+									"}",
+									"console.log('='.repeat(70) + '\\n');",
+									"",
+									"pm.test('Test suite completed', function () {",
+									"    pm.expect(totalRequests).to.be.above(0);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": ["{{baseUrl}}"],
+							"path": ["health"]
+						},
+						"description": "Final health check and summary generation"
+					}
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// ============================================================",
+					"// GLOBAL PRE-REQUEST SCRIPT",
+					"// Runs before EVERY request in this collection",
+					"// ============================================================",
+					"",
+					"// 1. Add common headers",
+					"pm.request.headers.add({",
+					"    key: 'User-Agent',",
+					"    value: 'PostmanRuntime/DevCoachAI-MasterTests/1.0'",
+					"});",
+					"",
+					"pm.request.headers.add({",
+					"    key: 'Accept',",
+					"    value: 'application/json'",
+					"});",
+					"",
+					"// 2. Generate request tracking ID",
+					"const timestamp = new Date().toISOString();",
+					"const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;",
+					"pm.environment.set('lastRequestTimestamp', timestamp);",
+					"pm.environment.set('lastRequestId', requestId);",
+					"",
+					"pm.request.headers.add({",
+					"    key: 'X-Request-ID',",
+					"    value: requestId",
+					"});",
+					"",
+					"// 3. Log request details",
+					"const method = pm.request.method;",
+					"const url = pm.request.url.toString();",
+					"console.log(`\\n🚀 [${timestamp}] ${method} ${url}`);",
+					"console.log(`   Request ID: ${requestId}`);",
+					"",
+					"// 4. Auto-inject authorization token if available",
+					"const accessToken = pm.environment.get('accessToken');",
+					"if (accessToken && accessToken !== '') {",
+					"    // Check if Authorization header already exists",
+					"    const hasAuthHeader = pm.request.headers.has('Authorization');",
+					"    if (!hasAuthHeader) {",
+					"        pm.request.headers.add({",
+					"            key: 'Authorization',",
+					"            value: `Bearer ${accessToken}`",
+					"        });",
+					"        console.log('   🔐 Auth token auto-injected');",
+					"    }",
+					"} else {",
+					"    console.log('   ℹ️  No auth token available (expected for login/register)');",
+					"}",
+					"",
+					"// 5. Log request body if present",
+					"if (pm.request.body && pm.request.body.mode === 'raw') {",
+					"    try {",
+					"        const body = JSON.parse(pm.request.body.raw);",
+					"        // Mask sensitive fields",
+					"        if (body.password) body.password = '***';",
+					"        if (body.refreshToken) body.refreshToken = '***';",
+					"        console.log('   📦 Body:', JSON.stringify(body, null, 2));",
+					"    } catch (e) {",
+					"        console.log('   📦 Body: (non-JSON)');",
+					"    }",
+					"}"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// ============================================================",
+					"// GLOBAL TEST SCRIPT",
+					"// Runs after EVERY request in this collection",
+					"// ============================================================",
+					"",
+					"// 1. Log response details",
+					"const status = pm.response.code;",
+					"const statusText = pm.response.status;",
+					"const responseTime = pm.response.responseTime;",
+					"",
+					"console.log(`📥 Response: ${status} ${statusText} (${responseTime}ms)`);",
+					"",
+					"// 2. Universal validations for successful responses",
+					"if (status >= 200 && status < 300) {",
+					"    pm.test('[Global] Response time is acceptable', function () {",
+					"        pm.expect(pm.response.responseTime).to.be.below(5000);",
+					"    });",
+					"    ",
+					"    pm.test('[Global] Content-Type is JSON', function () {",
+					"        const contentType = pm.response.headers.get('Content-Type');",
+					"        if (contentType) {",
+					"            pm.expect(contentType).to.include('application/json');",
+					"        }",
+					"    });",
+					"}",
+					"",
+					"// 3. Handle error responses",
+					"if (status >= 400) {",
+					"    console.log('   ⚠️  Error response detected');",
+					"    ",
+					"    try {",
+					"        const jsonData = pm.response.json();",
+					"        if (jsonData.message) {",
+					"            console.log(`   Error message: ${jsonData.message}`);",
+					"        }",
+					"        if (jsonData.code) {",
+					"            console.log(`   Error code: ${jsonData.code}`);",
+					"        }",
+					"        if (jsonData.errors) {",
+					"            console.log(`   Validation errors:`, jsonData.errors);",
+					"        }",
+					"    } catch (e) {",
+					"        console.log('   Could not parse error response');",
+					"    }",
+					"}",
+					"",
+					"// 4. Track execution statistics",
+					"let totalRequests = parseInt(pm.environment.get('totalRequests') || '0');",
+					"let successfulRequests = parseInt(pm.environment.get('successfulRequests') || '0');",
+					"let failedRequests = parseInt(pm.environment.get('failedRequests') || '0');",
+					"",
+					"totalRequests++;",
+					"if (status >= 200 && status < 400) {",
+					"    successfulRequests++;",
+					"} else {",
+					"    failedRequests++;",
+					"}",
+					"",
+					"pm.environment.set('totalRequests', totalRequests.toString());",
+					"pm.environment.set('successfulRequests', successfulRequests.toString());",
+					"pm.environment.set('failedRequests', failedRequests.toString());",
+					"",
+					"console.log(`   📊 Stats: ${successfulRequests}/${totalRequests} successful`);",
+					"",
+					"// 5. Log response body preview (first 200 chars)",
+					"try {",
+					"    const responseBody = pm.response.text();",
+					"    if (responseBody && responseBody.length > 0) {",
+					"        const preview = responseBody.substring(0, 200);",
+					"        console.log(`   📄 Response preview: ${preview}${responseBody.length > 200 ? '...' : ''}`);",
+					"    }",
+					"} catch (e) {",
+					"    console.log('   📄 Response: (could not preview)');",
+					"}"
+				]
+			}
+		}
+	]
+}

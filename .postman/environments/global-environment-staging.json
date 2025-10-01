@@ -1,11 +1,11 @@
 {
-	"id": "a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890",
-	"name": "DevCoach AI - Auth Module (Template)",
+	"id": "global-devcoachai-environment-staging",
+	"name": "DevCoach AI - Global (Staging)",
 	"values": [
 		{
 			"key": "baseUrl",
-			"value": "http://localhost:3333",
-			"description": "Base URL for the API server",
+			"value": "https://api-staging.devcoach.ai",
+			"description": "Base URL for the API server (staging)",
 			"type": "default",
 			"enabled": true
 		},
@@ -38,6 +38,41 @@
 			"enabled": true
 		},
 		{
+			"key": "testNotificationId",
+			"value": "",
+			"description": "Notification ID for testing (automatically set)",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "testBadgeId",
+			"value": "",
+			"description": "Badge ID for testing (automatically set)",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "attemptId",
+			"value": "",
+			"description": "Challenge attempt ID (set from challenges module)",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "challengeId",
+			"value": "",
+			"description": "Challenge ID for creating attempts",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "lastSnapshotId",
+			"value": "",
+			"description": "Last created metric snapshot ID (automatically set)",
+			"type": "default",
+			"enabled": true
+		},
+		{
 			"key": "apiVersion",
 			"value": "v1",
 			"description": "API version for endpoint URLs",
@@ -46,20 +81,20 @@
 		},
 		{
 			"key": "timeout",
-			"value": "5000",
+			"value": "10000",
 			"description": "Request timeout in milliseconds",
 			"type": "default",
 			"enabled": true
 		},
 		{
 			"key": "environment",
-			"value": "template",
+			"value": "staging",
 			"description": "Environment identifier",
 			"type": "default",
 			"enabled": true
 		}
 	],
 	"_postman_variable_scope": "environment",
-	"_postman_exported_at": "2025-01-01T12:00:00.000Z",
-	"_postman_exported_using": "Postman/10.20.0"
+	"_postman_exported_at": "2025-10-01T00:00:00.000Z",
+	"_postman_exported_using": "Postman/11.0.0"
 }

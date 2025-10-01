@@ -7,7 +7,10 @@ import { PrismaClient } from '@prisma/client';
 import {
   RegisterSchema,
   LoginSchema,
-  RefreshTokenSchema
+  RefreshTokenSchema,
+  RegisterDTO,
+  LoginDTO,
+  RefreshTokenDTO
 } from '../../domain/schemas/auth.schema';
 import {
   AuthError,
@@ -27,7 +30,7 @@ export class AuthController {
   ) {}
 
   register = async (
-    request: FastifyRequest<{ Body: any }>,
+    request: FastifyRequest<{ Body: RegisterDTO }>,
     reply: FastifyReply
   ): Promise<void> => {
     try {
@@ -60,7 +63,7 @@ export class AuthController {
   };
 
   login = async (
-    request: FastifyRequest<{ Body: any }>,
+    request: FastifyRequest<{ Body: LoginDTO }>,
     reply: FastifyReply
   ): Promise<void> => {
     try {
@@ -93,7 +96,7 @@ export class AuthController {
   };
 
   logout = async (
-    request: FastifyRequest<{ Body: any }>,
+    request: FastifyRequest<{ Body: RefreshTokenDTO }>,
     reply: FastifyReply
   ): Promise<void> => {
     try {
@@ -118,7 +121,7 @@ export class AuthController {
   };
 
   refreshToken = async (
-    request: FastifyRequest<{ Body: any }>,
+    request: FastifyRequest<{ Body: RefreshTokenDTO }>,
     reply: FastifyReply
   ): Promise<void> => {
     try {

@@ -4,12 +4,17 @@ import { LoginUseCase } from '../../application/use-cases/login.use-case';
 import { LogoutUseCase } from '../../application/use-cases/logout.use-case';
 import { RefreshTokenUseCase } from '../../application/use-cases/refresh-token.use-case';
 import { PrismaClient } from '@prisma/client';
-import { 
+import {
   RegisterSchema,
   LoginSchema,
   RefreshTokenSchema
 } from '../../domain/schemas/auth.schema';
-import { logger } from '@/shared/infrastructure/monitoring/logger';
+import {
+  AuthError,
+  UnauthorizedError,
+  UserNotFoundError,
+  ValidationError
+} from '../../domain/errors';
 import { ZodError } from 'zod';
 
 export class AuthController {
@@ -38,27 +43,15 @@ export class AuthController {
         data: result
       });
     } catch (error) {
-      // Erros de validação Zod
       if (error instanceof ZodError) {
-        return reply.status(400).send({
-          error: 'Validation failed',
-          message: 'Invalid input data',
-          details: error.issues
-        });
-      }
-      
-      // Erros de negócio
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
-      // Email duplicado -> 400
-      if (errorMessage.includes('já cadastrado') || errorMessage.includes('already exists')) {
-        return reply.status(400).send({
-          error: 'Registration failed',
-          message: errorMessage,
-        });
+        const validationError = new ValidationError(error);
+        return reply.status(validationError.statusCode).send(validationError.toJSON());
       }
 
-      // Erro genérico -> 500
+      if (error instanceof AuthError) {
+        return reply.status(error.statusCode).send(error.toJSON());
+      }
+
       return reply.status(500).send({
         error: 'Internal server error',
         message: 'Failed to register user',
@@ -83,27 +76,15 @@ export class AuthController {
         data: result
       });
     } catch (error) {
-      // Erros de validação Zod
       if (error instanceof ZodError) {
-        return reply.status(400).send({
-          error: 'Validation failed',
-          message: 'Invalid input data',
-          details: error.issues
-        });
-      }
-      
-      // Erros de negócio
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
-      // Credenciais inválidas -> 401
-      if (errorMessage.includes('inválidos') || errorMessage.includes('Invalid')) {
-        return reply.status(401).send({
-          error: 'Authentication failed',
-          message: errorMessage,
-        });
+        const validationError = new ValidationError(error);
+        return reply.status(validationError.statusCode).send(validationError.toJSON());
       }
 
-      // Erro genérico -> 500
+      if (error instanceof AuthError) {
+        return reply.status(error.statusCode).send(error.toJSON());
+      }
+
       return reply.status(500).send({
         error: 'Internal server error',
         message: 'Failed to authenticate',
@@ -120,16 +101,15 @@ export class AuthController {
       await this.logoutUseCase.execute(validatedData.refreshToken);
       return reply.status(204).send();
     } catch (error) {
-      // Erros de validação Zod
       if (error instanceof ZodError) {
-        return reply.status(400).send({
-          error: 'Validation failed',
-          message: 'Invalid input data',
-          details: error.issues
-        });
+        const validationError = new ValidationError(error);
+        return reply.status(validationError.statusCode).send(validationError.toJSON());
       }
-      
-      // Erro genérico -> 500
+
+      if (error instanceof AuthError) {
+        return reply.status(error.statusCode).send(error.toJSON());
+      }
+
       return reply.status(500).send({
         error: 'Internal server error',
         message: 'Failed to logout',
@@ -158,27 +138,15 @@ export class AuthController {
         data: result
       });
     } catch (error) {
-      // Erros de validação Zod
       if (error instanceof ZodError) {
-        return reply.status(400).send({
-          error: 'Validation failed',
-          message: 'Invalid input data',
-          details: error.issues
-        });
-      }
-      
-      // Erros de negócio
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
-      // Token inválido/expirado -> 401
-      if (errorMessage.includes('inválido') || errorMessage.includes('Invalid') || errorMessage.includes('expired')) {
-        return reply.status(401).send({
-          error: 'Token refresh failed',
-          message: errorMessage,
-        });
+        const validationError = new ValidationError(error);
+        return reply.status(validationError.statusCode).send(validationError.toJSON());
       }
 
-      // Erro genérico -> 500
+      if (error instanceof AuthError) {
+        return reply.status(error.statusCode).send(error.toJSON());
+      }
+
       return reply.status(500).send({
         error: 'Internal server error',
         message: 'Failed to refresh token',
@@ -192,12 +160,9 @@ export class AuthController {
   ): Promise<void> => {
     try {
       const user = request.user as { id: string; email: string; role: string } | undefined;
-      
+
       if (!user) {
-        return reply.status(401).send({
-          error: 'Unauthorized',
-          message: 'User not authenticated',
-        });
+        throw new UnauthorizedError();
       }
 
       const userProfile = await this.prisma.user.findUnique({
@@ -223,10 +188,7 @@ export class AuthController {
       });
 
       if (!userProfile) {
-        return reply.status(404).send({
-          error: 'User not found',
-          message: 'User no longer exists',
-        });
+        throw new UserNotFoundError();
       }
 
       return reply.send({
@@ -234,6 +196,10 @@ export class AuthController {
         data: userProfile
       });
     } catch (error) {
+      if (error instanceof AuthError) {
+        return reply.status(error.statusCode).send(error.toJSON());
+      }
+
       return reply.status(500).send({
         error: 'Internal server error',
         message: 'Failed to retrieve user profile',

@@ -1,5 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { JWTService } from '../services/jwt.service';
+import { UnauthorizedError, TokenInvalidError } from '../../domain/errors';
 
 declare module '@fastify/jwt' {
   interface FastifyJWT {
@@ -28,20 +29,16 @@ export class AuthMiddleware {
       const authHeader = request.headers.authorization;
 
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return reply.status(401).send({
-          error: 'Unauthorized',
-          message: 'Missing or invalid authorization header',
-        });
+        const error = new UnauthorizedError();
+        return reply.status(error.statusCode).send(error.toJSON());
       }
 
       const token = authHeader.substring(7);
       const payload = await this.jwtService.verifyToken(token);
 
       if (payload.type !== 'access') {
-        return reply.status(401).send({
-          error: 'Invalid token',
-          message: 'Invalid token type',
-        });
+        const error = new TokenInvalidError();
+        return reply.status(error.statusCode).send(error.toJSON());
       }
 
       request.user = {
@@ -50,10 +47,8 @@ export class AuthMiddleware {
         role: payload.role,
       };
     } catch (error) {
-      return reply.status(401).send({
-        error: 'Token invalid',
-        message: error instanceof Error ? error.message : 'Authentication failed',
-      });
+      const tokenError = new TokenInvalidError();
+      return reply.status(tokenError.statusCode).send(tokenError.toJSON());
     }
   };
 
@@ -63,18 +58,18 @@ export class AuthMiddleware {
       reply: FastifyReply
     ): Promise<void> => {
       const user = request.user as { id: string; email: string; role: string } | undefined;
-      
+
       if (!user) {
-        return reply.status(401).send({
-          error: 'Unauthorized',
-          message: 'User not authenticated',
-        });
+        const error = new UnauthorizedError();
+        return reply.status(error.statusCode).send(error.toJSON());
       }
 
       if (!roles.includes(user.role)) {
         return reply.status(403).send({
           error: 'Forbidden',
+          code: 'AUTH_FORBIDDEN',
           message: `Insufficient permissions. Required roles: ${roles.join(', ')}`,
+          statusCode: 403
         });
       }
     };

@@ -18,17 +18,7 @@ export const messages = {
     maxValue: 'Valor máximo é',
     atLeastOneField: 'Pelo menos um campo deve ser fornecido',
   },
-  
-  auth: {
-    invalidCredentials: 'Email ou senha inválidos',
-    unauthorized: 'Não autorizado',
-    tokenExpired: 'Token expirado',
-    tokenInvalid: 'Token inválido',
-    emailAlreadyExists: 'Email já cadastrado',
-    userNotFound: 'Usuário não encontrado',
-    passwordChanged: 'Senha alterada com sucesso',
-  },
-  
+
   challenge: {
     notFound: 'Desafio não encontrado',
     alreadyCompleted: 'Desafio já completado',
@@ -37,14 +27,14 @@ export const messages = {
     testsFailed: 'Testes falharam',
     trapDetected: 'Vulnerabilidade detectada no código',
   },
-  
+
   metrics: {
     highDependency: 'Dependência alta de IA detectada',
     lowPassRate: 'Taxa de acerto abaixo do esperado',
     checklistIncomplete: 'Checklist de validação incompleto',
     improvement: 'Excelente progresso!',
   },
-  
+
   certificate: {
     notEligible: 'Você ainda não é elegível para certificação',
     expired: 'Certificado expirado',
@@ -52,7 +42,7 @@ export const messages = {
     issued: 'Certificado emitido com sucesso',
     verified: 'Certificado válido e verificado',
   },
-  
+
   general: {
     success: 'Operação realizada com sucesso',
     error: 'Erro ao processar solicitação',

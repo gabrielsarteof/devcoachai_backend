@@ -57,15 +57,17 @@ describe('Authentication Integration Tests', () => {
 
       expect(response.statusCode).toBe(201);
       const body = JSON.parse(response.body);
-      
-      expect(body).toHaveProperty('user');
-      expect(body).toHaveProperty('accessToken');
-      expect(body).toHaveProperty('refreshToken');
-      expect(body.user.email).toBe(userData.email);
-      expect(body.user.name).toBe(userData.name);
-      expect(body.user.role).toBe('JUNIOR');
-      expect(body.user.currentLevel).toBe(1);
-      expect(body.user.totalXp).toBe(0);
+
+      expect(body).toHaveProperty('success', true);
+      expect(body).toHaveProperty('data');
+      expect(body.data).toHaveProperty('user');
+      expect(body.data).toHaveProperty('accessToken');
+      expect(body.data).toHaveProperty('refreshToken');
+      expect(body.data.user.email).toBe(userData.email);
+      expect(body.data.user.name).toBe(userData.name);
+      expect(body.data.user.role).toBe('JUNIOR');
+      expect(body.data.user.currentLevel).toBe(1);
+      expect(body.data.user.totalXp).toBe(0);
       
       // Verificar se o usuário foi criado no banco
       const dbUser = await prisma.user.findUnique({
@@ -75,10 +77,10 @@ describe('Authentication Integration Tests', () => {
       expect(dbUser?.emailVerified).toBe(false);
       expect(dbUser?.onboardingCompleted).toBe(false);
       
-      testUser = body.user;
+      testUser = body.data.user;
       tokens = {
-        accessToken: body.accessToken,
-        refreshToken: body.refreshToken,
+        accessToken: body.data.accessToken,
+        refreshToken: body.data.refreshToken,
       };
     });
 
@@ -96,7 +98,7 @@ describe('Authentication Integration Tests', () => {
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.error).toBe('Validation failed');
+      expect(body.code).toBe('AUTH_VALIDATION_FAILED');
     });
 
     it('should fail with weak password', async () => {
@@ -113,7 +115,7 @@ describe('Authentication Integration Tests', () => {
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.error).toBe('Validation failed');
+      expect(body.code).toBe('AUTH_VALIDATION_FAILED');
     });
 
     it('should fail if email already exists', async () => {
@@ -144,8 +146,8 @@ describe('Authentication Integration Tests', () => {
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.error).toBe('Registration failed');
-      expect(body.message).toContain('já cadastrado');
+      expect(body.code).toBe('AUTH_EMAIL_ALREADY_EXISTS');
+      expect(body.message).toContain('already exists');
     }, 10000); // Timeout maior para este teste
   });
 
@@ -165,7 +167,7 @@ describe('Authentication Integration Tests', () => {
       
       expect(response.statusCode).toBe(201);
       const body = JSON.parse(response.body);
-      testUser = body.user;
+      testUser = body.data.user;
     });
 
     it('should login successfully with valid credentials', async () => {
@@ -180,12 +182,14 @@ describe('Authentication Integration Tests', () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      
-      expect(body).toHaveProperty('user');
-      expect(body).toHaveProperty('accessToken');
-      expect(body).toHaveProperty('refreshToken');
-      expect(body.user.email).toBe('test@example.com');
-      expect(body.user.id).toBe(testUser.id);
+
+      expect(body).toHaveProperty('success', true);
+      expect(body).toHaveProperty('data');
+      expect(body.data).toHaveProperty('user');
+      expect(body.data).toHaveProperty('accessToken');
+      expect(body.data).toHaveProperty('refreshToken');
+      expect(body.data.user.email).toBe('test@example.com');
+      expect(body.data.user.id).toBe(testUser.id);
 
       // Verificar se lastLoginAt foi atualizado
       const updatedUser = await prisma.user.findUnique({
@@ -206,7 +210,7 @@ describe('Authentication Integration Tests', () => {
 
       expect(response.statusCode).toBe(401);
       const body = JSON.parse(response.body);
-      expect(body.error).toBe('Authentication failed');
+      expect(body.code).toBe('AUTH_INVALID_CREDENTIALS');
     });
 
     it('should fail with non-existent email', async () => {
@@ -221,7 +225,7 @@ describe('Authentication Integration Tests', () => {
 
       expect(response.statusCode).toBe(401);
       const body = JSON.parse(response.body);
-      expect(body.error).toBe('Authentication failed');
+      expect(body.code).toBe('AUTH_INVALID_CREDENTIALS');
     });
 
     it('should fail with invalid email format', async () => {
@@ -236,7 +240,7 @@ describe('Authentication Integration Tests', () => {
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.error).toBe('Validation failed');
+      expect(body.code).toBe('AUTH_VALIDATION_FAILED');
     });
   });
 
@@ -257,8 +261,8 @@ describe('Authentication Integration Tests', () => {
       expect(response.statusCode).toBe(201);
       const body = JSON.parse(response.body);
       tokens = {
-        accessToken: body.accessToken,
-        refreshToken: body.refreshToken,
+        accessToken: body.data.accessToken,
+        refreshToken: body.data.refreshToken,
       };
     });
 
@@ -273,16 +277,18 @@ describe('Authentication Integration Tests', () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      
-      expect(body).toHaveProperty('accessToken');
-      expect(body).toHaveProperty('refreshToken');
-      
+
+      expect(body).toHaveProperty('success', true);
+      expect(body).toHaveProperty('data');
+      expect(body.data).toHaveProperty('accessToken');
+      expect(body.data).toHaveProperty('refreshToken');
+
       // Verificar se o novo token funciona
       const testNewToken = await app.inject({
         method: 'GET',
         url: '/auth/me',
         headers: {
-          authorization: `Bearer ${body.accessToken}`,
+          authorization: `Bearer ${body.data.accessToken}`,
         },
       });
       
@@ -300,7 +306,7 @@ describe('Authentication Integration Tests', () => {
 
       expect(response.statusCode).toBe(401);
       const body = JSON.parse(response.body);
-      expect(body.error).toBe('Token refresh failed');
+      expect(body.code).toBe('AUTH_TOKEN_INVALID');
     });
 
     it('should fail without refresh token', async () => {
@@ -312,7 +318,7 @@ describe('Authentication Integration Tests', () => {
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.error).toBe('Validation failed');
+      expect(body.code).toBe('AUTH_VALIDATION_FAILED');
     });
   });
 
@@ -332,10 +338,10 @@ describe('Authentication Integration Tests', () => {
       
       expect(response.statusCode).toBe(201);
       const body = JSON.parse(response.body);
-      testUser = body.user;
+      testUser = body.data.user;
       tokens = {
-        accessToken: body.accessToken,
-        refreshToken: body.refreshToken,
+        accessToken: body.data.accessToken,
+        refreshToken: body.data.refreshToken,
       };
     });
 
@@ -350,11 +356,13 @@ describe('Authentication Integration Tests', () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      
-      expect(body.id).toBe(testUser.id);
-      expect(body.email).toBe('test@example.com');
-      expect(body.name).toBe('Test User');
-      expect(body).not.toHaveProperty('password');
+
+      expect(body).toHaveProperty('success', true);
+      expect(body).toHaveProperty('data');
+      expect(body.data.id).toBe(testUser.id);
+      expect(body.data.email).toBe('test@example.com');
+      expect(body.data.name).toBe('Test User');
+      expect(body.data).not.toHaveProperty('password');
     });
 
     it('should fail without authorization header', async () => {
@@ -365,7 +373,7 @@ describe('Authentication Integration Tests', () => {
 
       expect(response.statusCode).toBe(401);
       const body = JSON.parse(response.body);
-      expect(body.error).toBe('Unauthorized'); // CORRIGIDO: mensagem correta
+      expect(body.code).toBe('AUTH_UNAUTHORIZED');
     });
 
     it('should fail with invalid token', async () => {
@@ -379,7 +387,7 @@ describe('Authentication Integration Tests', () => {
 
       expect(response.statusCode).toBe(401);
       const body = JSON.parse(response.body);
-      expect(body.error).toBe('Token invalid'); // CORRIGIDO: mensagem correta
+      expect(body.code).toBe('AUTH_TOKEN_INVALID');
     });
   });
 
@@ -400,8 +408,8 @@ describe('Authentication Integration Tests', () => {
       expect(response.statusCode).toBe(201);
       const body = JSON.parse(response.body);
       tokens = {
-        accessToken: body.accessToken,
-        refreshToken: body.refreshToken,
+        accessToken: body.data.accessToken,
+        refreshToken: body.data.refreshToken,
       };
     });
 
@@ -443,7 +451,7 @@ describe('Authentication Integration Tests', () => {
 
       expect(response.statusCode).toBe(401);
       const body = JSON.parse(response.body);
-      expect(body.error).toBe('Unauthorized'); // CORRIGIDO: mensagem correta
+      expect(body.code).toBe('AUTH_UNAUTHORIZED');
     });
 
     it('should fail with invalid refresh token in payload', async () => {
@@ -458,8 +466,9 @@ describe('Authentication Integration Tests', () => {
         },
       });
 
-      // Deve retornar sucesso mesmo com token inválido para segurança
-      expect(response.statusCode).toBe(204);
+      expect(response.statusCode).toBe(404);
+      const body = JSON.parse(response.body);
+      expect(body.code).toBe('AUTH_SESSION_NOT_FOUND');
     });
   });
 });

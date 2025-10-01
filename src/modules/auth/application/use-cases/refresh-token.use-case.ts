@@ -1,7 +1,7 @@
 import { JWTService } from '../../infrastructure/services/jwt.service';
 import { IAuthRepository } from '../../domain/repositories/auth.repository.interface';
 import { SessionEntity } from '../../domain/entities/session.entity';
-import { messages } from '@/shared/constants/messages';
+import { TokenInvalidError, TokenExpiredError } from '../../domain/errors';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 
 export class RefreshTokenUseCase {
@@ -29,7 +29,7 @@ export class RefreshTokenUseCase {
           ipAddress: metadata?.ipAddress,
           executionTime: Date.now() - startTime
         }, 'Token refresh failed - session not found');
-        throw new Error(messages.auth.tokenInvalid);
+        throw new TokenInvalidError();
       }
 
       // Verificar se a sessão não expirou
@@ -43,9 +43,9 @@ export class RefreshTokenUseCase {
           ipAddress: metadata?.ipAddress,
           executionTime: Date.now() - startTime
         }, 'Token refresh failed - session expired');
-        
+
         await this.authRepository.deleteSession(session.id);
-        throw new Error(messages.auth.tokenExpired);
+        throw new TokenExpiredError();
       }
 
       // Verificar se o JWT é válido e do tipo refresh
@@ -59,7 +59,7 @@ export class RefreshTokenUseCase {
           ipAddress: metadata?.ipAddress,
           executionTime: Date.now() - startTime
         }, 'Token refresh failed - invalid token type');
-        throw new Error(messages.auth.tokenInvalid);
+        throw new TokenInvalidError();
       }
 
       // Gerar novos tokens

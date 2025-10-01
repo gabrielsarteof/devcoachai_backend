@@ -4,7 +4,7 @@ import { UserEntity } from '@/modules/users/domain/entities/user.entity';
 import { JWTService } from '../../infrastructure/services/jwt.service';
 import { IAuthRepository } from '../../domain/repositories/auth.repository.interface';
 import { SessionEntity } from '../../domain/entities/session.entity';
-import { messages } from '@/shared/constants/messages';
+import { InvalidCredentialsError } from '../../domain/errors';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 
 export class LoginUseCase {
@@ -36,7 +36,7 @@ export class LoginUseCase {
           reason: 'user_not_found',
           executionTime: Date.now() - startTime
         }, 'Login failed - user not found');
-        throw new Error(messages.auth.invalidCredentials);
+        throw new InvalidCredentialsError();
       }
 
       const userEntity = UserEntity.fromPrisma(user);
@@ -50,7 +50,7 @@ export class LoginUseCase {
           reason: 'invalid_password',
           executionTime: Date.now() - startTime
         }, 'Login failed - invalid password');
-        throw new Error(messages.auth.invalidCredentials);
+        throw new InvalidCredentialsError();
       }
 
       try {

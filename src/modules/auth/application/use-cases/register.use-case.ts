@@ -4,7 +4,7 @@ import { UserEntity } from '@/modules/users/domain/entities/user.entity';
 import { JWTService } from '../../infrastructure/services/jwt.service';
 import { IAuthRepository } from '../../domain/repositories/auth.repository.interface';
 import { SessionEntity } from '../../domain/entities/session.entity';
-import { messages } from '@/shared/constants/messages';
+import { EmailAlreadyExistsError } from '../../domain/errors';
 import { UserRole } from '@/shared/domain/enums';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 
@@ -39,7 +39,7 @@ export class RegisterUseCase {
           ipAddress: metadata?.ipAddress,
           executionTime: Date.now() - startTime
         }, 'Registration failed - email already exists');
-        throw new Error(messages.auth.emailAlreadyExists);
+        throw new EmailAlreadyExistsError();
       }
 
       const userEntity = await UserEntity.createNew({

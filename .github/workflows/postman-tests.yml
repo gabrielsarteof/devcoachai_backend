@@ -31,6 +31,16 @@ jobs:
         ports:
           - 5432:5432
 
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
@@ -54,10 +64,11 @@ jobs:
       - name: 🚀 Start API server
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/devcoachai_test
-          JWT_SECRET: test-secret-key-for-ci
-          JWT_REFRESH_SECRET: test-refresh-secret-key-for-ci
+          JWT_SECRET: test-secret-key-for-ci-with-32-chars-minimum
+          JWT_REFRESH_SECRET: test-refresh-secret-key-for-ci-with-32-chars
           NODE_ENV: test
           PORT: 3333
+          REDIS_URL: redis://localhost:6379
         run: |
           npm run dev &
           echo $! > server.pid

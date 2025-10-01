@@ -26,8 +26,23 @@ const redis = new Redis(config.REDIS_URL, {
 });
 
 const buildApp = async () => {
+  const isDevelopment = config.NODE_ENV === 'development';
+
   const app = Fastify({
-    logger,
+    logger: {
+      level: process.env.LOG_LEVEL || (isDevelopment ? 'debug' : 'info'),
+      transport: isDevelopment
+        ? {
+            target: 'pino-pretty',
+            options: {
+              colorize: true,
+              levelFirst: true,
+              translateTime: 'SYS:standard',
+              ignore: 'pid,hostname'
+            }
+          }
+        : undefined,
+    },
     requestIdHeader: 'x-request-id',
     requestIdLogLabel: 'requestId',
     disableRequestLogging: false,
@@ -48,11 +63,6 @@ const buildApp = async () => {
     },
   });
 
-  await app.register(websocketPlugin, {
-    prisma,
-    redis,
-  });
-
   // ✅ FIXED: Only register rate limiting in non-test environments
   if (config.NODE_ENV !== 'test') {
     await app.register(rateLimit, {
@@ -67,6 +77,11 @@ const buildApp = async () => {
   }
 
   await app.register(authPlugin, {
+    prisma,
+    redis,
+  });
+
+  await app.register(websocketPlugin, {
     prisma,
     redis,
   });

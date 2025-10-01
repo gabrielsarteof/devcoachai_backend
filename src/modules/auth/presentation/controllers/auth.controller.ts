@@ -196,7 +196,9 @@ export class AuthController {
 
       return reply.send({
         success: true,
-        data: userProfile
+        data: {
+          user: userProfile
+        }
       });
     } catch (error) {
       if (error instanceof AuthError) {

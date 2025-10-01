@@ -43,3 +43,6 @@ lerna-debug.log*
 *.sqlite
 *.sqlite3
 prisma/migrations/dev/
+
+# Postman/Newman Reports
+.postman/reports/

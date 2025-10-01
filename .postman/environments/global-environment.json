@@ -61,8 +61,22 @@
 		{
 			"key": "challengeId",
 			"value": "",
-			"description": "Challenge ID for creating attempts",
+			"description": "Challenge ID for creating attempts (automatically set)",
 			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "createdChallengeId",
+			"value": "",
+			"description": "Created challenge ID for CRUD tests (automatically set)",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "techLeadAccessToken",
+			"value": "",
+			"description": "JWT Access Token for TECH_LEAD role (set from auth module)",
+			"type": "secret",
 			"enabled": true
 		},
 		{

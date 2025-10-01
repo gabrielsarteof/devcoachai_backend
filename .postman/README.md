@@ -19,6 +19,14 @@ Coleções Postman completas para testar todos os módulos da API DevCoach AI co
 - Acesso a perfil
 - Logout
 
+### 2. **Challenges Module** (`challenges-collection.json`)
+- ✅ 17 testes organizados
+- Challenge Discovery (listar, filtrar, detalhes)
+- Challenge Attempts (iniciar, analisar código, submeter solução)
+- Challenge Management CRUD (TECH_LEAD)
+- Trap Detection e Code Analysis
+- Error Handling com códigos de domínio
+
 ---
 
 ## 🌍 Environments Consolidados
@@ -391,7 +399,8 @@ npm run dev
 ├── README.md                                    # Este arquivo
 ├── collections/                                 # Collections organizadas
 │   ├── all-tests-collection.json               # Master collection
-│   └── auth-collection.json                    # Auth module
+│   ├── auth-collection.json                    # Auth module
+│   └── challenges-collection.json              # Challenges module
 ├── environments/                                # Environments consolidados
 │   ├── global-environment.json                 # Development (recomendado)
 │   ├── global-environment-staging.json         # Staging
@@ -403,7 +412,10 @@ npm run dev
     └── [timestamp]/
         ├── all-tests-report.html
         ├── all-tests-report.json
-        └── auth-report.html
+        ├── auth-report.html
+        ├── auth-report.json
+        ├── challenges-report.html
+        └── challenges-report.json
 ```
 
 ---

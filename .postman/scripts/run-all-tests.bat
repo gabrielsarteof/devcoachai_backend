@@ -129,6 +129,30 @@ if %errorlevel% equ 0 (
 )
 set /a TOTAL_TESTS+=1
 
+REM Run Challenges Collection
+echo.
+echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+echo Running: Challenges Module
+echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+echo.
+
+newman run "%COLLECTIONS_DIR%\challenges-collection.json" ^
+    -e "%ENV_FILE%" ^
+    --reporters cli,json,htmlextra ^
+    --reporter-json-export "%REPORTS_DIR%\%TIMESTAMP%\challenges-report.json" ^
+    --reporter-htmlextra-export "%REPORTS_DIR%\%TIMESTAMP%\challenges-report.html" ^
+    --reporter-htmlextra-title "Challenges Module" ^
+    --color on ^
+    --delay-request 100
+
+if %errorlevel% equ 0 (
+    echo [PASSED] Challenges Module
+) else (
+    echo [FAILED] Challenges Module
+    set /a FAILED_TESTS+=1
+)
+set /a TOTAL_TESTS+=1
+
 REM Generate summary
 echo.
 echo ╔════════════════════════════════════════════════════════════════╗

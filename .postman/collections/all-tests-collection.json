@@ -172,7 +172,149 @@
 			]
 		},
 		{
-			"name": "✅ 2. Final Summary",
+			"name": "🏆 2. Challenges Module",
+			"description": "Test challenges and code submission features",
+			"item": [
+				{
+					"name": "List Available Challenges",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Challenges listed successfully', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains challenges array', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('success', true);",
+									"    pm.expect(responseJson.data).to.have.property('challenges');",
+									"    pm.expect(responseJson.data.challenges).to.be.an('array');",
+									"});",
+									"",
+									"// Store first challenge ID for later tests",
+									"const challenges = pm.response.json().data.challenges;",
+									"if (challenges.length > 0) {",
+									"    pm.environment.set('challengeId', challenges[0].id);",
+									"    console.log('✅ Stored challengeId:', challenges[0].id);",
+									"}",
+									"",
+									"console.log('✅ Challenges module tested successfully');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/challenges?limit=5",
+							"host": ["{{baseUrl}}"],
+							"path": ["challenges"],
+							"query": [
+								{
+									"key": "limit",
+									"value": "5"
+								}
+							]
+						},
+						"description": "List available challenges (public endpoint)"
+					}
+				},
+				{
+					"name": "Get Challenge Details",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Challenge details retrieved', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Challenge has required fields', function () {",
+									"    const challenge = pm.response.json().data;",
+									"    pm.expect(challenge).to.have.property('id');",
+									"    pm.expect(challenge).to.have.property('title');",
+									"    pm.expect(challenge).to.have.property('difficulty');",
+									"    pm.expect(challenge).to.have.property('category');",
+									"    pm.expect(challenge).to.have.property('instructions');",
+									"});",
+									"",
+									"console.log('✅ Challenge details retrieved');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/challenges/{{challengeId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["challenges", "{{challengeId}}"]
+						},
+						"description": "Get detailed challenge information"
+					}
+				},
+				{
+					"name": "Start Challenge Attempt",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Attempt created successfully', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Attempt ID returned', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('success', true);",
+									"    pm.expect(responseJson.data).to.have.property('attemptId');",
+									"    ",
+									"    // Store attempt ID",
+									"    pm.environment.set('attemptId', responseJson.data.attemptId);",
+									"    console.log('✅ Stored attemptId:', responseJson.data.attemptId);",
+									"});",
+									"",
+									"console.log('✅ Challenge attempt started');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"language\": \"javascript\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/challenges/{{challengeId}}/start",
+							"host": ["{{baseUrl}}"],
+							"path": ["challenges", "{{challengeId}}", "start"]
+						},
+						"description": "Start a new challenge attempt"
+					}
+				}
+			]
+		},
+		{
+			"name": "✅ 3. Final Summary",
 			"description": "Generate test execution summary",
 			"item": [
 				{

@@ -320,7 +320,7 @@
     "on-exit-leak-free": "^2.1.2",
     "once": "^1.4.0",
     "onetime": "^5.1.2",
-    "openai": "^5.19.1",
+    "openai": "^6.0.0",
     "optionator": "^0.9.4",
     "ora": "^5.4.1",
     "os-tmpdir": "^1.0.2",
@@ -460,7 +460,7 @@
     "xtend": "^4.0.2",
     "yaml": "^2.8.1",
     "yocto-queue": "^0.1.0",
-    "zod": "^4.1.11",
+    "zod": "^3.25.76",
     "zod-to-json-schema": "^3.24.6"
   },
   "repository": {

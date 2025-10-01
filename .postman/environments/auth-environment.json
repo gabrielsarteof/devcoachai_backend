@@ -1,0 +1,65 @@
+{
+	"id": "a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890",
+	"name": "DevCoach AI - Auth Module (Template)",
+	"values": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3333",
+			"description": "Base URL for the API server",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "accessToken",
+			"value": "",
+			"description": "JWT Access Token (automatically set after login)",
+			"type": "secret",
+			"enabled": true
+		},
+		{
+			"key": "refreshToken",
+			"value": "",
+			"description": "JWT Refresh Token (automatically set after login)",
+			"type": "secret",
+			"enabled": true
+		},
+		{
+			"key": "userId",
+			"value": "",
+			"description": "Current user ID (automatically set after registration/login)",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "testEmail",
+			"value": "",
+			"description": "Generated test email (automatically set during tests)",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "apiVersion",
+			"value": "v1",
+			"description": "API version for endpoint URLs",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "timeout",
+			"value": "5000",
+			"description": "Request timeout in milliseconds",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "environment",
+			"value": "template",
+			"description": "Environment identifier",
+			"type": "default",
+			"enabled": true
+		}
+	],
+	"_postman_variable_scope": "environment",
+	"_postman_exported_at": "2025-01-01T12:00:00.000Z",
+	"_postman_exported_using": "Postman/10.20.0"
+}

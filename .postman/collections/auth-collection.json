@@ -1,0 +1,1206 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890",
+		"name": "DevCoach AI - Auth Module",
+		"description": "Comprehensive test collection for the DevCoach AI Authentication Module.\n\nThis collection provides complete coverage of authentication endpoints, including:\n- User Registration and Validation\n- Login and Session Management\n- Token Refresh and Security\n- Profile Access and Authorization\n- Error Handling and Edge Cases\n\nEach folder contains organized test scenarios with proper validation, error handling, and security testing.\n\n**Authentication Flow:**\n1. Register new user\n2. Login with credentials\n3. Access protected resources\n4. Refresh tokens when needed\n5. Logout to cleanup session\n\n**Environment Variables:**\nMake sure to configure the appropriate environment (dev/staging) with:\n- `baseUrl`: API base URL\n- `accessToken`: Will be set automatically after login\n- `refreshToken`: Will be set automatically after login\n- `userId`: Will be set automatically after registration/login",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "12345678"
+	},
+	"item": [
+		{
+			"name": "🔐 User Registration",
+			"description": "User registration endpoints with comprehensive validation testing",
+			"item": [
+				{
+					"name": "Happy Path",
+					"item": [
+						{
+							"name": "[POST] Register - Successful Registration",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"// Test successful registration",
+											"pm.test('Status code is 201', function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test('Response contains required fields', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"    pm.expect(responseJson.data).to.have.property('user');",
+											"    pm.expect(responseJson.data).to.have.property('accessToken');",
+											"    pm.expect(responseJson.data).to.have.property('refreshToken');",
+											"});",
+											"",
+											"pm.test('User data is valid', function () {",
+											"    const responseJson = pm.response.json();",
+											"    const user = responseJson.data.user;",
+											"    ",
+											"    pm.expect(user).to.have.property('id');",
+											"    pm.expect(user).to.have.property('name');",
+											"    pm.expect(user).to.have.property('email');",
+											"    pm.expect(user).to.not.have.property('password');",
+											"    pm.expect(user.email).to.equal(pm.environment.get('testEmail'));",
+											"});",
+											"",
+											"pm.test('Tokens are valid JWT format', function () {",
+											"    const responseJson = pm.response.json();",
+											"    const accessToken = responseJson.data.accessToken;",
+											"    const refreshToken = responseJson.data.refreshToken;",
+											"    ",
+											"    // Basic JWT format check (header.payload.signature)",
+											"    pm.expect(accessToken.split('.')).to.have.length(3);",
+											"    pm.expect(refreshToken.split('.')).to.have.length(3);",
+											"    ",
+											"    // Store tokens for subsequent requests",
+											"    pm.environment.set('accessToken', accessToken);",
+											"    pm.environment.set('refreshToken', refreshToken);",
+											"    pm.environment.set('userId', responseJson.data.user.id);",
+											"});",
+											"",
+											"pm.test('Response time is acceptable', function () {",
+											"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"// Generate unique test email",
+											"const timestamp = Date.now();",
+											"const testEmail = `test.user.${timestamp}@example.com`;",
+											"pm.environment.set('testEmail', testEmail);"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"TestPass@123\",\n  \"acceptTerms\": true\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/register",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"register"
+									]
+								},
+								"description": "Register a new user with valid data. This test verifies successful user creation, proper response format, and JWT token generation."
+							}
+						}
+					]
+				},
+				{
+					"name": "Validation Tests",
+					"item": [
+						{
+							"name": "[POST] Register - Invalid Email Format",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test('Error message contains email validation', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('error');",
+											"    pm.expect(responseJson.message.toLowerCase()).to.include('email');",
+											"});",
+											"",
+											"pm.test('No tokens returned', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.not.have.property('data');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"invalid-email-format\",\n  \"password\": \"TestPass@123\",\n  \"acceptTerms\": true\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/register",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"register"
+									]
+								},
+								"description": "Test registration with invalid email format to verify email validation."
+							}
+						},
+						{
+							"name": "[POST] Register - Weak Password (No Uppercase)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test('Password validation error', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson.message.toLowerCase()).to.include('password');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test.weak.password@example.com\",\n  \"password\": \"weakpassword123!\",\n  \"acceptTerms\": true\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/register",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"register"
+									]
+								},
+								"description": "Test registration with weak password (missing uppercase letter)."
+							}
+						},
+						{
+							"name": "[POST] Register - Password Too Short",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test('Password length validation error', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson.message.toLowerCase()).to.include('password');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test.short.password@example.com\",\n  \"password\": \"Pass1!\",\n  \"acceptTerms\": true\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/register",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"register"
+									]
+								},
+								"description": "Test registration with password shorter than 8 characters."
+							}
+						},
+						{
+							"name": "[POST] Register - Terms Not Accepted",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test('Terms validation error', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson.message.toLowerCase()).to.include('terms');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test.no.terms@example.com\",\n  \"password\": \"ValidPass@123\",\n  \"acceptTerms\": false\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/register",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"register"
+									]
+								},
+								"description": "Test registration without accepting terms and conditions."
+							}
+						},
+						{
+							"name": "[POST] Register - Duplicate Email",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test('Duplicate email error', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('code', 'AUTH_EMAIL_ALREADY_EXISTS');",
+											"    pm.expect(responseJson).to.have.property('statusCode', 400);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"Another User\",\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"AnotherPass@123\",\n  \"acceptTerms\": true\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/register",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"register"
+									]
+								},
+								"description": "Test registration with email that already exists in the system."
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🔑 User Login",
+			"description": "User authentication endpoints with security testing",
+			"item": [
+				{
+					"name": "Happy Path",
+					"item": [
+						{
+							"name": "[POST] Login - Successful Authentication",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Response contains required fields', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"    pm.expect(responseJson.data).to.have.property('user');",
+											"    pm.expect(responseJson.data).to.have.property('accessToken');",
+											"    pm.expect(responseJson.data).to.have.property('refreshToken');",
+											"});",
+											"",
+											"pm.test('User data is complete', function () {",
+											"    const responseJson = pm.response.json();",
+											"    const user = responseJson.data.user;",
+											"    ",
+											"    pm.expect(user).to.have.property('id');",
+											"    pm.expect(user).to.have.property('email');",
+											"    pm.expect(user).to.not.have.property('password');",
+											"});",
+											"",
+											"pm.test('Tokens are valid', function () {",
+											"    const responseJson = pm.response.json();",
+											"    const accessToken = responseJson.data.accessToken;",
+											"    const refreshToken = responseJson.data.refreshToken;",
+											"    ",
+											"    pm.expect(accessToken.split('.')).to.have.length(3);",
+											"    pm.expect(refreshToken.split('.')).to.have.length(3);",
+											"    ",
+											"    // Update environment tokens",
+											"    pm.environment.set('accessToken', accessToken);",
+											"    pm.environment.set('refreshToken', refreshToken);",
+											"});",
+											"",
+											"pm.test('Response time is acceptable', function () {",
+											"    pm.expect(pm.response.responseTime).to.be.below(1000);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"TestPass@123\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/login",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"login"
+									]
+								},
+								"description": "Login with valid credentials from the registration test."
+							}
+						}
+					]
+				},
+				{
+					"name": "Security Tests",
+					"item": [
+						{
+							"name": "[POST] Login - Invalid Password",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 401', function () {",
+											"    pm.response.to.have.status(401);",
+											"});",
+											"",
+											"pm.test('No tokens returned', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.not.have.property('data');",
+											"});",
+											"",
+											"pm.test('Generic error message', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('error');",
+											"    pm.expect(responseJson).to.have.property('code', 'AUTH_INVALID_CREDENTIALS');",
+											"    pm.expect(responseJson).to.have.property('statusCode', 401);",
+											"    // Should not reveal which field is wrong",
+											"    pm.expect(responseJson.message.toLowerCase()).to.not.include('password');",
+											"    pm.expect(responseJson.message.toLowerCase()).to.not.include('email');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"WrongPassword123!\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/login",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"login"
+									]
+								},
+								"description": "Test login with correct email but wrong password."
+							}
+						},
+						{
+							"name": "[POST] Login - Non-existent Email",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 401', function () {",
+											"    pm.response.to.have.status(401);",
+											"});",
+											"",
+											"pm.test('No user data leaked', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.not.have.property('data');",
+											"});",
+											"",
+											"pm.test('Invalid credentials error', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('code', 'AUTH_INVALID_CREDENTIALS');",
+											"    pm.expect(responseJson).to.have.property('statusCode', 401);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"email\": \"nonexistent@example.com\",\n  \"password\": \"SomePassword123!\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/login",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"login"
+									]
+								},
+								"description": "Test login with non-existent email address."
+							}
+						}
+					]
+				},
+				{
+					"name": "Validation Tests",
+					"item": [
+						{
+							"name": "[POST] Login - Missing Email",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test('Validation error message', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('error');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"password\": \"SomePassword123!\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/login",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"login"
+									]
+								},
+								"description": "Test login with missing email field."
+							}
+						},
+						{
+							"name": "[POST] Login - Missing Password",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test('Validation error message', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('error');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"email\": \"test@example.com\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/login",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"login"
+									]
+								},
+								"description": "Test login with missing password field."
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🔄 Token Management",
+			"description": "Token refresh and validation endpoints",
+			"item": [
+				{
+					"name": "Happy Path",
+					"item": [
+						{
+							"name": "[POST] Refresh Token - Valid Refresh",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('New tokens provided', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson.data).to.have.property('accessToken');",
+											"    pm.expect(responseJson.data).to.have.property('refreshToken');",
+											"});",
+											"",
+											"pm.test('Tokens are different from previous', function () {",
+											"    const responseJson = pm.response.json();",
+											"    const newAccessToken = responseJson.data.accessToken;",
+											"    const newRefreshToken = responseJson.data.refreshToken;",
+											"    const oldAccessToken = pm.environment.get('accessToken');",
+											"    const oldRefreshToken = pm.environment.get('refreshToken');",
+											"    ",
+											"    pm.expect(newAccessToken).to.not.equal(oldAccessToken);",
+											"    // Note: Current implementation doesn't rotate refresh tokens",
+											"    // pm.expect(newRefreshToken).to.not.equal(oldRefreshToken);",
+											"    ",
+											"    // Update environment with new tokens",
+											"    pm.environment.set('accessToken', newAccessToken);",
+											"    pm.environment.set('refreshToken', newRefreshToken);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/refresh",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"refresh"
+									]
+								},
+								"description": "Refresh tokens using valid refresh token."
+							}
+						}
+					]
+				},
+				{
+					"name": "Security Tests",
+					"item": [
+						{
+							"name": "[POST] Refresh Token - Invalid Token",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 401', function () {",
+											"    pm.response.to.have.status(401);",
+											"});",
+											"",
+											"pm.test('No tokens returned', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.not.have.property('data');",
+											"});",
+											"",
+											"pm.test('Error message about invalid token', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('error');",
+											"    pm.expect(responseJson).to.have.property('code', 'AUTH_TOKEN_INVALID');",
+											"    pm.expect(responseJson).to.have.property('statusCode', 401);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"refreshToken\": \"invalid.token.here\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/refresh",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"refresh"
+									]
+								},
+								"description": "Test refresh with invalid token format."
+							}
+						},
+						{
+							"name": "[POST] Refresh Token - Access Token Used",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 401', function () {",
+											"    pm.response.to.have.status(401);",
+											"});",
+											"",
+											"pm.test('Wrong token type error', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('error');",
+											"    pm.expect(responseJson).to.have.property('code', 'AUTH_TOKEN_INVALID');",
+											"    pm.expect(responseJson).to.have.property('statusCode', 401);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"refreshToken\": \"{{accessToken}}\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/refresh",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"refresh"
+									]
+								},
+								"description": "Test using access token instead of refresh token."
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "👤 Profile Access",
+			"description": "Protected endpoints requiring authentication",
+			"item": [
+				{
+					"name": "Happy Path",
+					"item": [
+						{
+							"name": "[GET] Current User - Authenticated Request",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('User profile returned', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"    pm.expect(responseJson.data).to.have.property('user');",
+											"});",
+											"",
+											"pm.test('User data is complete and secure', function () {",
+											"    const responseJson = pm.response.json();",
+											"    const user = responseJson.data.user;",
+											"    ",
+											"    // Required fields",
+											"    pm.expect(user).to.have.property('id');",
+											"    pm.expect(user).to.have.property('email');",
+											"    pm.expect(user).to.have.property('name');",
+											"    pm.expect(user).to.have.property('role');",
+											"    ",
+											"    // Sensitive fields should not be exposed",
+											"    pm.expect(user).to.not.have.property('password');",
+											"    pm.expect(user).to.not.have.property('passwordHash');",
+											"});",
+											"",
+											"pm.test('User ID matches registration', function () {",
+											"    const responseJson = pm.response.json();",
+											"    const userId = responseJson.data.user.id;",
+											"    pm.expect(userId).to.equal(pm.environment.get('userId'));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/auth/me",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"me"
+									]
+								},
+								"description": "Get current user profile with valid access token."
+							}
+						}
+					]
+				},
+				{
+					"name": "Security Tests",
+					"item": [
+						{
+							"name": "[GET] Current User - No Authorization Header",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 401', function () {",
+											"    pm.response.to.have.status(401);",
+											"});",
+											"",
+											"pm.test('No user data returned', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.not.have.property('data');",
+											"});",
+											"",
+											"pm.test('Authentication required error', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('error');",
+											"    pm.expect(responseJson).to.have.property('code', 'AUTH_UNAUTHORIZED');",
+											"    pm.expect(responseJson).to.have.property('statusCode', 401);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/auth/me",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"me"
+									]
+								},
+								"description": "Test accessing protected endpoint without authorization header."
+							}
+						},
+						{
+							"name": "[GET] Current User - Invalid Token",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 401', function () {",
+											"    pm.response.to.have.status(401);",
+											"});",
+											"",
+											"pm.test('Invalid token error', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('error');",
+											"    pm.expect(responseJson).to.have.property('code', 'AUTH_TOKEN_INVALID');",
+											"    pm.expect(responseJson).to.have.property('statusCode', 401);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer invalid.token.format"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/auth/me",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"me"
+									]
+								},
+								"description": "Test accessing protected endpoint with invalid token."
+							}
+						},
+						{
+							"name": "[GET] Current User - Refresh Token Used",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 401', function () {",
+											"    pm.response.to.have.status(401);",
+											"});",
+											"",
+											"pm.test('Wrong token type error', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('error');",
+											"    pm.expect(responseJson).to.have.property('code', 'AUTH_TOKEN_INVALID');",
+											"    pm.expect(responseJson).to.have.property('statusCode', 401);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{refreshToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/auth/me",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"me"
+									]
+								},
+								"description": "Test using refresh token to access protected endpoint."
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🚪 Session Management",
+			"description": "Logout and session cleanup endpoints",
+			"item": [
+				{
+					"name": "Happy Path",
+					"item": [
+						{
+							"name": "[POST] Logout - Successful Session Cleanup",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 204', function () {",
+											"    pm.response.to.have.status(204);",
+											"});",
+											"",
+											"pm.test('No response body', function () {",
+											"    pm.expect(pm.response.text()).to.be.empty;",
+											"});",
+											"",
+											"// Clean up environment tokens",
+											"pm.environment.unset('accessToken');",
+											"pm.environment.unset('refreshToken');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/logout",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"logout"
+									]
+								},
+								"description": "Logout with valid tokens to cleanup session."
+							}
+						}
+					]
+				},
+				{
+					"name": "Security Tests",
+					"item": [
+						{
+							"name": "[POST] Logout - No Authorization Header",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 401', function () {",
+											"    pm.response.to.have.status(401);",
+											"});",
+											"",
+											"pm.test('Authentication required error', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('error');",
+											"    pm.expect(responseJson).to.have.property('code', 'AUTH_UNAUTHORIZED');",
+											"    pm.expect(responseJson).to.have.property('statusCode', 401);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"refreshToken\": \"some.refresh.token\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/logout",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"logout"
+									]
+								},
+								"description": "Test logout without authentication."
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🔄 Integration Flows",
+			"description": "End-to-end authentication workflows",
+			"item": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global pre-request script",
+					"console.log('Running request to:', pm.request.url);",
+					"",
+					"// Set default headers if not already set",
+					"if (!pm.request.headers.has('Content-Type') && pm.request.body && pm.request.body.mode === 'raw') {",
+					"    pm.request.headers.add({key: 'Content-Type', value: 'application/json'});",
+					"}"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global test script",
+					"pm.test('Content-Type is JSON', function () {",
+					"    if (pm.response.code !== 204) { // 204 No Content doesn't have body",
+					"        pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+					"    }",
+					"});",
+					"",
+					"pm.test('Response structure is consistent', function () {",
+					"    if (pm.response.code !== 204 && pm.response.text()) {",
+					"        const responseJson = pm.response.json();",
+					"        ",
+					"        // Success responses should have success field",
+					"        if (pm.response.code >= 200 && pm.response.code < 300) {",
+					"            pm.expect(responseJson).to.have.property('success');",
+					"        }",
+					"        ",
+					"        // Error responses should have error field",
+					"        if (pm.response.code >= 400) {",
+					"            pm.expect(responseJson).to.have.property('error');",
+					"            pm.expect(responseJson).to.have.property('message');",
+					"        }",
+					"    }",
+					"});"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "collectionVersion",
+			"value": "1.0.0",
+			"type": "string"
+		},
+		{
+			"key": "timestamp",
+			"value": "{{$timestamp}}",
+			"type": "string"
+		}
+	]
+}

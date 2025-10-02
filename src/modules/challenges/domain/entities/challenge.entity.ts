@@ -37,7 +37,6 @@ export class ChallengeEntity {
 
     try {
       const props = {
-        id: crypto.randomUUID(),
         ...data,
         testCases: JSON.stringify(data.testCases),
         hints: JSON.stringify(data.hints),
@@ -45,13 +44,12 @@ export class ChallengeEntity {
         targetMetrics: JSON.stringify(data.targetMetrics),
         createdAt: new Date(),
         updatedAt: new Date(),
-      } as PrismaChallenge;
+      } as Omit<PrismaChallenge, 'id'>;
 
       const processingTime = Date.now() - startTime;
       
       logger.info({
         operation: 'challenge_entity_creation_success',
-        challengeId: props.id,
         slug: data.slug,
         title: data.title,
         difficulty: data.difficulty,

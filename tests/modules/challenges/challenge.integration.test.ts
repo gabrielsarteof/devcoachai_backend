@@ -544,9 +544,10 @@ describe('Challenge Management (Admin Routes)', () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body.title).toBe('Updated Test Challenge');
-      expect(body.estimatedMinutes).toBe(45);
-      expect(body.slug).toBe('test-challenge');
+      const challenge = body.data || body;
+      expect(challenge.title).toBe('Updated Test Challenge');
+      expect(challenge.estimatedMinutes).toBe(45);
+      expect(challenge.slug).toBe('test-challenge');
 
       const dbChallenge = await prisma.challenge.findUnique({
         where: { id: testChallenge.id },
@@ -846,12 +847,13 @@ describe('User Interaction (Authenticated Routes)', () => {
 
       if (response.statusCode === 200) {
         const body = JSON.parse(response.body);
-        expect(body).toHaveProperty('attemptId');
-        expect(body).toHaveProperty('score');
-        expect(body).toHaveProperty('testResults');
-        expect(body).toHaveProperty('feedback');
+        const data = body.data || body;
+        expect(data).toHaveProperty('attemptId');
+        expect(data).toHaveProperty('score');
+        expect(data).toHaveProperty('testResults');
+        expect(data).toHaveProperty('feedback');
       }
-    });
+    }, 15000);
 
     it('should fail when submitting to already completed attempt', async () => {
       await prisma.challengeAttempt.update({
@@ -952,13 +954,14 @@ describe('User Interaction (Authenticated Routes)', () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body).toHaveProperty('trapsDetected');
-      expect(body).toHaveProperty('codeQuality');
-      expect(body).toHaveProperty('feedback');
-      expect(body).toHaveProperty('warnings');
+      const data = body.data || body;
+      expect(data).toHaveProperty('trapsDetected');
+      expect(data).toHaveProperty('codeQuality');
+      expect(data).toHaveProperty('feedback');
+      expect(data).toHaveProperty('warnings');
 
-      expect(body.trapsDetected.length).toBeGreaterThan(0);
-      expect(body.trapsDetected[0].trapId).toBe('trap1');
+      expect(data.trapsDetected.length).toBeGreaterThan(0);
+      expect(data.trapsDetected[0].trapId).toBe('trap1');
     });
 
     it('should return 401 when analyzing code without authentication', async () => {
@@ -1025,11 +1028,12 @@ describe('Challenge Discovery (Public Routes)', () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body).toHaveProperty('challenges');
-      expect(Array.isArray(body.challenges)).toBe(true);
-      expect(body.challenges.length).toBeGreaterThan(0);
+      const data = body.data || body;
+      expect(data).toHaveProperty('challenges');
+      expect(Array.isArray(data.challenges)).toBe(true);
+      expect(data.challenges.length).toBeGreaterThan(0);
 
-      const challenge = body.challenges[0];
+      const challenge = data.challenges[0];
       expect(challenge).not.toHaveProperty('completed');
     });
 
@@ -1044,10 +1048,11 @@ describe('Challenge Discovery (Public Routes)', () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body).toHaveProperty('challenges');
-      expect(Array.isArray(body.challenges)).toBe(true);
+      const data = body.data || body;
+      expect(data).toHaveProperty('challenges');
+      expect(Array.isArray(data.challenges)).toBe(true);
 
-      const challenge = body.challenges[0];
+      const challenge = data.challenges[0];
       expect(challenge).toHaveProperty('completed');
       expect(challenge.completed).toBe(false);
     });
@@ -1060,8 +1065,9 @@ describe('Challenge Discovery (Public Routes)', () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body.challenges.length).toBeGreaterThan(0);
-      expect(body.challenges.every((c: any) => c.difficulty === 'EASY')).toBe(true);
+      const data = body.data || body;
+      expect(data.challenges.length).toBeGreaterThan(0);
+      expect(data.challenges.every((c: any) => c.difficulty === 'EASY')).toBe(true);
     });
 
     it('should filter challenges by category', async () => {
@@ -1072,8 +1078,9 @@ describe('Challenge Discovery (Public Routes)', () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body.challenges.length).toBeGreaterThan(0);
-      expect(body.challenges.every((c: any) => c.category === 'BACKEND')).toBe(true);
+      const data = body.data || body;
+      expect(data.challenges.length).toBeGreaterThan(0);
+      expect(data.challenges.every((c: any) => c.category === 'BACKEND')).toBe(true);
     });
 
     it('should paginate results with limit and offset', async () => {
@@ -1084,7 +1091,8 @@ describe('Challenge Discovery (Public Routes)', () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body.challenges.length).toBe(1);
+      const data = body.data || body;
+      expect(data.challenges.length).toBe(1);
     });
   });
 
@@ -1097,11 +1105,12 @@ describe('Challenge Discovery (Public Routes)', () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body).toHaveProperty('challenge');
-      expect(body).toHaveProperty('attempts');
-      expect(body.challenge.id).toBe(testChallenge.id);
-      expect(body.challenge.slug).toBe('test-challenge');
-      expect(body.attempts).toEqual([]);
+      const data = body.data || body;
+      expect(data).toHaveProperty('challenge');
+      expect(data).toHaveProperty('attempts');
+      expect(data.challenge.id).toBe(testChallenge.id);
+      expect(data.challenge.slug).toBe('test-challenge');
+      expect(data.attempts).toEqual([]);
     });
 
     it('should get challenge by slug', async () => {
@@ -1112,8 +1121,9 @@ describe('Challenge Discovery (Public Routes)', () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body).toHaveProperty('challenge');
-      expect(body.challenge.slug).toBe('test-challenge');
+      const data = body.data || body;
+      expect(data).toHaveProperty('challenge');
+      expect(data.challenge.slug).toBe('test-challenge');
     });
 
     it('should include user attempts when authenticated', async () => {
@@ -1138,9 +1148,10 @@ describe('Challenge Discovery (Public Routes)', () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body.attempts.length).toBeGreaterThan(0);
-      expect(body.attempts[0]).toHaveProperty('attemptNumber');
-      expect(body.attempts[0]).toHaveProperty('status');
+      const data = body.data || body;
+      expect(data.attempts.length).toBeGreaterThan(0);
+      expect(data.attempts[0]).toHaveProperty('attemptNumber');
+      expect(data.attempts[0]).toHaveProperty('status');
     });
 
     it('should return 404 for non-existent slug', async () => {

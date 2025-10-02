@@ -31,7 +31,6 @@ export class ChallengeRepository implements IChallengeRepository {
 
       const challenge = await this.prisma.challenge.create({
         data: {
-          id: prismaData.id,
           slug: prismaData.slug,
           title: prismaData.title,
           description: prismaData.description,

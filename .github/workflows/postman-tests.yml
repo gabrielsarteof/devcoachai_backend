@@ -110,6 +110,16 @@ jobs:
             --reporter-json-export ./newman/challenges-report.json \
             --color on
 
+      - name: 🧪 Run Metrics Module Tests
+        if: success() || failure()
+        run: |
+          newman run .postman/collections/metrics-collection.json \
+            -e .postman/environments/global-environment.json \
+            --env-var "baseUrl=http://localhost:3333" \
+            --reporters cli,json \
+            --reporter-json-export ./newman/metrics-report.json \
+            --color on
+
       - name: 📊 Upload Test Reports
         if: always()
         uses: actions/upload-artifact@v4

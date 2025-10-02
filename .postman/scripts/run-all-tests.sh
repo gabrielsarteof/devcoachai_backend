@@ -143,6 +143,12 @@ run_collection \
     "challenges"
 TOTAL_TESTS=$((TOTAL_TESTS + 1))
 
+run_collection \
+    "Metrics Module" \
+    "${COLLECTIONS_DIR}/metrics-collection.json" \
+    "metrics"
+TOTAL_TESTS=$((TOTAL_TESTS + 1))
+
 # Generate summary
 echo ""
 echo -e "${BLUE}╔════════════════════════════════════════════════════════════════╗${NC}"

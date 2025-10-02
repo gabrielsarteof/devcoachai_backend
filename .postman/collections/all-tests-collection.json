@@ -315,7 +315,104 @@
 			]
 		},
 		{
-			"name": "✅ 3. Final Summary",
+			"name": "📊 3. Metrics Module",
+			"description": "Test metrics tracking and session analytics features",
+			"item": [
+				{
+					"name": "Track Coding Metrics",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Metrics tracked successfully', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Response contains metrics data', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('success', true);",
+									"    pm.expect(responseJson.data).to.have.property('metricSnapshot');",
+									"    pm.expect(responseJson.data).to.have.property('calculation');",
+									"    pm.expect(responseJson.data).to.have.property('riskAssessment');",
+									"});",
+									"",
+									"console.log('✅ Metrics module tested successfully');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"attemptId\": \"{{attemptId}}\",\n  \"totalLines\": 100,\n  \"linesFromAI\": 30,\n  \"linesTyped\": 70,\n  \"copyPasteEvents\": 2,\n  \"deleteEvents\": 5,\n  \"testRuns\": 3,\n  \"testsPassed\": 2,\n  \"testsTotal\": 3,\n  \"checklistItems\": [{\"id\": \"c1\", \"label\": \"Test\", \"checked\": true, \"weight\": 1, \"category\": \"validation\"}],\n  \"sessionTime\": 300\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/metrics",
+							"host": ["{{baseUrl}}"],
+							"path": ["metrics"]
+						},
+						"description": "Track coding metrics for a challenge attempt"
+					}
+				},
+				{
+					"name": "Get Session Metrics",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Session metrics retrieved', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Session has required fields', function () {",
+									"    const sessionData = pm.response.json().data;",
+									"    pm.expect(sessionData).to.have.property('attempt');",
+									"    pm.expect(sessionData).to.have.property('metrics');",
+									"    pm.expect(sessionData).to.have.property('summary');",
+									"    pm.expect(sessionData).to.have.property('userAverages');",
+									"    pm.expect(sessionData).to.have.property('trends');",
+									"});",
+									"",
+									"console.log('✅ Session metrics retrieved');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/metrics/session/{{attemptId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["metrics", "session", "{{attemptId}}"]
+						},
+						"description": "Get metrics for a specific attempt session"
+					}
+				}
+			]
+		},
+		{
+			"name": "✅ 4. Final Summary",
 			"description": "Generate test execution summary",
 			"item": [
 				{

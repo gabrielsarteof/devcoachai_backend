@@ -20,12 +20,20 @@ Coleções Postman completas para testar todos os módulos da API DevCoach AI co
 - Logout
 
 ### 2. **Challenges Module** (`challenges-collection.json`)
-- ✅ 17 testes organizados
+- ✅ 19 testes organizados
 - Challenge Discovery (listar, filtrar, detalhes)
 - Challenge Attempts (iniciar, analisar código, submeter solução)
 - Challenge Management CRUD (TECH_LEAD)
 - Trap Detection e Code Analysis
 - Error Handling com códigos de domínio
+
+### 3. **Metrics Module** (`metrics-collection.json`)
+- ✅ 20 testes organizados
+- Metrics Tracking (POST /metrics com validação de cálculos)
+- Session Metrics (GET /metrics/session/:attemptId com análise de tendências)
+- Metrics Streaming (POST/DELETE /metrics/stream com controle de intervalo)
+- Domain Error Validation (METRIC_INVALID_ATTEMPT, METRIC_VALIDATION_FAILED, METRIC_DATA_INCONSISTENT, METRIC_ATTEMPT_NOT_FOUND)
+- Risk Assessment e Performance Insights
 
 ---
 
@@ -400,7 +408,8 @@ npm run dev
 ├── collections/                                 # Collections organizadas
 │   ├── all-tests-collection.json               # Master collection
 │   ├── auth-collection.json                    # Auth module
-│   └── challenges-collection.json              # Challenges module
+│   ├── challenges-collection.json              # Challenges module
+│   └── metrics-collection.json                 # Metrics module
 ├── environments/                                # Environments consolidados
 │   ├── global-environment.json                 # Development (recomendado)
 │   ├── global-environment-staging.json         # Staging
@@ -415,7 +424,9 @@ npm run dev
         ├── auth-report.html
         ├── auth-report.json
         ├── challenges-report.html
-        └── challenges-report.json
+        ├── challenges-report.json
+        ├── metrics-report.html
+        └── metrics-report.json
 ```
 
 ---

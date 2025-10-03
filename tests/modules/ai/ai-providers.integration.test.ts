@@ -79,55 +79,6 @@ vi.mock('@anthropic-ai/sdk', () => ({
   }))
 }));
 
-vi.mock('@google/generative-ai', () => ({
-  GoogleGenerativeAI: vi.fn().mockImplementation(() => ({
-    getGenerativeModel: vi.fn().mockImplementation((config) => ({
-      generateContent: vi.fn().mockImplementation(async () => {
-        if (config.model.includes('error')) {
-          throw new Error('Google API Error: Service unavailable');
-        }
-        if (config.model.includes('ratelimit')) {
-          const error = new Error('Rate limit exceeded') as any;
-          error.status = 429;
-          throw error;
-        }
-        return {
-          response: {
-            text: () => `google ${config.model} response: Let me explain this programming topic.`,
-            usageMetadata: {
-              promptTokenCount: 40,
-              candidatesTokenCount: 25,
-              totalTokenCount: 65
-            }
-          }
-        };
-      }),
-      startChat: vi.fn().mockImplementation(() => ({
-        sendMessage: vi.fn().mockImplementation(async () => {
-          if (config.model.includes('error')) {
-            throw new Error('Google API Error: Service unavailable');
-          }
-          if (config.model.includes('ratelimit')) {
-            const error = new Error('Rate limit exceeded') as any;
-            error.status = 429;
-            throw error;
-          }
-          return {
-            response: {
-              text: () => `google ${config.model} response: Let me explain this programming topic.`,
-              usageMetadata: {
-                promptTokenCount: 40,
-                candidatesTokenCount: 25,
-                totalTokenCount: 65
-              }
-            }
-          };
-        })
-      }))
-    }))
-  }))
-}));
-
 describe('AI Providers Integration Tests', () => {
   let app: FastifyInstance;
   let prisma: PrismaClient;
@@ -147,8 +98,6 @@ describe('AI Providers Integration Tests', () => {
         return !!process.env.OPENAI_API_KEY;
       case 'anthropic':
         return !!process.env.ANTHROPIC_API_KEY;
-      case 'google':
-        return !!process.env.GOOGLE_API_KEY;
       default:
         return false;
     }
@@ -764,65 +713,13 @@ describe('AI Providers Integration Tests', () => {
     });
   });
 
-  describe('Google Provider Tests', () => {
-    it('should handle Google Gemini requests', async () => {
-      const response = await app.inject({
-        method: 'POST',
-        url: '/ai/chat',
-        headers: {
-          authorization: `Bearer ${juniorTokens.accessToken}`,
-          'content-type': 'application/json',
-        },
-        payload: {
-          provider: 'google',
-          model: 'gemini-1.5-pro',
-          messages: [
-            { role: 'user', content: 'Explain binary search algorithm' }
-          ],
-          challengeId: testChallenge.id,
-          attemptId: testAttempt.id,
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-
-      expect(body.success).toBe(true);
-      expect(body.data.content).toContain('google gemini-1.5-pro response');
-      expect(body.data.usage.totalTokens).toBe(65);
-    });
-
-    it('should handle Google API errors', async () => {
-      const response = await app.inject({
-        method: 'POST',
-        url: '/ai/chat',
-        headers: {
-          authorization: `Bearer ${juniorTokens.accessToken}`,
-          'content-type': 'application/json',
-        },
-        payload: {
-          provider: 'google',
-          model: 'gemini-error-model',
-          messages: [
-            { role: 'user', content: 'This should fail' }
-          ],
-          challengeId: testChallenge.id,
-          attemptId: testAttempt.id,
-        },
-      });
-
-      expect(response.statusCode).toBe(500);
-    });
-  });
-
   describe('Provider Fallback Tests', () => {
     it('should fallback to secondary provider when primary fails', async () => {
       // Este teste dependeria da implementação de fallback no sistema
       // Por agora, testamos que diferentes providers funcionam independentemente
       const providers = [
         { provider: 'openai', model: 'gpt-3.5-turbo' },
-        { provider: 'anthropic', model: 'claude-3-sonnet-20240229' },
-        { provider: 'google', model: 'gemini-1.5-pro' }
+        { provider: 'anthropic', model: 'claude-3-sonnet-20240229' }
       ];
 
       for (const config of providers) {
@@ -922,8 +819,7 @@ describe('AI Providers Integration Tests', () => {
     it('should track response times across providers', async () => {
       const providers = [
         { provider: 'openai', model: 'gpt-3.5-turbo' },
-        { provider: 'anthropic', model: 'claude-3-sonnet-20240229' },
-        { provider: 'google', model: 'gemini-1.5-pro' }
+        { provider: 'anthropic', model: 'claude-3-sonnet-20240229' }
       ];
 
       const responseTimes = [];
@@ -970,11 +866,6 @@ describe('AI Providers Integration Tests', () => {
           provider: 'anthropic',
           model: 'claude-3-sonnet-20240229',
           content: 'Anthropic concurrent test'
-        },
-        {
-          provider: 'google',
-          model: 'gemini-1.5-pro',
-          content: 'Google concurrent test'
         }
       ];
 
@@ -1036,8 +927,7 @@ describe('AI Providers Integration Tests', () => {
     it('should track costs accurately across providers', async () => {
       const providers = [
         { provider: 'openai', model: 'gpt-3.5-turbo', expectedCost: 0.001 },
-        { provider: 'anthropic', model: 'claude-3-sonnet-20240229', expectedCost: 0.003 },
-        { provider: 'google', model: 'gemini-1.5-pro', expectedCost: 0.00125 }
+        { provider: 'anthropic', model: 'claude-3-sonnet-20240229', expectedCost: 0.003 }
       ];
 
       for (const config of providers) {

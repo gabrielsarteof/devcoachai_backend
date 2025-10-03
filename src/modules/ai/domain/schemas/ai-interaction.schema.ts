@@ -8,7 +8,7 @@ export const AIMessageSchema = z.object({
 
 export const CreateAIInteractionSchema = z.object({
   attemptId: z.string().cuid().optional(),
-  provider: z.enum(['openai', 'anthropic', 'google']),
+  provider: z.enum(['openai', 'anthropic']),
   model: z.string(),
   messages: z.array(AIMessageSchema).min(1),
   temperature: z.number().min(0).max(2).default(0.7),

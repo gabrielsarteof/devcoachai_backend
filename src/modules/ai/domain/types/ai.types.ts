@@ -1,5 +1,5 @@
 export type AIRole = 'system' | 'user' | 'assistant';
-export type AIProvider = 'openai' | 'anthropic' | 'google';
+export type AIProvider = 'openai' | 'anthropic';
 
 export interface AIMessage {
   role: AIRole;

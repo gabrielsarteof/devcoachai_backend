@@ -51,7 +51,6 @@
     "@fastify/swagger": "^9.5.1",
     "@fastify/swagger-ui": "^5.2.3",
     "@fastify/websocket": "^11.2.0",
-    "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^6.14.0",
     "@sinclair/typebox": "^0.34.40",
     "abstract-logging": "^2.0.1",

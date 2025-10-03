@@ -1,7 +1,6 @@
 import { IAIProvider, IAIProviderFactory } from '../../domain/providers/ai-provider.interface';
 import { OpenAIProvider } from '../providers/openai.provider';
 import { AnthropicProvider } from '../providers/anthropic.provider';
-import { GoogleProvider } from '../providers/google.provider';
 import { Redis } from 'ioredis';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 import { InvalidProviderError } from '../../domain/errors/invalid-provider.error';
@@ -20,11 +19,9 @@ export class ProviderFactoryService implements IAIProviderFactory {
       operation: 'register_ai_providers',
       hasOpenAI: !!process.env.OPENAI_API_KEY,
       hasAnthropic: !!process.env.ANTHROPIC_API_KEY,
-      hasGoogle: !!process.env.GOOGLE_API_KEY,
       nodeEnv: process.env.NODE_ENV,
       openaiKey: process.env.OPENAI_API_KEY ? 'SET' : 'NOT_SET',
-      anthropicKey: process.env.ANTHROPIC_API_KEY ? 'SET' : 'NOT_SET',
-      googleKey: process.env.GOOGLE_API_KEY ? 'SET' : 'NOT_SET'
+      anthropicKey: process.env.ANTHROPIC_API_KEY ? 'SET' : 'NOT_SET'
     }, 'Registering AI providers');
 
     try {
@@ -61,7 +58,7 @@ export class ProviderFactoryService implements IAIProviderFactory {
           )
         );
         registeredCount++;
-        
+
         logger.info({
           operation: 'provider_registered',
           provider: 'anthropic'
@@ -74,45 +71,23 @@ export class ProviderFactoryService implements IAIProviderFactory {
         }, 'Anthropic provider not registered - missing API key');
       }
 
-      if (process.env.GOOGLE_API_KEY) {
-        this.providers.set('google', () =>
-          new GoogleProvider(
-            process.env.GOOGLE_API_KEY!,
-            this.redis
-          )
-        );
-        registeredCount++;
-        
-        logger.info({
-          operation: 'provider_registered',
-          provider: 'google'
-        }, 'Google provider registered');
-      } else {
-        logger.warn({
-          operation: 'provider_not_registered',
-          provider: 'google',
-          reason: 'missing_api_key'
-        }, 'Google provider not registered - missing API key');
-      }
-
       const processingTime = Date.now() - startTime;
-      
+
       logger.info({
         operation: 'register_providers_completed',
         registeredProviders: Array.from(this.providers.keys()),
         registeredCount,
-        totalAvailable: 3,
+        totalAvailable: 2,
         processingTime
       }, 'AI providers registration completed');
 
       if (registeredCount === 0) {
         logger.error({
           operation: 'no_providers_registered',
-          availableProviders: ['openai', 'anthropic', 'google'],
+          availableProviders: ['openai', 'anthropic'],
           environmentKeys: {
             openai: !!process.env.OPENAI_API_KEY,
-            anthropic: !!process.env.ANTHROPIC_API_KEY,
-            google: !!process.env.GOOGLE_API_KEY
+            anthropic: !!process.env.ANTHROPIC_API_KEY
           }
         }, 'No AI providers registered - check environment variables');
       }
@@ -217,14 +192,11 @@ export class ProviderFactoryService implements IAIProviderFactory {
         case 'anthropic':
           instance = new AnthropicProvider(apiKey, this.redis);
           break;
-        case 'google':
-          instance = new GoogleProvider(apiKey, this.redis);
-          break;
         default:
           logger.error({
             operation: 'custom_instance_unsupported',
             provider,
-            supportedProviders: ['openai', 'anthropic', 'google']
+            supportedProviders: ['openai', 'anthropic']
           }, 'Unsupported provider for custom instance');
 
           throw new InvalidProviderError(`Cannot create custom instance for provider ${provider}`);

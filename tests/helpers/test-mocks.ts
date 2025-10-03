@@ -302,60 +302,8 @@ export const mockAnthropic = () => {
   }));
 };
 
-export const mockGoogle = () => {
-  return vi.mock('@google/generative-ai', () => ({
-    GoogleGenerativeAI: vi.fn().mockImplementation(() => ({
-      getGenerativeModel: vi.fn().mockImplementation((config) => ({
-        generateContent: vi.fn().mockImplementation(async (prompt) => {
-          if (config.model.includes('error')) {
-            throw new Error('Google API Error: Service unavailable');
-          }
-          if (config.model.includes('ratelimit')) {
-            const error = new Error('Rate limit exceeded') as any;
-            error.status = 429;
-            throw error;
-          }
-          return {
-            response: {
-              text: () => `google ${config.model} response: Let me explain this programming topic.`,
-              usageMetadata: {
-                promptTokenCount: 40,
-                candidatesTokenCount: 25,
-                totalTokenCount: 65
-              }
-            }
-          };
-        }),
-        startChat: vi.fn().mockImplementation(() => ({
-          sendMessage: vi.fn().mockImplementation(async (message) => {
-            if (config.model.includes('error')) {
-              throw new Error('Google API Error: Service unavailable');
-            }
-            if (config.model.includes('ratelimit')) {
-              const error = new Error('Rate limit exceeded') as any;
-              error.status = 429;
-              throw error;
-            }
-            return {
-              response: {
-                text: () => `google ${config.model} response: Let me explain this programming topic.`,
-                usageMetadata: {
-                  promptTokenCount: 40,
-                  candidatesTokenCount: 25,
-                  totalTokenCount: 65
-                }
-              }
-            };
-          })
-        }))
-      }))
-    }))
-  }));
-};
-
 // Aplica todos os mocks de provedores de IA
 export const mockAllAIProviders = () => {
   mockOpenAI();
   mockAnthropic();
-  mockGoogle();
 };

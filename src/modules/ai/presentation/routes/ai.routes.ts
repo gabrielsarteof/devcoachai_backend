@@ -51,7 +51,6 @@ export async function aiRoutes(
           },
         },
         required: ['messages'],
-        additionalProperties: false,
       },
       response: {
         200: {
@@ -125,14 +124,18 @@ export async function aiRoutes(
           timestamp: { type: 'number' },
         },
         required: ['attemptId', 'action', 'content'],
-        additionalProperties: false,
       },
       response: {
         200: {
           type: 'object',
           properties: {
             success: { type: 'boolean' },
-            message: { type: 'string' },
+            data: {
+              type: 'object',
+              properties: {
+                message: { type: 'string' },
+              },
+            },
           },
         },
       },
@@ -153,98 +156,104 @@ export async function aiRoutes(
         200: {
           type: 'object',
           properties: {
-            usage: {
+            success: { type: 'boolean' },
+            data: {
               type: 'object',
               properties: {
-                period: {
+                usage: {
                   type: 'object',
                   properties: {
-                    startDate: { type: 'string' },
-                    endDate: { type: 'string' },
-                    days: { type: 'number' }
+                    period: {
+                      type: 'object',
+                      properties: {
+                        startDate: { type: 'string' },
+                        endDate: { type: 'string' },
+                        days: { type: 'number' }
+                      }
+                    },
+                    tokens: {
+                      type: 'object',
+                      properties: {
+                        used: { type: 'number' },
+                        breakdown: { type: 'object' }
+                      }
+                    },
+                    requests: {
+                      type: 'object',
+                      properties: {
+                        total: { type: 'number' },
+                        breakdown: { type: 'object' }
+                      }
+                    },
+                    cost: {
+                      type: 'object',
+                      properties: {
+                        total: { type: 'number' },
+                        breakdown: { type: 'object' }
+                      }
+                    }
                   }
                 },
-                tokens: {
+                quota: {
                   type: 'object',
                   properties: {
-                    used: { type: 'number' },
-                    breakdown: { type: 'object' }
+                    daily: {
+                      type: 'object',
+                      properties: {
+                        limit: { type: 'number' },
+                        used: { type: 'number' },
+                        remaining: { type: 'number' }
+                      }
+                    },
+                    monthly: {
+                      type: 'object',
+                      properties: {
+                        limit: { type: 'number' },
+                        used: { type: 'number' },
+                        remaining: { type: 'number' }
+                      }
+                    },
+                    resetAt: { type: 'string', format: 'date-time' }
                   }
                 },
-                requests: {
+                limits: {
                   type: 'object',
                   properties: {
-                    total: { type: 'number' },
-                    breakdown: { type: 'object' }
+                    requestsPerMinute: {
+                      type: 'object',
+                      properties: {
+                        limit: { type: 'number' },
+                        used: { type: 'number' },
+                        remaining: { type: 'number' }
+                      }
+                    },
+                    requestsPerHour: {
+                      type: 'object',
+                      properties: {
+                        limit: { type: 'number' },
+                        used: { type: 'number' },
+                        remaining: { type: 'number' }
+                      }
+                    },
+                    tokensPerDay: {
+                      type: 'object',
+                      properties: {
+                        limit: { type: 'number' },
+                        used: { type: 'number' },
+                        remaining: { type: 'number' }
+                      }
+                    },
+                    resetTimes: {
+                      type: 'object',
+                      properties: {
+                        minute: { type: 'string', format: 'date-time' },
+                        hour: { type: 'string', format: 'date-time' },
+                        day: { type: 'string', format: 'date-time' }
+                      }
+                    }
                   }
                 },
-                cost: {
-                  type: 'object',
-                  properties: {
-                    total: { type: 'number' },
-                    breakdown: { type: 'object' }
-                  }
-                }
-              }
-            },
-            quota: {
-              type: 'object',
-              properties: {
-                daily: {
-                  type: 'object',
-                  properties: {
-                    limit: { type: 'number' },
-                    used: { type: 'number' },
-                    remaining: { type: 'number' }
-                  }
-                },
-                monthly: {
-                  type: 'object',
-                  properties: {
-                    limit: { type: 'number' },
-                    used: { type: 'number' },
-                    remaining: { type: 'number' }
-                  }
-                },
-                resetAt: { type: 'string', format: 'date-time' }
-              }
-            },
-            limits: {
-              type: 'object',
-              properties: {
-                requestsPerMinute: {
-                  type: 'object',
-                  properties: {
-                    limit: { type: 'number' },
-                    used: { type: 'number' },
-                    remaining: { type: 'number' }
-                  }
-                },
-                requestsPerHour: {
-                  type: 'object',
-                  properties: {
-                    limit: { type: 'number' },
-                    used: { type: 'number' },
-                    remaining: { type: 'number' }
-                  }
-                },
-                tokensPerDay: {
-                  type: 'object',
-                  properties: {
-                    limit: { type: 'number' },
-                    used: { type: 'number' },
-                    remaining: { type: 'number' }
-                  }
-                },
-                resetTimes: {
-                  type: 'object',
-                  properties: {
-                    minute: { type: 'string', format: 'date-time' },
-                    hour: { type: 'string', format: 'date-time' },
-                    day: { type: 'string', format: 'date-time' }
-                  }
-                }
-              }
+              },
             },
           },
         },
@@ -260,32 +269,38 @@ export async function aiRoutes(
         200: {
           type: 'object',
           properties: {
-            models: {
+            success: { type: 'boolean' },
+            data: {
               type: 'object',
-              additionalProperties: {
-                type: 'object',
-                properties: {
-                  models: {
-                    type: 'array',
-                    items: {
-                      type: 'object',
-                      properties: {
-                        id: { type: 'string' },
-                        name: { type: 'string' },
-                        contextWindow: { type: 'number' },
-                        inputCost: { type: 'number' },
-                        outputCost: { type: 'number' },
-                        capabilities: {
-                          type: 'array',
-                          items: { type: 'string' }
+              properties: {
+                models: {
+                  type: 'object',
+                  additionalProperties: {
+                    type: 'object',
+                    properties: {
+                      models: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'string' },
+                            name: { type: 'string' },
+                            contextWindow: { type: 'number' },
+                            inputCost: { type: 'number' },
+                            outputCost: { type: 'number' },
+                            capabilities: {
+                              type: 'array',
+                              items: { type: 'string' }
+                            }
+                          }
                         }
-                      }
+                      },
+                      available: { type: 'boolean' },
+                      error: { type: 'string' }
                     }
-                  },
-                  available: { type: 'boolean' },
-                  error: { type: 'string' }
-                }
-              }
+                  }
+                },
+              },
             },
           },
         },
@@ -319,31 +334,36 @@ export async function aiRoutes(
           },
         },
         required: ['challengeId', 'prompt'],
-        additionalProperties: false,
       },
       response: {
         200: {
           type: 'object',
           properties: {
-            isValid: { type: 'boolean' },
-            riskScore: { type: 'number' },
-            classification: {
-              type: 'string',
-              enum: ['SAFE', 'WARNING', 'BLOCKED'],
-            },
-            reasons: {
-              type: 'array',
-              items: { type: 'string' },
-            },
-            suggestedAction: {
-              type: 'string',
-              enum: ['ALLOW', 'THROTTLE', 'BLOCK', 'REVIEW'],
-            },
-            confidence: { type: 'number' },
-            relevanceScore: { type: 'number' },
-            metadata: {
+            success: { type: 'boolean' },
+            data: {
               type: 'object',
-              nullable: true,
+              properties: {
+                isValid: { type: 'boolean' },
+                riskScore: { type: 'number' },
+                classification: {
+                  type: 'string',
+                  enum: ['SAFE', 'WARNING', 'BLOCKED'],
+                },
+                reasons: {
+                  type: 'array',
+                  items: { type: 'string' },
+                },
+                suggestedAction: {
+                  type: 'string',
+                  enum: ['ALLOW', 'THROTTLE', 'BLOCK', 'REVIEW'],
+                },
+                confidence: { type: 'number' },
+                relevanceScore: { type: 'number' },
+                metadata: {
+                  type: 'object',
+                  nullable: true,
+                },
+              },
             },
           },
         },
@@ -379,13 +399,19 @@ export async function aiRoutes(
         200: {
           type: 'object',
           properties: {
-            analysis: {
+            success: { type: 'boolean' },
+            data: {
               type: 'object',
               properties: {
-                patterns: { type: 'array' },
-                riskScore: { type: 'number' },
-                recommendations: { type: 'array' },
-                timeWindow: { type: 'string' },
+                analysis: {
+                  type: 'object',
+                  properties: {
+                    patterns: { type: 'array' },
+                    riskScore: { type: 'number' },
+                    recommendations: { type: 'array' },
+                    timeWindow: { type: 'string' },
+                  },
+                },
               },
             },
           },
@@ -420,12 +446,18 @@ export async function aiRoutes(
         200: {
           type: 'object',
           properties: {
-            feedback: {
+            success: { type: 'boolean' },
+            data: {
               type: 'object',
               properties: {
-                message: { type: 'string' },
-                suggestions: { type: 'array' },
-                educationalContent: { type: 'object' },
+                feedback: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string' },
+                    suggestions: { type: 'array' },
+                    educationalContent: { type: 'object' },
+                  },
+                },
               },
             },
           },
@@ -509,40 +541,46 @@ export async function aiRoutes(
         200: {
           type: 'object',
           properties: {
-            metrics: {
+            success: { type: 'boolean' },
+            data: {
               type: 'object',
               properties: {
-                validationStats: {
+                metrics: {
                   type: 'object',
                   properties: {
-                    totalValidations: { type: 'number' },
-                    blockedCount: { type: 'number' },
-                    throttledCount: { type: 'number' },
-                    allowedCount: { type: 'number' },
-                    avgRiskScore: { type: 'number' },
-                    avgConfidence: { type: 'number' },
-                  },
-                },
-                blockingStats: {
-                  type: 'object',
-                  properties: {
-                    topBlockedPatterns: {
-                      type: 'array',
-                      items: {
-                        type: 'object',
-                        properties: {
-                          pattern: { type: 'string' },
-                          count: { type: 'number' },
-                        },
+                    validationStats: {
+                      type: 'object',
+                      properties: {
+                        totalValidations: { type: 'number' },
+                        blockedCount: { type: 'number' },
+                        throttledCount: { type: 'number' },
+                        allowedCount: { type: 'number' },
+                        avgRiskScore: { type: 'number' },
+                        avgConfidence: { type: 'number' },
                       },
                     },
-                    riskDistribution: { type: 'object' },
-                  },
-                },
-                performanceMetrics: {
-                  type: 'object',
-                  properties: {
-                    avgProcessingTime: { type: 'number' },
+                    blockingStats: {
+                      type: 'object',
+                      properties: {
+                        topBlockedPatterns: {
+                          type: 'array',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              pattern: { type: 'string' },
+                              count: { type: 'number' },
+                            },
+                          },
+                        },
+                        riskDistribution: { type: 'object' },
+                      },
+                    },
+                    performanceMetrics: {
+                      type: 'object',
+                      properties: {
+                        avgProcessingTime: { type: 'number' },
+                      },
+                    },
                   },
                 },
               },
@@ -568,26 +606,32 @@ export async function aiRoutes(
         200: {
           type: 'object',
           properties: {
-            stats: {
+            success: { type: 'boolean' },
+            data: {
               type: 'object',
               properties: {
-                totalValidations: { type: 'number' },
-                blockedAttempts: { type: 'number' },
-                successRate: { type: 'number' },
-                cachedContexts: { type: 'number' },
-                avgKeywords: { type: 'number' },
-                avgForbiddenPatterns: { type: 'number' },
-                mostCommonCategories: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      category: { type: 'string' },
-                      count: { type: 'number' },
+                stats: {
+                  type: 'object',
+                  properties: {
+                    totalValidations: { type: 'number' },
+                    blockedAttempts: { type: 'number' },
+                    successRate: { type: 'number' },
+                    cachedContexts: { type: 'number' },
+                    avgKeywords: { type: 'number' },
+                    avgForbiddenPatterns: { type: 'number' },
+                    mostCommonCategories: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          category: { type: 'string' },
+                          count: { type: 'number' },
+                        },
+                      },
                     },
+                    cacheHitRate: { type: 'number' },
                   },
                 },
-                cacheHitRate: { type: 'number' },
               },
             },
           },
@@ -624,7 +668,12 @@ export async function aiRoutes(
           type: 'object',
           properties: {
             success: { type: 'boolean' },
-            refreshedChallenges: { type: 'array' },
+            data: {
+              type: 'object',
+              properties: {
+                refreshedChallenges: { type: 'array' },
+              },
+            },
           },
         },
       },
@@ -651,7 +700,12 @@ export async function aiRoutes(
           type: 'object',
           properties: {
             success: { type: 'boolean' },
-            prewarmedChallenges: { type: 'array' },
+            data: {
+              type: 'object',
+              properties: {
+                prewarmedChallenges: { type: 'array' },
+              },
+            },
           },
         },
       },
@@ -667,7 +721,12 @@ export async function aiRoutes(
           type: 'object',
           properties: {
             success: { type: 'boolean' },
-            message: { type: 'string' },
+            data: {
+              type: 'object',
+              properties: {
+                message: { type: 'string' },
+              },
+            },
           },
         },
       },
@@ -787,13 +846,19 @@ export async function aiRoutes(
         200: {
           type: 'object',
           properties: {
-            analysis: {
+            success: { type: 'boolean' },
+            data: {
               type: 'object',
               properties: {
-                intent: { type: 'string' },
-                complexity: { type: 'string' },
-                educationalValue: { type: 'number' },
-                riskFactors: { type: 'array' },
+                analysis: {
+                  type: 'object',
+                  properties: {
+                    intent: { type: 'string' },
+                    complexity: { type: 'string' },
+                    educationalValue: { type: 'number' },
+                    riskFactors: { type: 'array' },
+                  },
+                },
               },
             },
           },

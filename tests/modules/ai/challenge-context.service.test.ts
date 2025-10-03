@@ -210,15 +210,18 @@ describe('ChallengeContextService', () => {
       expect(result.forbiddenPatterns).toContain('password.*=.*["\']');
     });
 
-    it('deve lançar erro quando desafio não existe', async () => {
+    it('deve lançar ChallengeNotFoundError quando desafio não existe', async () => {
       const challengeId = 'inexistent-challenge';
 
       mockRedis.get.mockResolvedValue(null);
       mockPrisma.challenge.findUnique.mockResolvedValue(null);
 
-      await expect(service.getChallengeContext(challengeId)).rejects.toThrow(
-        `Challenge not found: ${challengeId}`
-      );
+      await expect(service.getChallengeContext(challengeId)).rejects.toMatchObject({
+        name: 'ChallengeNotFoundError',
+        code: 'AI_CHALLENGE_NOT_FOUND',
+        statusCode: 404,
+        message: `Challenge not found: ${challengeId}`,
+      });
     });
   });
 

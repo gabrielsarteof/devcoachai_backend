@@ -3,6 +3,8 @@ import { IAIProvider } from '../../domain/providers/ai-provider.interface';
 import { AIMessage, AICompletion, AIProviderConfig, AIModel } from '../../domain/types/ai.types';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 import { Redis } from 'ioredis';
+import { RateLimitExceededError } from '../../domain/errors/rate-limit-exceeded.error';
+import { ProviderError } from '../../domain/errors/provider.error';
 
 export class OpenAIProvider implements IAIProvider {
   private client: OpenAI;
@@ -138,11 +140,11 @@ export class OpenAIProvider implements IAIProvider {
           code: error.code,
           type: error.type,
         }, 'OpenAI API error');
-        
+
         if (error.status === 429) {
-          throw new Error('Rate limit exceeded. Please try again later.');
+          throw new RateLimitExceededError('Rate limit exceeded. Please try again later.');
         } else if (error.status === 401) {
-          throw new Error('Invalid API key');
+          throw new ProviderError('openai', 'Invalid API key');
         }
       }
       throw error;

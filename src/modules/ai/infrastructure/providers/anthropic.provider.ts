@@ -3,6 +3,8 @@ import { IAIProvider } from '../../domain/providers/ai-provider.interface';
 import { AIMessage, AICompletion, AIProviderConfig, AIModel } from '../../domain/types/ai.types';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 import { Redis } from 'ioredis';
+import { RateLimitExceededError } from '../../domain/errors/rate-limit-exceeded.error';
+import { ProviderError } from '../../domain/errors/provider.error';
 
 export class AnthropicProvider implements IAIProvider {
   private client: Anthropic;
@@ -134,13 +136,13 @@ export class AnthropicProvider implements IAIProvider {
           name: error.name,
           headers: error.headers,
         }, 'Anthropic API error');
-        
+
         if (error.status === 429) {
-          throw new Error('Rate limit exceeded. Please try again later.');
+          throw new RateLimitExceededError('Rate limit exceeded. Please try again later.');
         } else if (error.status === 401) {
-          throw new Error('Invalid API key');
+          throw new ProviderError('anthropic', 'Invalid API key');
         } else if (error.status === 400) {
-          throw new Error(`Bad request: ${error.message}`);
+          throw new ProviderError('anthropic', `Bad request: ${error.message}`);
         }
       }
       throw error;

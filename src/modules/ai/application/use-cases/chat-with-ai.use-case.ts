@@ -4,6 +4,7 @@ import { RateLimiterService } from '../../infrastructure/services/rate-limiter.s
 import { UsageTrackerService } from '../../infrastructure/services/usage-tracker.service';
 import { PrismaClient } from '@prisma/client';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
+import { RateLimitExceededError, ModelNotSupportedError } from '../../domain/errors';
 
 export class ChatWithAIUseCase {
   constructor(
@@ -44,7 +45,7 @@ export class ChatWithAIUseCase {
           resetAt: rateLimit.resetAt,
           executionTime: Date.now() - startTime
         }, 'AI chat request blocked by rate limiter');
-        throw new Error(rateLimit.reason || 'Rate limit exceeded');
+        throw new RateLimitExceededError(rateLimit.reason || 'Rate limit exceeded', rateLimit.resetAt);
       }
 
       const provider = this.providerFactory.create(data.provider);
@@ -59,7 +60,7 @@ export class ChatWithAIUseCase {
           reason: 'model_not_supported',
           executionTime: Date.now() - startTime
         }, 'AI chat request failed - model not supported');
-        throw new Error(`Model ${data.model} not supported by ${data.provider}`);
+        throw new ModelNotSupportedError(data.provider, data.model);
       }
 
       const completionStartTime = Date.now();

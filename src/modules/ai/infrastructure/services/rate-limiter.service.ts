@@ -74,9 +74,14 @@ export class RateLimiterService {
           operation: 'rate_limit_check_failed',
           userId,
           reason: 'redis_pipeline_failed'
-        }, 'Rate limit check failed - Redis pipeline returned null');
+        }, 'Rate limit check failed - Redis pipeline returned null. Blocking request for safety.');
 
-        throw new Error('Rate limit check failed');
+        return {
+          allowed: false,
+          remaining: 0,
+          resetAt: new Date(Date.now() + 60000),
+          reason: 'Rate limit check failed due to infrastructure error',
+        };
       }
 
       const minuteCount = results[0][1] as number;

@@ -3,8 +3,10 @@ import { ChatWithAIUseCase } from '../../application/use-cases/chat-with-ai.use-
 import { TrackCopyPasteUseCase } from '../../application/use-cases/track-copy-paste.use-case';
 import { GetAIModelsUseCase } from '../../application/use-cases/get-ai-models.use-case';
 import { GetAIUsageUseCase, GetAIUsageDTO } from '../../application/use-cases/get-ai-usage.use-case';
-import { CreateAIInteractionDTO, TrackCopyPasteDTO } from '../../domain/schemas/ai-interaction.schema';
+import { CreateAIInteractionDTO, TrackCopyPasteDTO, CreateAIInteractionSchema, TrackCopyPasteSchema } from '../../domain/schemas/ai-interaction.schema';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
+import { AIError, ValidationError, UnauthorizedError } from '../../domain/errors';
+import { ZodError } from 'zod';
 
 export class AIController {
   constructor(
@@ -23,10 +25,8 @@ export class AIController {
     const user = request.user as { id: string; email: string; role: string; level?: number } | undefined;
 
     if (!user) {
-      return reply.status(401).send({
-        error: 'Unauthorized',
-        message: 'User not authenticated',
-      });
+      const unauthorizedError = new UnauthorizedError();
+      return reply.status(unauthorizedError.statusCode).send(unauthorizedError.toJSON());
     }
 
     logger.info({
@@ -45,22 +45,22 @@ export class AIController {
     }, 'AI chat request received');
 
     try {
-      const result = await this.chatWithAIUseCase.execute(user.id, request.body);
-
+      const validatedData = CreateAIInteractionSchema.parse(request.body);
+      const result = await this.chatWithAIUseCase.execute(user.id, validatedData);
 
       const executionTime = Date.now() - startTime;
 
       logger.info({
         requestId,
         userId: user.id,
-        provider: request.body.provider,
-        model: request.body.model,
+        provider: validatedData.provider,
+        model: validatedData.model,
         tokensUsed: result.completion.usage.totalTokens,
         cost: result.completion.cost,
         executionTime,
       }, 'AI chat completed successfully');
 
-      const responseData = {
+      return reply.status(200).send({
         success: true,
         data: {
           id: result.completion.id,
@@ -75,92 +75,18 @@ export class AIController {
         },
         governance: {
           validated: true,
-          challengeContext: !!request.body.challengeId,
+          challengeContext: !!validatedData.challengeId,
         },
-      };
-
-
-      return reply.status(200).send(responseData);
+      });
     } catch (error) {
-      const executionTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-      // Tratamento de erros com códigos HTTP adequados
-      if (errorMessage.includes('Rate limit')) {
-        logger.warn({
-          requestId,
-          userId: user.id,
-          provider: request.body.provider,
-          error: errorMessage,
-          reason: 'rate_limit_exceeded',
-          executionTime,
-        }, 'AI chat blocked by rate limiter');
-
-        return reply.status(429).send({
-          error: 'Too Many Requests',
-          message: errorMessage,
-        });
+      if (error instanceof ZodError) {
+        const validationError = new ValidationError(error);
+        return reply.status(validationError.statusCode).send(validationError.toJSON());
       }
 
-      // Erros de API/provedor AI recebem status 500
-      if (errorMessage.includes('API Error') || errorMessage.includes('error-model') || errorMessage.includes('not supported by')) {
-        logger.warn({
-          requestId,
-          userId: user.id,
-          provider: request.body.provider,
-          model: request.body.model,
-          error: errorMessage,
-          reason: 'provider_api_error',
-          executionTime,
-        }, 'AI chat failed - provider API error');
-
-        return reply.status(500).send({
-          error: 'Internal server error',
-          message: 'Provider not available',
-        });
+      if (error instanceof AIError) {
+        return reply.status(error.statusCode).send(error.toJSON());
       }
-
-      // Provedor inválido ou não disponível recebe status 400
-      if (errorMessage.includes('Provider') && errorMessage.includes('not available') || errorMessage.includes('Cannot create custom instance')) {
-        logger.warn({
-          requestId,
-          userId: user.id,
-          provider: request.body.provider,
-          error: errorMessage,
-          reason: 'invalid_provider',
-          executionTime,
-        }, 'AI chat failed - invalid provider');
-
-        return reply.status(400).send({
-          error: 'Invalid provider',
-        });
-      }
-
-      if (errorMessage.includes('Governance')) {
-        logger.warn({
-          requestId,
-          userId: user.id,
-          provider: request.body.provider,
-          error: errorMessage,
-          reason: 'governance_blocked',
-          executionTime,
-        }, 'AI chat blocked by governance');
-
-        return reply.status(403).send({
-          error: 'Forbidden',
-          message: errorMessage,
-        });
-      }
-
-      logger.error({
-        requestId,
-        userId: user.id,
-        provider: request.body.provider,
-        model: request.body.model,
-        error: errorMessage,
-        stack: error instanceof Error ? error.stack : undefined,
-        executionTime,
-      }, 'AI chat failed');
 
       return reply.status(500).send({
         error: 'Internal server error',
@@ -178,10 +104,8 @@ export class AIController {
     const user = request.user as { id: string; email: string; role: string } | undefined;
 
     if (!user) {
-      return reply.status(401).send({
-        error: 'Unauthorized',
-        message: 'User not authenticated',
-      });
+      const unauthorizedError = new UnauthorizedError();
+      return reply.status(unauthorizedError.statusCode).send(unauthorizedError.toJSON());
     }
 
     logger.debug({
@@ -195,34 +119,34 @@ export class AIController {
     }, 'Copy paste tracking request received');
 
     try {
-      await this.trackCopyPasteUseCase.execute(user.id, request.body);
+      const validatedData = TrackCopyPasteSchema.parse(request.body);
+      await this.trackCopyPasteUseCase.execute(user.id, validatedData);
 
       const executionTime = Date.now() - startTime;
 
       logger.info({
         requestId,
         userId: user.id,
-        attemptId: request.body.attemptId,
-        eventType: request.body.action,
+        attemptId: validatedData.attemptId,
+        eventType: validatedData.action,
         executionTime,
       }, 'Copy paste event tracked successfully');
 
       return reply.status(200).send({
         success: true,
-        message: 'Copy paste event tracked successfully',
+        data: {
+          message: 'Copy paste event tracked successfully',
+        },
       });
     } catch (error) {
-      const executionTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (error instanceof ZodError) {
+        const validationError = new ValidationError(error);
+        return reply.status(validationError.statusCode).send(validationError.toJSON());
+      }
 
-      logger.error({
-        requestId,
-        userId: user.id,
-        attemptId: request.body.attemptId,
-        error: errorMessage,
-        stack: error instanceof Error ? error.stack : undefined,
-        executionTime,
-      }, 'Failed to track copy paste event');
+      if (error instanceof AIError) {
+        return reply.status(error.statusCode).send(error.toJSON());
+      }
 
       return reply.status(500).send({
         error: 'Internal server error',
@@ -240,10 +164,8 @@ export class AIController {
     const user = request.user as { id: string; email: string; role: string } | undefined;
 
     if (!user) {
-      return reply.status(401).send({
-        error: 'Unauthorized',
-        message: 'User not authenticated',
-      });
+      const unauthorizedError = new UnauthorizedError();
+      return reply.status(unauthorizedError.statusCode).send(unauthorizedError.toJSON());
     }
 
     logger.debug({
@@ -264,18 +186,14 @@ export class AIController {
         executionTime,
       }, 'AI models retrieved successfully');
 
-      return reply.status(200).send(result);
+      return reply.status(200).send({
+        success: true,
+        data: result,
+      });
     } catch (error) {
-      const executionTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-      logger.error({
-        requestId,
-        userId: user.id,
-        error: errorMessage,
-        stack: error instanceof Error ? error.stack : undefined,
-        executionTime,
-      }, 'Failed to get AI models');
+      if (error instanceof AIError) {
+        return reply.status(error.statusCode).send(error.toJSON());
+      }
 
       return reply.status(500).send({
         error: 'Internal server error',
@@ -293,10 +211,8 @@ export class AIController {
     const user = request.user as { id: string; email: string; role: string } | undefined;
 
     if (!user) {
-      return reply.status(401).send({
-        error: 'Unauthorized',
-        message: 'User not authenticated',
-      });
+      const unauthorizedError = new UnauthorizedError();
+      return reply.status(unauthorizedError.statusCode).send(unauthorizedError.toJSON());
     }
 
     logger.debug({
@@ -320,18 +236,14 @@ export class AIController {
         executionTime,
       }, 'AI usage retrieved successfully');
 
-      return reply.status(200).send(result);
+      return reply.status(200).send({
+        success: true,
+        data: result,
+      });
     } catch (error) {
-      const executionTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-      logger.error({
-        requestId,
-        userId: user.id,
-        error: errorMessage,
-        stack: error instanceof Error ? error.stack : undefined,
-        executionTime,
-      }, 'Failed to get AI usage');
+      if (error instanceof AIError) {
+        return reply.status(error.statusCode).send(error.toJSON());
+      }
 
       return reply.status(500).send({
         error: 'Internal server error',

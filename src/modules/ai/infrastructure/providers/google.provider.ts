@@ -3,6 +3,8 @@ import { IAIProvider } from '../../domain/providers/ai-provider.interface';
 import { AIMessage, AICompletion, AIProviderConfig, AIModel } from '../../domain/types/ai.types';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 import { Redis } from 'ioredis';
+import { RateLimitExceededError } from '../../domain/errors/rate-limit-exceeded.error';
+import { ProviderError } from '../../domain/errors/provider.error';
 
 export class GoogleProvider implements IAIProvider {
   private client: GoogleGenerativeAI;
@@ -123,11 +125,11 @@ export class GoogleProvider implements IAIProvider {
         provider: 'google',
         error: error.message,
       }, 'Google API error');
-      
+
       if (error.message?.includes('quota')) {
-        throw new Error('API quota exceeded. Please try again later.');
+        throw new RateLimitExceededError('API quota exceeded. Please try again later.');
       } else if (error.message?.includes('API key')) {
-        throw new Error('Invalid API key');
+        throw new ProviderError('google', 'Invalid API key');
       }
       throw error;
     }

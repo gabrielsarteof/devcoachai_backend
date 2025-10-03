@@ -4,6 +4,7 @@ import { IPromptValidatorService } from '../../domain/services/prompt-validator.
 import { IChallengeContextService } from '../../domain/services/prompt-validator.service.interface';
 import { PromptValidationResult, ValidationConfig } from '../../domain/types/governance.types';
 import { PrismaClient, UserRole } from '@prisma/client';
+import { ChallengeNotFoundError } from '../../domain/errors';
 
 export interface ValidatePromptDTO {
   userId: string;
@@ -69,7 +70,7 @@ export class ValidatePromptUseCase {
       );
 
       if (!challengeContext) {
-        throw new Error(`Challenge not found: ${data.challengeId}`);
+        throw new ChallengeNotFoundError(data.challengeId);
       }
 
       const config: ValidationConfig = {
@@ -126,8 +127,8 @@ export class ValidatePromptUseCase {
         processingTime,
       }, 'Prompt validation failed');
 
-      // Propaga erros específicos para tratamento adequado no controller
-      if (error instanceof Error && error.message.includes('Challenge not found')) {
+      // Propaga domain errors para tratamento adequado no controller
+      if (error instanceof ChallengeNotFoundError) {
         throw error;
       }
 

@@ -1,4 +1,5 @@
 import { AIProvider } from '@prisma/client';
+import { InvalidProviderError } from '../../domain/errors/invalid-provider.error';
 
 export { AIProvider };
 
@@ -9,7 +10,7 @@ export const isValidProvider = (value: string): value is keyof typeof AIProvider
 export const toAIProvider = (value: string): AIProvider => {
   const upper = value.toUpperCase();
   if (!isValidProvider(upper)) {
-    throw new Error(`Invalid provider: ${value}`);
+    throw new InvalidProviderError(`Invalid provider: ${value}`);
   }
   return AIProvider[upper as keyof typeof AIProvider];
 };

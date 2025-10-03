@@ -1,11 +1,12 @@
 import OpenAI from 'openai';
 import { Redis } from 'ioredis';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
-import { 
+import {
   PromptIntent,
   ChallengeContext,
-  SemanticCacheConfig 
+  SemanticCacheConfig
 } from '../../domain/types/governance.types';
+import { ProviderError } from '../../domain/errors/provider.error';
 
 export class SemanticAnalyzerService {
   private openai?: OpenAI;
@@ -52,7 +53,7 @@ export class SemanticAnalyzerService {
       }
 
       if (this.isCircuitOpen()) {
-        throw new Error('Circuit breaker is open - OpenAI temporarily unavailable');
+        throw new ProviderError('openai', 'Circuit breaker is open - OpenAI temporarily unavailable');
       }
 
       const cached = await this.redis.get(cacheKey);
@@ -291,7 +292,7 @@ export class SemanticAnalyzerService {
 
   private async generateEmbeddings(text: string): Promise<number[]> {
     if (!this.openai) {
-      throw new Error('OpenAI client not initialized - API key required');
+      throw new ProviderError('openai', 'OpenAI client not initialized - API key required');
     }
     
     const truncatedText = text.substring(0, 2000); 

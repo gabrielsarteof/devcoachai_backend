@@ -5,6 +5,7 @@ import { IChallengeContextService } from '../../domain/services/challenge-contex
 import { ContextStats } from '../../domain/types/context.types';
 import { ChallengeContext } from '../../domain/types/governance.types';
 import { ChallengeEntity } from '@/modules/challenges/domain/entities/challenge.entity';
+import { ChallengeNotFoundError } from '../../domain/errors/challenge-not-found.error';
 
 export class ChallengeContextService implements IChallengeContextService {
   private readonly CACHE_TTL = 3600; 
@@ -43,7 +44,7 @@ export class ChallengeContextService implements IChallengeContextService {
       });
 
       if (!challenge) {
-        throw new Error(`Challenge not found: ${challengeId}`);
+        throw new ChallengeNotFoundError(challengeId);
       }
 
       const context = this.buildContextFromChallenge(challenge);

@@ -270,12 +270,13 @@ describe('AI Governance Integration Tests', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
 
-      expect(body).toBeDefined();
-      expect(body).toHaveProperty('isValid');
-      expect(body).toHaveProperty('confidence');
-      expect(body).toHaveProperty('reasons');
-      expect(body.isValid).toBe(true);
-      expect(body.confidence).toBeGreaterThan(0.5);
+      expect(body.success).toBe(true);
+      expect(body.data).toBeDefined();
+      expect(body.data).toHaveProperty('isValid');
+      expect(body.data).toHaveProperty('confidence');
+      expect(body.data).toHaveProperty('reasons');
+      expect(body.data.isValid).toBe(true);
+      expect(body.data.confidence).toBeGreaterThan(0.5);
     });
 
     it('should detect and block prompt injection attempts', async () => {
@@ -304,9 +305,11 @@ describe('AI Governance Integration Tests', () => {
         expect(response.statusCode).toBe(200);
         const body = JSON.parse(response.body);
 
-        expect(body.isValid).toBe(false);
-        expect(body.reasons.length).toBeGreaterThan(0);
-        expect(body.confidence).toBeLessThan(0.5);
+        expect(body.success).toBe(true);
+        expect(body.data).toBeDefined();
+        expect(body.data.isValid).toBe(false);
+        expect(body.data.reasons.length).toBeGreaterThan(0);
+        expect(body.data.confidence).toBeLessThan(0.5);
       }
     });
 
@@ -336,7 +339,9 @@ describe('AI Governance Integration Tests', () => {
         expect(response.statusCode).toBe(200);
         const body = JSON.parse(response.body);
 
-        expect(body.reasons).toContain('solution_seeking');
+        expect(body.success).toBe(true);
+        expect(body.data).toBeDefined();
+        expect(body.data.reasons).toContain('solution_seeking');
       }
     });
 
@@ -358,9 +363,11 @@ describe('AI Governance Integration Tests', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
 
-      expect(body.isValid).toBe(true);
-      expect(body).toHaveProperty('relevanceScore');
-      expect(body.relevanceScore).toBeGreaterThan(0.3); // Prompt sobre algoritmos deve ser relevante
+      expect(body.success).toBe(true);
+      expect(body.data).toBeDefined();
+      expect(body.data.isValid).toBe(true);
+      expect(body.data).toHaveProperty('relevanceScore');
+      expect(body.data.relevanceScore).toBeGreaterThan(0.3);
     });
 
     it('should require authentication for prompt validation', async () => {
@@ -377,6 +384,8 @@ describe('AI Governance Integration Tests', () => {
       });
 
       expect(response.statusCode).toBe(401);
+      const body = JSON.parse(response.body);
+      expect(body.code).toBe('AUTH_UNAUTHORIZED');
     });
 
     it('should validate required fields for prompt validation', async () => {
@@ -394,6 +403,8 @@ describe('AI Governance Integration Tests', () => {
       });
 
       expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body);
+      expect(['AI_VALIDATION_FAILED', 'FST_ERR_VALIDATION']).toContain(body.code);
     });
   });
 
@@ -420,11 +431,13 @@ describe('AI Governance Integration Tests', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
 
-      expect(body.feedback).toBeDefined();
-      expect(body.feedback).toHaveProperty('message');
-      expect(body.feedback).toHaveProperty('suggestions');
-      expect(body.feedback).toHaveProperty('educationalContent');
-      expect(body.feedback.message).toContain('prompt injection');
+      expect(body.success).toBe(true);
+      expect(body.data).toBeDefined();
+      expect(body.data.feedback).toBeDefined();
+      expect(body.data.feedback).toHaveProperty('message');
+      expect(body.data.feedback).toHaveProperty('suggestions');
+      expect(body.data.feedback).toHaveProperty('educationalContent');
+      expect(body.data.feedback.message).toContain('prompt injection');
     });
 
     it('should provide contextual feedback for solution seeking', async () => {
@@ -449,9 +462,10 @@ describe('AI Governance Integration Tests', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
 
-      expect(body.feedback.suggestions).toBeDefined();
-      expect(Array.isArray(body.feedback.suggestions)).toBe(true);
-      expect(body.feedback.suggestions.length).toBeGreaterThan(0);
+      expect(body.success).toBe(true);
+      expect(body.data.feedback.suggestions).toBeDefined();
+      expect(Array.isArray(body.data.feedback.suggestions)).toBe(true);
+      expect(body.data.feedback.suggestions.length).toBeGreaterThan(0);
     });
 
     it('should adapt feedback based on user level', async () => {
@@ -493,9 +507,10 @@ describe('AI Governance Integration Tests', () => {
       expect(seniorResponse.statusCode).toBe(200);
       const seniorBody = JSON.parse(seniorResponse.body);
 
-      // Verificação de feedback adaptado ao nível
-      expect(juniorBody.feedback.message).toBeDefined();
-      expect(seniorBody.feedback.message).toBeDefined();
+      expect(juniorBody.success).toBe(true);
+      expect(seniorBody.success).toBe(true);
+      expect(juniorBody.data.feedback.message).toBeDefined();
+      expect(seniorBody.data.feedback.message).toBeDefined();
     });
 
     it('should track feedback generation in metrics', async () => {
@@ -564,10 +579,12 @@ describe('AI Governance Integration Tests', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
 
-      expect(body.analysis).toBeDefined();
-      expect(body.analysis).toHaveProperty('patterns');
-      expect(body.analysis).toHaveProperty('riskScore');
-      expect(body.analysis).toHaveProperty('recommendations');
+      expect(body.success).toBe(true);
+      expect(body.data).toBeDefined();
+      expect(body.data.analysis).toBeDefined();
+      expect(body.data.analysis).toHaveProperty('patterns');
+      expect(body.data.analysis).toHaveProperty('riskScore');
+      expect(body.data.analysis).toHaveProperty('recommendations');
     });
 
     it('should detect suspicious rapid-fire patterns', async () => {
@@ -610,8 +627,9 @@ describe('AI Governance Integration Tests', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
 
-      expect(body.analysis.riskScore).toBeGreaterThan(50);
-      expect(body.analysis.patterns).toContain('rapid_attempts');
+      expect(body.success).toBe(true);
+      expect(body.data.analysis.riskScore).toBeGreaterThan(50);
+      expect(body.data.analysis.patterns).toContain('rapid_attempts');
     });
 
     it('should provide behavioral recommendations', async () => {
@@ -632,8 +650,9 @@ describe('AI Governance Integration Tests', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
 
-      expect(body.analysis.recommendations).toBeDefined();
-      expect(Array.isArray(body.analysis.recommendations)).toBe(true);
+      expect(body.success).toBe(true);
+      expect(body.data.analysis.recommendations).toBeDefined();
+      expect(Array.isArray(body.data.analysis.recommendations)).toBe(true);
     });
 
     it('should handle different time windows', async () => {
@@ -656,7 +675,8 @@ describe('AI Governance Integration Tests', () => {
 
         expect(response.statusCode).toBe(200);
         const body = JSON.parse(response.body);
-        expect(body.analysis).toHaveProperty('timeWindow');
+        expect(body.success).toBe(true);
+        expect(body.data.analysis).toHaveProperty('timeWindow');
       }
     });
   });
@@ -674,10 +694,12 @@ describe('AI Governance Integration Tests', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
 
-      expect(body.metrics).toBeDefined();
-      expect(body.metrics).toHaveProperty('validationStats');
-      expect(body.metrics).toHaveProperty('blockingStats');
-      expect(body.metrics).toHaveProperty('performanceMetrics');
+      expect(body.success).toBe(true);
+      expect(body.data).toBeDefined();
+      expect(body.data.metrics).toBeDefined();
+      expect(body.data.metrics).toHaveProperty('validationStats');
+      expect(body.data.metrics).toHaveProperty('blockingStats');
+      expect(body.data.metrics).toHaveProperty('performanceMetrics');
     });
 
     it('should deny governance metrics access to non-admin users', async () => {
@@ -690,6 +712,8 @@ describe('AI Governance Integration Tests', () => {
       });
 
       expect(response.statusCode).toBe(403);
+      const body = JSON.parse(response.body);
+      expect(body.code).toBe('AUTH_FORBIDDEN');
     });
 
     it('should return governance stats for admin', async () => {
@@ -704,10 +728,12 @@ describe('AI Governance Integration Tests', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
 
-      expect(body.stats).toBeDefined();
-      expect(body.stats).toHaveProperty('totalValidations');
-      expect(body.stats).toHaveProperty('blockedAttempts');
-      expect(body.stats).toHaveProperty('successRate');
+      expect(body.success).toBe(true);
+      expect(body.data).toBeDefined();
+      expect(body.data.stats).toBeDefined();
+      expect(body.data.stats).toHaveProperty('totalValidations');
+      expect(body.data.stats).toHaveProperty('blockedAttempts');
+      expect(body.data.stats).toHaveProperty('successRate');
     });
 
     it('should allow admin to refresh challenge cache', async () => {
@@ -727,7 +753,8 @@ describe('AI Governance Integration Tests', () => {
       const body = JSON.parse(response.body);
 
       expect(body.success).toBe(true);
-      expect(body.refreshedChallenges).toContain(testChallenge.id);
+      expect(body.data).toBeDefined();
+      expect(body.data.refreshedChallenges).toContain(testChallenge.id);
     });
 
     it('should allow admin to prewarm cache', async () => {
@@ -747,7 +774,8 @@ describe('AI Governance Integration Tests', () => {
       const body = JSON.parse(response.body);
 
       expect(body.success).toBe(true);
-      expect(body.prewarmedChallenges).toContain(testChallenge.id);
+      expect(body.data).toBeDefined();
+      expect(body.data.prewarmedChallenges).toContain(testChallenge.id);
     });
 
     it('should allow admin to clear validation cache', async () => {
@@ -763,7 +791,8 @@ describe('AI Governance Integration Tests', () => {
       const body = JSON.parse(response.body);
 
       expect(body.success).toBe(true);
-      expect(body.message).toContain('cleared');
+      expect(body.data).toBeDefined();
+      expect(body.data.message).toContain('cleared');
     });
 
     it('should deny cache management to non-admin users', async () => {
@@ -785,6 +814,8 @@ describe('AI Governance Integration Tests', () => {
         });
 
         expect(response.statusCode).toBe(403);
+        const body = JSON.parse(response.body);
+        expect(body.code).toBe('AUTH_FORBIDDEN');
       }
     });
   });
@@ -807,11 +838,13 @@ describe('AI Governance Integration Tests', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
 
-      expect(body.analysis).toBeDefined();
-      expect(body.analysis).toHaveProperty('complexity');
-      expect(body.analysis).toHaveProperty('intent');
-      expect(body.analysis).toHaveProperty('educationalValue');
-      expect(body.analysis).toHaveProperty('riskFactors');
+      expect(body.success).toBe(true);
+      expect(body.data).toBeDefined();
+      expect(body.data.analysis).toBeDefined();
+      expect(body.data.analysis).toHaveProperty('complexity');
+      expect(body.data.analysis).toHaveProperty('intent');
+      expect(body.data.analysis).toHaveProperty('educationalValue');
+      expect(body.data.analysis).toHaveProperty('riskFactors');
     });
 
     it('should classify different types of prompts', async () => {
@@ -839,7 +872,9 @@ describe('AI Governance Integration Tests', () => {
         expect(response.statusCode).toBe(200);
         const body = JSON.parse(response.body);
 
-        expect(body.analysis.intent).toBe(expectedIntent);
+        expect(body.success).toBe(true);
+        expect(body.data).toBeDefined();
+        expect(body.data.analysis.intent).toBe(expectedIntent);
       }
     });
 
@@ -867,7 +902,9 @@ describe('AI Governance Integration Tests', () => {
         expect(response.statusCode).toBe(200);
         const body = JSON.parse(response.body);
 
-        expect(body.analysis.educationalValue).toBeGreaterThan(0.7);
+        expect(body.success).toBe(true);
+        expect(body.data).toBeDefined();
+        expect(body.data.analysis.educationalValue).toBeGreaterThan(0.7);
       }
     });
   });

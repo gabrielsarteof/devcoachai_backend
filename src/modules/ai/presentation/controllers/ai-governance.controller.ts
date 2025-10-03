@@ -11,9 +11,14 @@ import { AnalyzePromptUseCase, AnalyzePromptDTO } from '../../application/use-ca
 import {
   PromptValidationRequestDTO,
   AnalyzeTemporalBehaviorDTO,
-  GenerateFeedbackRequestDTO
+  GenerateFeedbackRequestDTO,
+  PromptValidationRequestSchema,
+  AnalyzeTemporalBehaviorSchema,
+  GenerateFeedbackRequestSchema
 } from '../../domain/schemas/ai-interaction.schema';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
+import { AIError, ValidationError, UnauthorizedError } from '../../domain/errors';
+import { ZodError } from 'zod';
 
 export class AIGovernanceController {
   constructor(
@@ -37,10 +42,8 @@ export class AIGovernanceController {
     const user = request.user as { id: string; email: string; role: string; level?: number } | undefined;
 
     if (!user) {
-      return reply.status(401).send({
-        error: 'Unauthorized',
-        message: 'User not authenticated',
-      });
+      const unauthorizedError = new UnauthorizedError();
+      return reply.status(unauthorizedError.statusCode).send(unauthorizedError.toJSON());
     }
 
     logger.info({
@@ -54,13 +57,14 @@ export class AIGovernanceController {
     }, 'Prompt validation request received');
 
     try {
+      const validatedData = PromptValidationRequestSchema.parse(request.body);
       const result = await this.validatePromptUseCase.execute({
         userId: user.id,
-        challengeId: request.body.challengeId,
-        prompt: request.body.prompt,
-        userLevel: request.body.userLevel || user.level,
-        attemptId: request.body.attemptId,
-        config: request.body.config,
+        challengeId: validatedData.challengeId,
+        prompt: validatedData.prompt,
+        userLevel: validatedData.userLevel || user.level,
+        attemptId: validatedData.attemptId,
+        config: validatedData.config,
       });
 
       const executionTime = Date.now() - startTime;
@@ -68,7 +72,7 @@ export class AIGovernanceController {
       logger.info({
         requestId,
         userId: user.id,
-        challengeId: request.body.challengeId,
+        challengeId: validatedData.challengeId,
         isValid: result.isValid,
         riskScore: result.riskScore,
         classification: result.classification,
@@ -77,51 +81,19 @@ export class AIGovernanceController {
         executionTime,
       }, 'Prompt validation completed');
 
-      return reply.status(200).send(result);
+      return reply.status(200).send({
+        success: true,
+        data: result,
+      });
     } catch (error) {
-      const executionTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-      // Tratamento específico para desafios não encontrados
-      if (errorMessage.includes('Challenge not found') || errorMessage.includes('not found')) {
-        logger.warn({
-          requestId,
-          userId: user.id,
-          challengeId: request.body.challengeId,
-          error: errorMessage,
-          reason: 'challenge_not_found',
-          executionTime,
-        }, 'Challenge not found for validation');
-
-        return reply.status(404).send({
-          error: 'Not Found',
-          message: 'Challenge not found',
-        });
+      if (error instanceof ZodError) {
+        const validationError = new ValidationError(error);
+        return reply.status(validationError.statusCode).send(validationError.toJSON());
       }
 
-      if (errorMessage.includes('not available') || errorMessage.includes('Not Implemented')) {
-        logger.warn({
-          requestId,
-          userId: user.id,
-          error: errorMessage,
-          reason: 'governance_unavailable',
-          executionTime,
-        }, 'Governance system not available');
-
-        return reply.status(501).send({
-          error: 'Not Implemented',
-          message: 'Governance system not available',
-        });
+      if (error instanceof AIError) {
+        return reply.status(error.statusCode).send(error.toJSON());
       }
-
-      logger.error({
-        requestId,
-        userId: user.id,
-        challengeId: request.body.challengeId,
-        error: errorMessage,
-        stack: error instanceof Error ? error.stack : undefined,
-        executionTime,
-      }, 'Prompt validation failed');
 
       return reply.status(500).send({
         error: 'Internal server error',
@@ -140,10 +112,8 @@ export class AIGovernanceController {
     const user = request.user as { id: string; email: string; role: string } | undefined;
 
     if (!user) {
-      return reply.status(401).send({
-        error: 'Unauthorized',
-        message: 'User not authenticated',
-      });
+      const unauthorizedError = new UnauthorizedError();
+      return reply.status(unauthorizedError.statusCode).send(unauthorizedError.toJSON());
     }
 
     logger.info({
@@ -184,46 +154,29 @@ export class AIGovernanceController {
         executionTime,
       }, 'Temporal behavior analysis completed');
 
-      // Mapeamento do resultado para o formato da API
-      const response = {
-        analysis: {
-          patterns: (result.temporalPatterns || []).map((p: any) =>
-            p.pattern === 'rapid_fire' ? 'rapid_attempts' : p.pattern
-          ),
-          riskScore: result.overallRisk || 0,
-          recommendations: result.recommendations || [],
-          timeWindow: request.body.timeWindow || '1h'
+      // Mapeamento do resultado para o formato da API padronizado
+      return reply.status(200).send({
+        success: true,
+        data: {
+          analysis: {
+            patterns: (result.temporalPatterns || []).map((p: any) =>
+              p.pattern === 'rapid_fire' ? 'rapid_attempts' : p.pattern
+            ),
+            riskScore: result.overallRisk || 0,
+            recommendations: result.recommendations || [],
+            timeWindow: request.body.timeWindow || '1h'
+          }
         }
-      };
-
-      return reply.status(200).send(response);
+      });
     } catch (error) {
-      const executionTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-      if (errorMessage.includes('not available') || errorMessage.includes('Not Implemented')) {
-        logger.warn({
-          requestId,
-          userId: user.id,
-          error: errorMessage,
-          reason: 'temporal_analysis_unavailable',
-          executionTime,
-        }, 'Temporal analysis not available');
-
-        return reply.status(501).send({
-          error: 'Not Implemented',
-          message: 'Temporal analysis not available',
-        });
+      if (error instanceof ZodError) {
+        const validationError = new ValidationError(error);
+        return reply.status(validationError.statusCode).send(validationError.toJSON());
       }
 
-      logger.error({
-        requestId,
-        userId: user.id,
-        attemptId: request.body.attemptId,
-        error: errorMessage,
-        stack: error instanceof Error ? error.stack : undefined,
-        executionTime,
-      }, 'Temporal behavior analysis failed');
+      if (error instanceof AIError) {
+        return reply.status(error.statusCode).send(error.toJSON());
+      }
 
       return reply.status(500).send({
         error: 'Internal server error',
@@ -241,10 +194,8 @@ export class AIGovernanceController {
     const user = request.user as { id: string; email: string; role: string } | undefined;
 
     if (!user) {
-      return reply.status(401).send({
-        error: 'Unauthorized',
-        message: 'User not authenticated',
-      });
+      const unauthorizedError = new UnauthorizedError();
+      return reply.status(unauthorizedError.statusCode).send(unauthorizedError.toJSON());
     }
 
     logger.info({
@@ -270,47 +221,29 @@ export class AIGovernanceController {
         executionTime,
       }, 'Educational feedback generated successfully');
 
-      // Transformação da resposta para o formato esperado
-      const response = {
-        feedback: {
-          message: result.context.whatHappened + (result.context.whyBlocked ? ` ${result.context.whyBlocked}` : ''),
-          suggestions: result.guidance.betterApproaches,
-          educationalContent: {
-            concepts: result.guidance.conceptsToReview,
-            nextSteps: result.learningPath.nextSteps,
-            resources: result.learningPath.suggestedResources
+      return reply.status(200).send({
+        success: true,
+        data: {
+          feedback: {
+            message: result.context.whatHappened + (result.context.whyBlocked ? ` ${result.context.whyBlocked}` : ''),
+            suggestions: result.guidance.betterApproaches,
+            educationalContent: {
+              concepts: result.guidance.conceptsToReview,
+              nextSteps: result.learningPath.nextSteps,
+              resources: result.learningPath.suggestedResources
+            }
           }
         }
-      };
-
-      return reply.status(200).send(response);
+      });
     } catch (error) {
-      const executionTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-      if (errorMessage.includes('not available') || errorMessage.includes('Not Implemented')) {
-        logger.warn({
-          requestId,
-          userId: user.id,
-          error: errorMessage,
-          reason: 'feedback_service_unavailable',
-          executionTime,
-        }, 'Educational feedback service not available');
-
-        return reply.status(501).send({
-          error: 'Not Implemented',
-          message: 'Educational feedback service not available',
-        });
+      if (error instanceof ZodError) {
+        const validationError = new ValidationError(error);
+        return reply.status(validationError.statusCode).send(validationError.toJSON());
       }
 
-      logger.error({
-        requestId,
-        userId: user.id,
-        challengeId: request.body.challengeId,
-        error: errorMessage,
-        stack: error instanceof Error ? error.stack : undefined,
-        executionTime,
-      }, 'Educational feedback generation failed');
+      if (error instanceof AIError) {
+        return reply.status(error.statusCode).send(error.toJSON());
+      }
 
       return reply.status(500).send({
         error: 'Internal server error',
@@ -328,10 +261,8 @@ export class AIGovernanceController {
     const user = request.user as { id: string; email: string; role: string } | undefined;
 
     if (!user) {
-      return reply.status(401).send({
-        error: 'Unauthorized',
-        message: 'User not authenticated',
-      });
+      const unauthorizedError = new UnauthorizedError();
+      return reply.status(unauthorizedError.statusCode).send(unauthorizedError.toJSON());
     }
 
     logger.debug({
@@ -355,34 +286,14 @@ export class AIGovernanceController {
         executionTime,
       }, 'Governance metrics retrieved successfully');
 
-      return reply.status(200).send(result);
+      return reply.status(200).send({
+        success: true,
+        data: result,
+      });
     } catch (error) {
-      const executionTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-      if (errorMessage.includes('not available') || errorMessage.includes('Not Implemented')) {
-        logger.warn({
-          requestId,
-          userId: user.id,
-          error: errorMessage,
-          reason: 'metrics_unavailable',
-          executionTime,
-        }, 'Governance metrics not available');
-
-        return reply.status(501).send({
-          error: 'Not Implemented',
-          message: 'Governance metrics not available',
-        });
+      if (error instanceof AIError) {
+        return reply.status(error.statusCode).send(error.toJSON());
       }
-
-      logger.error({
-        requestId,
-        userId: user.id,
-        challengeId: request.query.challengeId,
-        error: errorMessage,
-        stack: error instanceof Error ? error.stack : undefined,
-        executionTime,
-      }, 'Failed to get governance metrics');
 
       return reply.status(500).send({
         error: 'Internal server error',
@@ -400,10 +311,8 @@ export class AIGovernanceController {
     const user = request.user as { id: string; email: string; role: string } | undefined;
 
     if (!user) {
-      return reply.status(401).send({
-        error: 'Unauthorized',
-        message: 'User not authenticated',
-      });
+      const unauthorizedError = new UnauthorizedError();
+      return reply.status(unauthorizedError.statusCode).send(unauthorizedError.toJSON());
     }
 
     logger.debug({
@@ -424,33 +333,14 @@ export class AIGovernanceController {
         executionTime,
       }, 'Governance stats retrieved successfully');
 
-      return reply.status(200).send(result);
+      return reply.status(200).send({
+        success: true,
+        data: result,
+      });
     } catch (error) {
-      const executionTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-      if (errorMessage.includes('not available') || errorMessage.includes('Not Implemented')) {
-        logger.warn({
-          requestId,
-          userId: user.id,
-          error: errorMessage,
-          reason: 'stats_unavailable',
-          executionTime,
-        }, 'Context statistics not available');
-
-        return reply.status(501).send({
-          error: 'Not Implemented',
-          message: 'Context statistics not available',
-        });
+      if (error instanceof AIError) {
+        return reply.status(error.statusCode).send(error.toJSON());
       }
-
-      logger.error({
-        requestId,
-        userId: user.id,
-        error: errorMessage,
-        stack: error instanceof Error ? error.stack : undefined,
-        executionTime,
-      }, 'Failed to get governance stats');
 
       return reply.status(500).send({
         error: 'Internal server error',
@@ -468,10 +358,8 @@ export class AIGovernanceController {
     const user = request.user as { id: string; email: string; role: string } | undefined;
 
     if (!user) {
-      return reply.status(401).send({
-        error: 'Unauthorized',
-        message: 'User not authenticated',
-      });
+      const unauthorizedError = new UnauthorizedError();
+      return reply.status(unauthorizedError.statusCode).send(unauthorizedError.toJSON());
     }
 
     logger.info({
@@ -494,34 +382,14 @@ export class AIGovernanceController {
         executionTime,
       }, 'Challenge cache refreshed successfully');
 
-      return reply.status(200).send(result);
+      return reply.status(200).send({
+        success: true,
+        data: result,
+      });
     } catch (error) {
-      const executionTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-      if (errorMessage.includes('not available') || errorMessage.includes('Not Implemented')) {
-        logger.warn({
-          requestId,
-          userId: user.id,
-          error: errorMessage,
-          reason: 'cache_refresh_unavailable',
-          executionTime,
-        }, 'Cache refresh not available');
-
-        return reply.status(501).send({
-          error: 'Not Implemented',
-          message: 'Cache refresh not available',
-        });
+      if (error instanceof AIError) {
+        return reply.status(error.statusCode).send(error.toJSON());
       }
-
-      logger.error({
-        requestId,
-        userId: user.id,
-        challengeId: request.body.challengeId,
-        error: errorMessage,
-        stack: error instanceof Error ? error.stack : undefined,
-        executionTime,
-      }, 'Failed to refresh cache');
 
       return reply.status(500).send({
         error: 'Internal server error',
@@ -539,10 +407,8 @@ export class AIGovernanceController {
     const user = request.user as { id: string; email: string; role: string } | undefined;
 
     if (!user) {
-      return reply.status(401).send({
-        error: 'Unauthorized',
-        message: 'User not authenticated',
-      });
+      const unauthorizedError = new UnauthorizedError();
+      return reply.status(unauthorizedError.statusCode).send(unauthorizedError.toJSON());
     }
 
     logger.info({
@@ -565,34 +431,14 @@ export class AIGovernanceController {
         executionTime,
       }, 'Cache prewarmed successfully');
 
-      return reply.status(200).send(result);
+      return reply.status(200).send({
+        success: true,
+        data: result,
+      });
     } catch (error) {
-      const executionTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-      if (errorMessage.includes('not available') || errorMessage.includes('Not Implemented')) {
-        logger.warn({
-          requestId,
-          userId: user.id,
-          error: errorMessage,
-          reason: 'cache_prewarm_unavailable',
-          executionTime,
-        }, 'Cache prewarm not available');
-
-        return reply.status(501).send({
-          error: 'Not Implemented',
-          message: 'Cache prewarm not available',
-        });
+      if (error instanceof AIError) {
+        return reply.status(error.statusCode).send(error.toJSON());
       }
-
-      logger.error({
-        requestId,
-        userId: user.id,
-        challengeIdsCount: request.body.challengeIds.length,
-        error: errorMessage,
-        stack: error instanceof Error ? error.stack : undefined,
-        executionTime,
-      }, 'Failed to prewarm cache');
 
       return reply.status(500).send({
         error: 'Internal server error',
@@ -610,10 +456,8 @@ export class AIGovernanceController {
     const user = request.user as { id: string; email: string; role: string } | undefined;
 
     if (!user) {
-      return reply.status(401).send({
-        error: 'Unauthorized',
-        message: 'User not authenticated',
-      });
+      const unauthorizedError = new UnauthorizedError();
+      return reply.status(unauthorizedError.statusCode).send(unauthorizedError.toJSON());
     }
 
     logger.info({
@@ -636,34 +480,14 @@ export class AIGovernanceController {
         executionTime,
       }, 'Validation cache cleared successfully');
 
-      return reply.status(200).send(result);
+      return reply.status(200).send({
+        success: true,
+        data: result,
+      });
     } catch (error) {
-      const executionTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-      if (errorMessage.includes('not available') || errorMessage.includes('Not Implemented')) {
-        logger.warn({
-          requestId,
-          userId: user.id,
-          error: errorMessage,
-          reason: 'cache_clear_unavailable',
-          executionTime,
-        }, 'Cache clear not available');
-
-        return reply.status(501).send({
-          error: 'Not Implemented',
-          message: 'Cache clear not available',
-        });
+      if (error instanceof AIError) {
+        return reply.status(error.statusCode).send(error.toJSON());
       }
-
-      logger.error({
-        requestId,
-        userId: user.id,
-        challengeId: request.query.challengeId || 'all',
-        error: errorMessage,
-        stack: error instanceof Error ? error.stack : undefined,
-        executionTime,
-      }, 'Failed to clear cache');
 
       return reply.status(500).send({
         error: 'Internal server error',
@@ -681,10 +505,8 @@ export class AIGovernanceController {
     const user = request.user as { id: string; email: string; role: string } | undefined;
 
     if (!user) {
-      return reply.status(401).send({
-        error: 'Unauthorized',
-        message: 'User not authenticated',
-      });
+      const unauthorizedError = new UnauthorizedError();
+      return reply.status(unauthorizedError.statusCode).send(unauthorizedError.toJSON());
     }
 
     logger.debug({
@@ -709,45 +531,25 @@ export class AIGovernanceController {
       }, 'Prompt analysis completed successfully');
 
       return reply.status(200).send({
-        analysis: {
-          intent: result.intent,
-          complexity: result.complexity,
-          educationalValue: result.educationalValue || 0,
-          riskFactors: result.riskFactors || [],
-          language: result.language,
-          hasCodeRequest: result.hasCodeRequest,
-          socialEngineeringScore: result.socialEngineeringScore,
-          estimatedTokens: result.estimatedTokens,
-          topics: result.topics
+        success: true,
+        data: {
+          analysis: {
+            intent: result.intent,
+            complexity: result.complexity,
+            educationalValue: result.educationalValue || 0,
+            riskFactors: result.riskFactors || [],
+            language: result.language,
+            hasCodeRequest: result.hasCodeRequest,
+            socialEngineeringScore: result.socialEngineeringScore,
+            estimatedTokens: result.estimatedTokens,
+            topics: result.topics
+          }
         }
       });
     } catch (error) {
-      const executionTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-      if (errorMessage.includes('not available') || errorMessage.includes('Not Implemented')) {
-        logger.warn({
-          requestId,
-          userId: user.id,
-          error: errorMessage,
-          reason: 'prompt_analysis_unavailable',
-          executionTime,
-        }, 'Prompt analysis not available');
-
-        return reply.status(501).send({
-          error: 'Not Implemented',
-          message: 'Prompt analysis not available',
-        });
+      if (error instanceof AIError) {
+        return reply.status(error.statusCode).send(error.toJSON());
       }
-
-      logger.error({
-        requestId,
-        userId: user.id,
-        promptLength: request.body.prompt.length,
-        error: errorMessage,
-        stack: error instanceof Error ? error.stack : undefined,
-        executionTime,
-      }, 'Prompt analysis failed');
 
       return reply.status(500).send({
         error: 'Internal server error',

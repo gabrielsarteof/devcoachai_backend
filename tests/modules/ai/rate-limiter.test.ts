@@ -83,14 +83,38 @@ describe('RateLimiterService', () => {
     it('should reset all user limits', async () => {
       await rateLimiter.checkLimit(testUserId, 100);
       await rateLimiter.checkLimit(testUserId, 200);
-      
+
       await rateLimiter.resetUserLimits(testUserId);
-      
+
       const quota = await rateLimiter.getRemainingQuota(testUserId);
-      
+
       expect(quota.requests.minute).toBe(10);
       expect(quota.requests.hour).toBe(50);
       expect(quota.tokens.daily).toBe(10000);
+    });
+  });
+
+  describe('infrastructure failure handling', () => {
+    it('should fail-safe when Redis pipeline fails', async () => {
+      const originalPipeline = redis.pipeline;
+
+      redis.pipeline = (() => {
+        const mockPipeline = {
+          incr: () => mockPipeline,
+          expire: () => mockPipeline,
+          incrby: () => mockPipeline,
+          exec: async () => null,
+        };
+        return mockPipeline as any;
+      }) as any;
+
+      const result = await rateLimiter.checkLimit(testUserId, 100);
+
+      expect(result.allowed).toBe(false);
+      expect(result.remaining).toBe(0);
+      expect(result.reason).toContain('infrastructure error');
+
+      redis.pipeline = originalPipeline;
     });
   });
 });

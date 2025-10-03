@@ -1,5 +1,6 @@
 import { AIInteraction as PrismaAIInteraction, AIProvider } from '@prisma/client';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
+import { InvalidProviderError } from '../errors/invalid-provider.error';
 
 export class AIInteractionEntity {
   private constructor(private readonly props: PrismaAIInteraction) {}
@@ -7,7 +8,8 @@ export class AIInteractionEntity {
   static create(data: {
     userId: string;
     attemptId?: string;
-    provider: string; 
+    challengeId?: string;
+    provider: string;
     model: string;
     messages: any;
     promptComplexity?: string;
@@ -58,13 +60,14 @@ export class AIInteractionEntity {
             provider: data.provider,
             supportedProviders: ['openai', 'anthropic', 'google', 'meta']
           }, 'Invalid AI provider specified');
-          throw new Error(`Invalid provider: ${data.provider}`);
+          throw new InvalidProviderError(`Invalid provider: ${data.provider}`);
       }
 
       const props: PrismaAIInteraction = {
         id: crypto.randomUUID(),
         userId: data.userId,
         attemptId: data.attemptId || null,
+        challengeId: data.challengeId || null,
         provider: providerEnum,
         model: data.model,
         messages: data.messages,

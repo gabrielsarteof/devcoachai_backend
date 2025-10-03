@@ -421,7 +421,8 @@ describe('AI Module Integration Tests', () => {
 
       expect(response.statusCode).toBe(401);
       const body = JSON.parse(response.body);
-      expect(body.error).toBe('Unauthorized');
+      expect(body.code).toBe('AUTH_UNAUTHORIZED');
+      expect(body.statusCode).toBe(401);
     });
 
     it('should validate required fields in AI chat request', async () => {
@@ -439,6 +440,8 @@ describe('AI Module Integration Tests', () => {
       });
 
       expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body);
+      expect(['AI_VALIDATION_FAILED', 'FST_ERR_VALIDATION']).toContain(body.code);
     });
 
     it('should return available AI models', async () => {
@@ -453,17 +456,19 @@ describe('AI Module Integration Tests', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
 
-      expect(body.models).toBeDefined();
-      expect(typeof body.models).toBe('object');
+      expect(body.success).toBe(true);
+      expect(body.data).toBeDefined();
+      expect(body.data.models).toBeDefined();
+      expect(typeof body.data.models).toBe('object');
 
       // Verificação de provedores disponíveis
-      const providers = Object.keys(body.models);
+      const providers = Object.keys(body.data.models);
       expect(providers.length).toBeGreaterThan(0);
 
       // Validação da estrutura dos provedores
       providers.forEach(provider => {
-        expect(body.models[provider]).toHaveProperty('models');
-        expect(body.models[provider]).toHaveProperty('available');
+        expect(body.data.models[provider]).toHaveProperty('models');
+        expect(body.data.models[provider]).toHaveProperty('available');
       });
     });
 
@@ -519,13 +524,15 @@ describe('AI Module Integration Tests', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
 
-      expect(body.usage).toBeDefined();
-      expect(body.usage.period).toBeDefined();
-      expect(body.usage.tokens).toBeDefined();
-      expect(body.usage.requests).toBeDefined();
-      expect(body.usage.cost).toBeDefined();
-      expect(body.quota).toBeDefined();
-      expect(body.limits).toBeDefined();
+      expect(body.success).toBe(true);
+      expect(body.data).toBeDefined();
+      expect(body.data.usage).toBeDefined();
+      expect(body.data.usage.period).toBeDefined();
+      expect(body.data.usage.tokens).toBeDefined();
+      expect(body.data.usage.requests).toBeDefined();
+      expect(body.data.usage.cost).toBeDefined();
+      expect(body.data.quota).toBeDefined();
+      expect(body.data.limits).toBeDefined();
     });
 
     it('should track copy-paste events', async () => {
@@ -548,7 +555,8 @@ describe('AI Module Integration Tests', () => {
       const body = JSON.parse(response.body);
 
       expect(body.success).toBe(true);
-      expect(body.message).toContain('tracked successfully');
+      expect(body.data).toBeDefined();
+      expect(body.data.message).toContain('tracked successfully');
     });
 
     it('should validate copy-paste data structure', async () => {
@@ -566,6 +574,8 @@ describe('AI Module Integration Tests', () => {
       });
 
       expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body);
+      expect(['AI_VALIDATION_FAILED', 'FST_ERR_VALIDATION']).toContain(body.code);
     });
 
     it('should handle missing challenge context in usage tracking', async () => {

@@ -4,6 +4,7 @@ import { AnthropicProvider } from '../providers/anthropic.provider';
 import { GoogleProvider } from '../providers/google.provider';
 import { Redis } from 'ioredis';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
+import { InvalidProviderError } from '../../domain/errors/invalid-provider.error';
 
 export class ProviderFactoryService implements IAIProviderFactory {
   private readonly providers: Map<string, () => IAIProvider> = new Map();
@@ -166,8 +167,8 @@ export class ProviderFactoryService implements IAIProviderFactory {
           availableProviders: this.getAvailableProviders(),
           processingTime: Date.now() - startTime
         }, 'Provider not available');
-        
-        throw new Error(`Provider ${provider} not available`);
+
+        throw new InvalidProviderError(`Provider ${provider} not available`);
       }
 
       const instance = providerFactory();
@@ -225,8 +226,8 @@ export class ProviderFactoryService implements IAIProviderFactory {
             provider,
             supportedProviders: ['openai', 'anthropic', 'google']
           }, 'Unsupported provider for custom instance');
-          
-          throw new Error(`Cannot create custom instance for provider ${provider}`);
+
+          throw new InvalidProviderError(`Cannot create custom instance for provider ${provider}`);
       }
 
       logger.debug({

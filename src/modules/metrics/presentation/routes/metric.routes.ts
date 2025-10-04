@@ -109,44 +109,50 @@ export async function metricRoutes(
         200: {
           type: 'object',
           properties: {
-            attempt: {
+            success: { type: 'boolean' },
+            data: {
               type: 'object',
               properties: {
-                id: { type: 'string' },
-                challengeTitle: { type: 'string' },
-                difficulty: { type: 'string' },
-                category: { type: 'string' },
-                status: { type: 'string' },
-                startedAt: { type: ['string', 'null'] },
-              },
-            },
-            metrics: { type: 'array' },
-            trends: { type: 'object' },
-            userAverages: {
-              type: 'object',
-              properties: {
-                averageDI: { type: 'number' },
-                averagePR: { type: 'number' },
-                averageCS: { type: 'number' },
-              },
-            },
-            summary: {
-              type: 'object',
-              properties: {
-                totalTime: { type: 'number' },
-                totalSnapshots: { type: 'number' },
-                currentDI: { type: 'number' },
-                currentPR: { type: 'number' },
-                currentCS: { type: 'number' },
-                initialDI: { type: 'number' },
-                initialPR: { type: 'number' },
-                initialCS: { type: 'number' },
-                improvement: {
+                attempt: {
                   type: 'object',
                   properties: {
-                    DI: { type: 'number' },
-                    PR: { type: 'number' },
-                    CS: { type: 'number' },
+                    id: { type: 'string' },
+                    challengeTitle: { type: 'string' },
+                    difficulty: { type: 'string' },
+                    category: { type: 'string' },
+                    status: { type: 'string' },
+                    startedAt: { type: ['string', 'null'] },
+                  },
+                },
+                metrics: { type: 'array' },
+                trends: { type: 'object' },
+                userAverages: {
+                  type: 'object',
+                  properties: {
+                    averageDI: { type: 'number' },
+                    averagePR: { type: 'number' },
+                    averageCS: { type: 'number' },
+                  },
+                },
+                summary: {
+                  type: 'object',
+                  properties: {
+                    totalTime: { type: 'number' },
+                    totalSnapshots: { type: 'number' },
+                    currentDI: { type: 'number' },
+                    currentPR: { type: 'number' },
+                    currentCS: { type: 'number' },
+                    initialDI: { type: 'number' },
+                    initialPR: { type: 'number' },
+                    initialCS: { type: 'number' },
+                    improvement: {
+                      type: 'object',
+                      properties: {
+                        DI: { type: 'number' },
+                        PR: { type: 'number' },
+                        CS: { type: 'number' },
+                      },
+                    },
                   },
                 },
               },

@@ -302,65 +302,10 @@ export class MetricController {
         }, 'Excellent pass rate improvement detected');
       }
       
-      // Validação final antes do envio
-      const responseData = {
-        attempt: result.attempt || {
-          id: request.params.attemptId,
-          challengeTitle: 'Unknown',
-          difficulty: 'UNKNOWN',
-          category: 'UNKNOWN',
-          status: 'UNKNOWN',
-          startedAt: null,
-        },
-        metrics: Array.isArray(result.metrics) ? result.metrics : [],
-        trends: result.trends || {},
-        userAverages: result.userAverages || { averageDI: 0, averagePR: 0, averageCS: 0 },
-        summary: result.summary || {
-          totalTime: 0,
-          totalSnapshots: 0,
-          currentDI: 0,
-          currentPR: 0,
-          currentCS: 0,
-          initialDI: 0,
-          initialPR: 0,
-          initialCS: 0,
-          improvement: { DI: 0, PR: 0, CS: 0 }
-        },
-      };
-
-      logger.debug({
-        requestId,
-        userId: user.id,
-        attemptId: request.params.attemptId,
-        finalResponse: {
-          hasAttempt: !!responseData.attempt,
-          hasMetrics: !!responseData.metrics,
-          metricsLength: Array.isArray(responseData.metrics) ? responseData.metrics.length : 0,
-          hasSummary: !!responseData.summary,
-          summaryKeys: responseData.summary ? Object.keys(responseData.summary) : [],
-          hasImprovement: !!(responseData.summary && responseData.summary.improvement),
-          improvementKeys: responseData.summary?.improvement ? Object.keys(responseData.summary.improvement) : []
-        }
-      }, 'Final response validation before send');
-
-      // Força serialização controlada para evitar problemas de enumerabilidade
-      const serializedData = JSON.parse(JSON.stringify(responseData));
-
-      logger.debug({
-        requestId,
-        serializedCheck: {
-          originalHasAttempt: !!responseData.attempt,
-          serializedHasAttempt: !!serializedData.attempt,
-          originalAttemptKeys: responseData.attempt ? Object.keys(responseData.attempt) : [],
-          serializedAttemptKeys: serializedData.attempt ? Object.keys(serializedData.attempt) : [],
-          originalHasSummary: !!responseData.summary,
-          serializedHasSummary: !!serializedData.summary,
-          originalSummaryKeys: responseData.summary ? Object.keys(responseData.summary) : [],
-          serializedSummaryKeys: serializedData.summary ? Object.keys(serializedData.summary) : []
-        }
-      }, 'Serialization check completed');
-
-      return reply.send(serializedData);
+      return reply.send({
+        success: true,
+        data: result
+      });
     } catch (error) {
       const executionTime = Date.now() - startTime;
 

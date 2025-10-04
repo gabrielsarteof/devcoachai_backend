@@ -27,7 +27,18 @@ Coleções Postman completas para testar todos os módulos da API DevCoach AI co
 - Trap Detection e Code Analysis
 - Error Handling com códigos de domínio
 
-### 3. **Metrics Module** (`metrics-collection.json`)
+### 3. **AI Module** (`ai-collection.json`)
+- ✅ 64 testes organizados com 160+ assertions
+- AI Chat (OpenAI e Anthropic providers)
+- AI Models (listagem e disponibilidade)
+- AI Usage (métricas e tracking)
+- Copy/Paste Tracking
+- Governance (validação, análise, feedback educacional)
+- Cache Management (admin-only)
+- Error Handling com códigos de domínio
+- **⚠️ Requer chaves API localmente** (skipado no CI)
+
+### 4. **Metrics Module** (`metrics-collection.json`)
 - ✅ 20 testes organizados
 - Metrics Tracking (POST /metrics com validação de cálculos)
 - Session Metrics (GET /metrics/session/:attemptId com análise de tendências)
@@ -120,6 +131,37 @@ cd .postman\scripts
 run-all-tests.bat              REM Development
 run-all-tests.bat staging      REM Staging
 run-all-tests.bat production   REM Production
+```
+
+---
+
+## 🤖 Configuração AI Module
+
+### Pré-requisitos
+Para executar os testes AI localmente, configure as chaves API no seu `.env`:
+
+```bash
+# AI Providers
+OPENAI_API_KEY=sk-your-openai-key-here
+ANTHROPIC_API_KEY=sk-ant-your-anthropic-key-here
+```
+
+### Comportamento por Ambiente
+
+**🏠 Local (Desenvolvimento):**
+- ✅ Testes AI executam normalmente com suas chaves
+- ✅ 64 testes cobrindo OpenAI e Anthropic
+- ✅ Validação de custos, tokens e governance
+
+**☁️ CI/CD:**
+- ⏭️ Testes AI são automaticamente skipados
+- ✅ Não quebra o pipeline
+- 💡 Mensagem informativa sobre o skip
+- 🔒 Sem exposição de chaves sensíveis
+
+### Execução Manual AI Only
+```bash
+newman run .postman/collections/ai-collection.json -e .postman/environments/global-environment.json
 ```
 
 ---

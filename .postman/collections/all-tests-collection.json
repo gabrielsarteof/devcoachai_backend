@@ -412,7 +412,148 @@
 			]
 		},
 		{
-			"name": "✅ 4. Final Summary",
+			"name": "🤖 4. AI Module",
+			"description": "Test AI chat, governance, and usage tracking features",
+			"item": [
+				{
+					"name": "Chat with AI - OpenAI",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('AI chat completed successfully', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains AI data', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('success', true);",
+									"    pm.expect(responseJson).to.have.property('data');",
+									"    pm.expect(responseJson.data).to.have.property('content');",
+									"    pm.expect(responseJson.data).to.have.property('usage');",
+									"});",
+									"",
+									"pm.test('Usage info is present', function () {",
+									"    const data = pm.response.json();",
+									"    pm.expect(data).to.have.property('usage');",
+									"    pm.expect(data.usage).to.have.property('tokens');",
+									"    pm.expect(data.usage).to.have.property('cost');",
+									"});",
+									"",
+									"console.log('✅ AI module tested successfully');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"What is 2 + 2?\"\n    }\n  ],\n  \"provider\": \"openai\",\n  \"model\": \"gpt-4\",\n  \"challengeId\": \"{{challengeId}}\",\n  \"attemptId\": \"{{attemptId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/ai/chat",
+							"host": ["{{baseUrl}}"],
+							"path": ["ai", "chat"]
+						},
+						"description": "Test AI chat with OpenAI provider"
+					}
+				},
+				{
+					"name": "Get AI Models",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('AI models retrieved', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Models list is valid', function () {",
+									"    const data = pm.response.json().data;",
+									"    pm.expect(data).to.have.property('models');",
+									"    pm.expect(data.models).to.be.an('object');",
+									"});",
+									"",
+									"console.log('✅ AI models listed');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/ai/models",
+							"host": ["{{baseUrl}}"],
+							"path": ["ai", "models"]
+						},
+						"description": "Get available AI models"
+					}
+				},
+				{
+					"name": "Get AI Usage",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('AI usage retrieved', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Usage data structure is valid', function () {",
+									"    const data = pm.response.json().data;",
+									"    pm.expect(data).to.have.property('usage');",
+									"    pm.expect(data).to.have.property('quota');",
+									"    pm.expect(data).to.have.property('limits');",
+									"});",
+									"",
+									"console.log('✅ AI usage tracked');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/ai/usage",
+							"host": ["{{baseUrl}}"],
+							"path": ["ai", "usage"]
+						},
+						"description": "Get AI usage metrics"
+					}
+				}
+			]
+		},
+		{
+			"name": "✅ 5. Final Summary",
 			"description": "Generate test execution summary",
 			"item": [
 				{

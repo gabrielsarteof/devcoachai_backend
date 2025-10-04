@@ -10,21 +10,46 @@ export class AnthropicProvider implements IAIProvider {
   private client: Anthropic;
   readonly provider = 'anthropic';
   readonly models: AIModel[] = [
+    // Modelos atuais disponíveis (2024-2025)
     {
-      id: 'claude-3-opus-20240229',
-      name: 'Claude 3 Opus',
+      id: 'claude-sonnet-4-5-20250929',
+      name: 'Claude Sonnet 4.5',
+      contextWindow: 200000,
+      inputCost: 0.003,
+      outputCost: 0.015,
+      capabilities: ['chat', 'code', 'analysis', 'vision', 'computer_use'],
+    },
+    {
+      id: 'claude-opus-4-1-20250805',
+      name: 'Claude Opus 4.1',
       contextWindow: 200000,
       inputCost: 0.015,
       outputCost: 0.075,
-      capabilities: ['chat', 'code', 'analysis', 'vision'],
+      capabilities: ['chat', 'code', 'analysis', 'vision', 'reasoning'],
     },
     {
-      id: 'claude-3-sonnet-20240229',
-      name: 'Claude 3 Sonnet',
+      id: 'claude-sonnet-4-20250514',
+      name: 'Claude Sonnet 4',
       contextWindow: 200000,
       inputCost: 0.003,
       outputCost: 0.015,
       capabilities: ['chat', 'code', 'analysis', 'vision'],
+    },
+    {
+      id: 'claude-3-7-sonnet-20250219',
+      name: 'Claude 3.7 Sonnet',
+      contextWindow: 200000,
+      inputCost: 0.003,
+      outputCost: 0.015,
+      capabilities: ['chat', 'code', 'analysis', 'vision', 'reasoning'],
+    },
+    {
+      id: 'claude-3-5-haiku-20241022',
+      name: 'Claude 3.5 Haiku',
+      contextWindow: 200000,
+      inputCost: 0.00025,
+      outputCost: 0.00125,
+      capabilities: ['chat', 'code'],
     },
     {
       id: 'claude-3-haiku-20240307',
@@ -59,7 +84,7 @@ export class AnthropicProvider implements IAIProvider {
 
   async chat(messages: AIMessage[], config?: Partial<AIProviderConfig>): Promise<AICompletion> {
     try {
-      const model = config?.model || 'claude-3-sonnet-20240229';
+      const model = config?.model || 'claude-3-haiku-20240307';
       
       const cacheKey = this.generateCacheKey(messages, model);
       const cached = await this.redis.get(cacheKey);
@@ -145,13 +170,15 @@ export class AnthropicProvider implements IAIProvider {
           throw new ProviderError('anthropic', `Bad request: ${error.message}`);
         }
       }
-      throw error;
+
+      // Para outros tipos de erro, lançar ProviderError genérico
+      throw new ProviderError('anthropic', error instanceof Error ? error.message : 'Unknown error');
     }
   }
 
   async *stream(messages: AIMessage[], config?: Partial<AIProviderConfig>): AsyncIterable<string> {
     try {
-      const model = config?.model || 'claude-3-sonnet-20240229';
+      const model = config?.model || 'claude-3-haiku-20240307';
       
       const systemMessage = messages.find(m => m.role === 'system');
       const userMessages = messages.filter(m => m.role !== 'system');

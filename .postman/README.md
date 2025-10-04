@@ -35,6 +35,24 @@ Coleções Postman completas para testar todos os módulos da API DevCoach AI co
 - Domain Error Validation (METRIC_INVALID_ATTEMPT, METRIC_VALIDATION_FAILED, METRIC_DATA_INCONSISTENT, METRIC_ATTEMPT_NOT_FOUND)
 - Risk Assessment e Performance Insights
 
+### 4. **AI Module** (`ai-collection.json`)
+- ✅ 40+ testes organizados
+- AI Chat (POST /ai/chat com múltiplos providers: OpenAI, Anthropic)
+- AI Models (GET /ai/models listando modelos disponíveis)
+- AI Usage (GET /ai/usage tracking de tokens e custos)
+- Copy/Paste Tracking (POST /ai/track-copy-paste)
+- Governance - Prompt Validation (POST /ai/governance/validate)
+- Governance - Prompt Analysis (POST /ai/governance/analyze-prompt)
+- Governance - Temporal Behavior (POST /ai/governance/analyze-temporal-behavior)
+- Governance - Educational Feedback (POST /ai/governance/generate-feedback)
+- Governance - Metrics & Stats (GET /ai/governance/metrics, GET /ai/governance/stats - ARCHITECT/TECH_LEAD only)
+- Governance - Cache Management (POST /ai/governance/refresh-challenge-cache, POST /ai/governance/prewarm-cache, POST /ai/governance/clear-validation-cache - ARCHITECT/TECH_LEAD only)
+- Domain Error Validation (AI_CHALLENGE_NOT_FOUND, AI_INVALID_PROVIDER, AI_MODEL_NOT_SUPPORTED, AI_RATE_LIMIT_EXCEEDED, AI_PROVIDER_ERROR, AI_UNAUTHORIZED, AI_FORBIDDEN, AI_NOT_IMPLEMENTED, AI_VALIDATION_FAILED)
+
+**Important:** The AI module requires valid API keys configured in your .env file:
+- `OPENAI_API_KEY` - for OpenAI provider tests
+- `ANTHROPIC_API_KEY` - for Anthropic provider tests
+
 ---
 
 ## 🌍 Environments Consolidados
@@ -409,7 +427,8 @@ npm run dev
 │   ├── all-tests-collection.json               # Master collection
 │   ├── auth-collection.json                    # Auth module
 │   ├── challenges-collection.json              # Challenges module
-│   └── metrics-collection.json                 # Metrics module
+│   ├── metrics-collection.json                 # Metrics module
+│   └── ai-collection.json                      # AI module
 ├── environments/                                # Environments consolidados
 │   ├── global-environment.json                 # Development (recomendado)
 │   ├── global-environment-staging.json         # Staging
@@ -426,7 +445,9 @@ npm run dev
         ├── challenges-report.html
         ├── challenges-report.json
         ├── metrics-report.html
-        └── metrics-report.json
+        ├── metrics-report.json
+        ├── ai-report.html
+        └── ai-report.json
 ```
 
 ---

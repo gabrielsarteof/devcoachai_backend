@@ -177,6 +177,30 @@ if %errorlevel% equ 0 (
 )
 set /a TOTAL_TESTS+=1
 
+REM Run AI Collection
+echo.
+echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+echo Running: AI Module
+echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+echo.
+
+newman run "%COLLECTIONS_DIR%\ai-collection.json" ^
+    -e "%ENV_FILE%" ^
+    --reporters cli,json,htmlextra ^
+    --reporter-json-export "%REPORTS_DIR%\%TIMESTAMP%\ai-report.json" ^
+    --reporter-htmlextra-export "%REPORTS_DIR%\%TIMESTAMP%\ai-report.html" ^
+    --reporter-htmlextra-title "AI Module" ^
+    --color on ^
+    --delay-request 100
+
+if %errorlevel% equ 0 (
+    echo [PASSED] AI Module
+) else (
+    echo [FAILED] AI Module
+    set /a FAILED_TESTS+=1
+)
+set /a TOTAL_TESTS+=1
+
 REM Generate summary
 echo.
 echo ╔════════════════════════════════════════════════════════════════╗

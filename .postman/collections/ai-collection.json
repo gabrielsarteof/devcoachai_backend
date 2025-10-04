@@ -1,0 +1,1452 @@
+{
+	"info": {
+		"_postman_id": "ai1-2a3b-4c5d-6e7f-8901234567ab",
+		"name": "DevCoach AI - AI Module",
+		"description": "Comprehensive test collection for the DevCoach AI AI Module.\n\n## Test Coverage\n- ✅ AI Chat with multiple providers (OpenAI, Anthropic)\n- ✅ AI Models listing\n- ✅ AI Usage tracking and metrics\n- ✅ Copy/Paste tracking\n- ✅ Governance - Prompt validation\n- ✅ Governance - Prompt analysis\n- ✅ Governance - Temporal behavior analysis\n- ✅ Governance - Educational feedback\n- ✅ Governance - Metrics and Stats (ARCHITECT/TECH_LEAD)\n- ✅ Governance - Cache Management (ARCHITECT/TECH_LEAD)\n- ✅ Domain Error Validation\n\n## Prerequisites\n\n**Required API Keys:**\nYou must configure valid API keys in your .env file:\n- `OPENAI_API_KEY` - for OpenAI provider tests\n- `ANTHROPIC_API_KEY` - for Anthropic provider tests\n\n**Database:**\nRun seed to have challenges available:\n```bash\nnpm run prisma:seed\n```\n\n## How to Run\n\n### Quick Start\n1. Ensure API is running: `npm run dev`\n2. Ensure .env has valid AI provider keys\n3. Run collection - Setup creates test user automatically\n4. All tests will execute\n\n## Architecture\n\n**AI Module Flow:**\n1. Authenticate user (Setup section)\n2. Chat with AI (OpenAI or Anthropic)\n3. Track usage and metrics\n4. Validate prompts with governance\n5. Analyze temporal behavior\n6. Generate educational feedback\n7. Manage cache (admin only)\n\n**Domain Errors:**\n- AI_CHALLENGE_NOT_FOUND (404)\n- AI_INVALID_PROVIDER (400)\n- AI_MODEL_NOT_SUPPORTED (400)\n- AI_RATE_LIMIT_EXCEEDED (429)\n- AI_PROVIDER_ERROR (500)\n- AI_UNAUTHORIZED (401)\n- AI_FORBIDDEN (403)\n- AI_NOT_IMPLEMENTED (501)\n- AI_VALIDATION_FAILED (400)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "12345678"
+	},
+	"item": [
+		{
+			"name": "🔧 Setup (Run First)",
+			"description": "Prepares test environment by creating users and logging in.",
+			"item": [
+				{
+					"name": "[POST] Create Regular User",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const timestamp = Date.now();",
+									"const email = `aitest_${timestamp}@devcoach.test`;",
+									"pm.collectionVariables.set('regularUserEmail', email);"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Regular user created', function () {",
+									"    pm.response.to.have.status(201);",
+									"    const responseJson = pm.response.json();",
+									"    pm.environment.set('regularUserId', responseJson.data.user.id);",
+									"});",
+									"",
+									"console.log('✅ Regular user created for AI tests');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{"key": "Content-Type", "value": "application/json"}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"{{regularUserEmail}}\",\n  \"password\": \"Test@123\",\n  \"name\": \"AI Test User\",\n  \"acceptTerms\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "register"]
+						}
+					}
+				},
+				{
+					"name": "[POST] Login Regular User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Regular user logged in', function () {",
+									"    pm.response.to.have.status(200);",
+									"    const responseJson = pm.response.json();",
+									"    pm.environment.set('accessToken', responseJson.data.accessToken);",
+									"    pm.environment.set('userId', responseJson.data.user.id);",
+									"});",
+									"",
+									"console.log('✅ Regular user authenticated for AI tests');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{"key": "Content-Type", "value": "application/json"}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"{{regularUserEmail}}\",\n  \"password\": \"Test@123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "login"]
+						}
+					}
+				},
+				{
+					"name": "[POST] Login TECH_LEAD (Seeded)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('TECH_LEAD logged in', function () {",
+									"    pm.response.to.have.status(200);",
+									"    const responseJson = pm.response.json();",
+									"    pm.environment.set('techLeadAccessToken', responseJson.data.accessToken);",
+									"});",
+									"",
+									"console.log('✅ TECH_LEAD authenticated for admin tests');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{"key": "Content-Type", "value": "application/json"}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@techcorp.com\",\n  \"password\": \"Admin@123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "login"]
+						},
+						"description": "Logs in with seeded TECH_LEAD user. Requires: npm run prisma:seed"
+					}
+				},
+				{
+					"name": "[GET] Get Challenge ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Get challenge ID for AI tests', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.data.challenges).to.be.an('array').that.is.not.empty;",
+									"    pm.environment.set('challengeId', responseJson.data.challenges[0].id);",
+									"});",
+									"",
+									"console.log('✅ Challenge ID obtained for AI tests');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/challenges?limit=1",
+							"host": ["{{baseUrl}}"],
+							"path": ["challenges"],
+							"query": [
+								{"key": "limit", "value": "1"}
+							]
+						}
+					}
+				},
+				{
+					"name": "[POST] Create Challenge Attempt",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Attempt created for AI tests', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.data).to.have.property('attemptId');",
+									"    pm.environment.set('attemptId', responseJson.data.attemptId);",
+									"});",
+									"",
+									"console.log('✅ Challenge attempt created for AI tests');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{"key": "Authorization", "value": "Bearer {{accessToken}}"},
+							{"key": "Content-Type", "value": "application/json"}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"language\": \"javascript\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/challenges/{{challengeId}}/start",
+							"host": ["{{baseUrl}}"],
+							"path": ["challenges", "{{challengeId}}", "start"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "🤖 AI Chat",
+			"description": "AI chat endpoints with multiple providers",
+			"item": [
+				{
+					"name": "Happy Path",
+					"item": [
+						{
+							"name": "[POST] Chat - OpenAI Provider",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Response has success structure', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"    pm.expect(responseJson).to.have.property('data');",
+											"});",
+											"",
+											"pm.test('Chat response structure is valid', function () {",
+											"    const data = pm.response.json().data;",
+											"    pm.expect(data).to.have.property('id');",
+											"    pm.expect(data).to.have.property('content');",
+											"    pm.expect(data).to.have.property('usage');",
+											"    pm.expect(data).to.have.property('cost');",
+											"});",
+											"",
+											"pm.test('Usage info is complete', function () {",
+											"    const data = pm.response.json();",
+											"    pm.expect(data).to.have.property('usage');",
+											"    pm.expect(data.usage).to.have.property('tokens');",
+											"    pm.expect(data.usage).to.have.property('cost');",
+											"    pm.expect(data.usage).to.have.property('remaining');",
+											"});",
+											"",
+											"pm.test('Governance info is present', function () {",
+											"    const data = pm.response.json();",
+											"    pm.expect(data).to.have.property('governance');",
+											"    pm.expect(data.governance).to.have.property('validated');",
+											"});",
+											"",
+											"console.log('✅ OpenAI chat completed successfully');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"},
+									{"key": "Content-Type", "value": "application/json"}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Como posso implementar uma função que calcula números primos em JavaScript?\"\n    }\n  ],\n  \"provider\": \"openai\",\n  \"model\": \"gpt-4o\",\n  \"challengeId\": \"{{challengeId}}\",\n  \"attemptId\": \"{{attemptId}}\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/ai/chat",
+									"host": ["{{baseUrl}}"],
+									"path": ["ai", "chat"]
+								},
+								"description": "Test AI chat with OpenAI provider"
+							}
+						},
+						{
+							"name": "[POST] Chat - Anthropic Provider",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Response has success structure', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"    pm.expect(responseJson).to.have.property('data');",
+											"});",
+											"",
+											"console.log('✅ Anthropic chat completed successfully');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"},
+									{"key": "Content-Type", "value": "application/json"}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Como implementar tratamento de erros em funções assíncronas usando try-catch com async/await?\"\n    }\n  ],\n  \"provider\": \"anthropic\",\n  \"model\": \"claude-3-haiku-20240307\",\n  \"challengeId\": \"{{challengeId}}\",\n  \"attemptId\": \"{{attemptId}}\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/ai/chat",
+									"host": ["{{baseUrl}}"],
+									"path": ["ai", "chat"]
+								},
+								"description": "Test AI chat with Anthropic provider"
+							}
+						}
+					]
+				},
+				{
+					"name": "Security Tests",
+					"item": [
+						{
+							"name": "[POST] Chat - No Authentication",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 401', function () {",
+											"    pm.response.to.have.status(401);",
+											"});",
+											"",
+											"pm.test('Error has correct code', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('code', 'AUTH_UNAUTHORIZED');",
+											"});",
+											"",
+											"console.log('✅ Unauthorized access blocked correctly');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{"key": "Content-Type", "value": "application/json"}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Mensagem de teste\"\n    }\n  ],\n  \"provider\": \"openai\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/ai/chat",
+									"host": ["{{baseUrl}}"],
+									"path": ["ai", "chat"]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "Error Handling",
+					"item": [
+						{
+							"name": "[POST] Chat - Invalid Provider",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test('Error has correct code', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('code');",
+											"    pm.expect(['AI_INVALID_PROVIDER', 'AI_VALIDATION_FAILED', 'FST_ERR_VALIDATION']).to.include(responseJson.code);",
+											"});",
+											"",
+											"console.log('✅ Invalid provider error handled correctly');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"},
+									{"key": "Content-Type", "value": "application/json"}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Teste\"\n    }\n  ],\n  \"provider\": \"invalid-provider\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/ai/chat",
+									"host": ["{{baseUrl}}"],
+									"path": ["ai", "chat"]
+								}
+							}
+						},
+						{
+							"name": "[POST] Chat - Missing Messages",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test('Validation error returned', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('code', 'FST_ERR_VALIDATION');",
+											"});",
+											"",
+											"console.log('✅ Validation error handled correctly');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"},
+									{"key": "Content-Type", "value": "application/json"}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"provider\": \"openai\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/ai/chat",
+									"host": ["{{baseUrl}}"],
+									"path": ["ai", "chat"]
+								}
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "📊 AI Models",
+			"description": "AI models listing endpoints",
+			"item": [
+				{
+					"name": "Happy Path",
+					"item": [
+						{
+							"name": "[GET] List Available Models",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Response has success structure', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"    pm.expect(responseJson).to.have.property('data');",
+											"});",
+											"",
+											"pm.test('Models structure is valid', function () {",
+											"    const data = pm.response.json().data;",
+											"    pm.expect(data).to.have.property('models');",
+											"    pm.expect(data.models).to.be.an('object');",
+											"});",
+											"",
+											"pm.test('Provider models are listed', function () {",
+											"    const models = pm.response.json().data.models;",
+											"    const providers = Object.keys(models);",
+											"    pm.expect(providers.length).to.be.above(0);",
+											"    ",
+											"    providers.forEach(function(provider) {",
+											"        pm.expect(models[provider]).to.have.property('models');",
+											"        pm.expect(models[provider]).to.have.property('available');",
+											"    });",
+											"});",
+											"",
+											"console.log('✅ Models listed successfully');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/ai/models",
+									"host": ["{{baseUrl}}"],
+									"path": ["ai", "models"]
+								},
+								"description": "Get all available AI models"
+							}
+						}
+					]
+				},
+				{
+					"name": "Security Tests",
+					"item": [
+						{
+							"name": "[GET] Models - No Authentication",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 401', function () {",
+											"    pm.response.to.have.status(401);",
+											"});",
+											"",
+											"console.log('✅ Unauthorized access to models blocked');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/ai/models",
+									"host": ["{{baseUrl}}"],
+									"path": ["ai", "models"]
+								}
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "📈 AI Usage",
+			"description": "AI usage tracking and metrics endpoints",
+			"item": [
+				{
+					"name": "Happy Path",
+					"item": [
+						{
+							"name": "[GET] Get AI Usage - Default Period",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Response has success structure', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"    pm.expect(responseJson).to.have.property('data');",
+											"});",
+											"",
+											"pm.test('Usage data structure is valid', function () {",
+											"    const data = pm.response.json().data;",
+											"    pm.expect(data).to.have.property('usage');",
+											"    pm.expect(data).to.have.property('quota');",
+											"    pm.expect(data).to.have.property('limits');",
+											"});",
+											"",
+											"pm.test('Usage breakdown is complete', function () {",
+											"    const usage = pm.response.json().data.usage;",
+											"    pm.expect(usage).to.have.property('period');",
+											"    pm.expect(usage).to.have.property('tokens');",
+											"    pm.expect(usage).to.have.property('requests');",
+											"    pm.expect(usage).to.have.property('cost');",
+											"});",
+											"",
+											"console.log('✅ AI usage retrieved successfully');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/ai/usage",
+									"host": ["{{baseUrl}}"],
+									"path": ["ai", "usage"]
+								},
+								"description": "Get AI usage for default period (30 days)"
+							}
+						},
+						{
+							"name": "[GET] Get AI Usage - Custom Period",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Period applied correctly', function () {",
+											"    const usage = pm.response.json().data.usage;",
+											"    pm.expect(usage.period.days).to.equal(7);",
+											"});",
+											"",
+											"console.log('✅ AI usage with custom period retrieved');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/ai/usage?days=7",
+									"host": ["{{baseUrl}}"],
+									"path": ["ai", "usage"],
+									"query": [
+										{"key": "days", "value": "7"}
+									]
+								},
+								"description": "Get AI usage for custom period (7 days)"
+							}
+						}
+					]
+				},
+				{
+					"name": "Security Tests",
+					"item": [
+						{
+							"name": "[GET] Usage - No Authentication",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 401', function () {",
+											"    pm.response.to.have.status(401);",
+											"});",
+											"",
+											"console.log('✅ Unauthorized access to usage blocked');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/ai/usage",
+									"host": ["{{baseUrl}}"],
+									"path": ["ai", "usage"]
+								}
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "📋 Copy/Paste Tracking",
+			"description": "Copy/paste tracking endpoints",
+			"item": [
+				{
+					"name": "Happy Path",
+					"item": [
+						{
+							"name": "[POST] Track Copy Event",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Response has success structure', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"    pm.expect(responseJson).to.have.property('data');",
+											"});",
+											"",
+											"pm.test('Success message returned', function () {",
+											"    const data = pm.response.json().data;",
+											"    pm.expect(data).to.have.property('message');",
+											"});",
+											"",
+											"console.log('✅ Copy event tracked successfully');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"},
+									{"key": "Content-Type", "value": "application/json"}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"attemptId\": \"{{attemptId}}\",\n  \"action\": \"copy\",\n  \"content\": \"function sum(a, b) { return a + b; }\",\n  \"sourceLines\": 1,\n  \"targetLines\": 1\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/ai/track-copy-paste",
+									"host": ["{{baseUrl}}"],
+									"path": ["ai", "track-copy-paste"]
+								},
+								"description": "Track copy event"
+							}
+						},
+						{
+							"name": "[POST] Track Paste Event",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Paste event tracked', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"});",
+											"",
+											"console.log('✅ Paste event tracked successfully');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"},
+									{"key": "Content-Type", "value": "application/json"}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"attemptId\": \"{{attemptId}}\",\n  \"action\": \"paste\",\n  \"content\": \"function sum(a, b) { return a + b; }\",\n  \"sourceLines\": 1,\n  \"targetLines\": 1\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/ai/track-copy-paste",
+									"host": ["{{baseUrl}}"],
+									"path": ["ai", "track-copy-paste"]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "Security Tests",
+					"item": [
+						{
+							"name": "[POST] Track - No Authentication",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 401', function () {",
+											"    pm.response.to.have.status(401);",
+											"});",
+											"",
+											"console.log('✅ Unauthorized tracking blocked');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{"key": "Content-Type", "value": "application/json"}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"attemptId\": \"teste\",\n  \"action\": \"copy\",\n  \"content\": \"teste\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/ai/track-copy-paste",
+									"host": ["{{baseUrl}}"],
+									"path": ["ai", "track-copy-paste"]
+								}
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🛡️ Governance - Validate Prompt",
+			"description": "Prompt validation endpoints",
+			"item": [
+				{
+					"name": "Happy Path",
+					"item": [
+						{
+							"name": "[POST] Validate Prompt - Safe",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Response has success structure', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"    pm.expect(responseJson).to.have.property('data');",
+											"});",
+											"",
+											"pm.test('Validation result is complete', function () {",
+											"    const data = pm.response.json().data;",
+											"    pm.expect(data).to.have.property('isValid');",
+											"    pm.expect(data).to.have.property('riskScore');",
+											"    pm.expect(data).to.have.property('classification');",
+											"    pm.expect(data).to.have.property('reasons');",
+											"    pm.expect(data).to.have.property('suggestedAction');",
+											"    pm.expect(data).to.have.property('confidence');",
+											"    pm.expect(data).to.have.property('relevanceScore');",
+											"});",
+											"",
+											"pm.test('Classification is valid', function () {",
+											"    const data = pm.response.json().data;",
+											"    pm.expect(['SAFE', 'WARNING', 'BLOCKED']).to.include(data.classification);",
+											"});",
+											"",
+											"console.log('✅ Prompt validated successfully');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"},
+									{"key": "Content-Type", "value": "application/json"}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"challengeId\": \"{{challengeId}}\",\n  \"prompt\": \"Você pode explicar como implementar um algoritmo de busca binária?\",\n  \"userLevel\": 2,\n  \"attemptId\": \"{{attemptId}}\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/ai/governance/validate",
+									"host": ["{{baseUrl}}"],
+									"path": ["ai", "governance", "validate"]
+								},
+								"description": "Validate a safe prompt"
+							}
+						}
+					]
+				},
+				{
+					"name": "Error Handling",
+					"item": [
+						{
+							"name": "[POST] Validate - Missing Challenge ID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test('Validation error returned', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('code', 'FST_ERR_VALIDATION');",
+											"});",
+											"",
+											"console.log('✅ Validation error handled correctly');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"},
+									{"key": "Content-Type", "value": "application/json"}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"prompt\": \"Prompt de teste\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/ai/governance/validate",
+									"host": ["{{baseUrl}}"],
+									"path": ["ai", "governance", "validate"]
+								}
+							}
+						},
+						{
+							"name": "[POST] Validate - Invalid Challenge",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 404', function () {",
+											"    pm.response.to.have.status(404);",
+											"});",
+											"",
+											"pm.test('Challenge not found error', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('code', 'AI_CHALLENGE_NOT_FOUND');",
+											"});",
+											"",
+											"console.log('✅ Challenge not found error handled');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"},
+									{"key": "Content-Type", "value": "application/json"}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"challengeId\": \"00000000-0000-0000-0000-000000000000\",\n  \"prompt\": \"Prompt de teste\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/ai/governance/validate",
+									"host": ["{{baseUrl}}"],
+									"path": ["ai", "governance", "validate"]
+								}
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🔍 Governance - Analyze Prompt",
+			"description": "Prompt analysis endpoints",
+			"item": [
+				{
+					"name": "Happy Path",
+					"item": [
+						{
+							"name": "[POST] Analyze Prompt",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Response has success structure', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"    pm.expect(responseJson).to.have.property('data');",
+											"});",
+											"",
+											"pm.test('Analysis structure is valid', function () {",
+											"    const analysis = pm.response.json().data.analysis;",
+											"    pm.expect(analysis).to.have.property('intent');",
+											"    pm.expect(analysis).to.have.property('complexity');",
+											"    pm.expect(analysis).to.have.property('educationalValue');",
+											"    pm.expect(analysis).to.have.property('riskFactors');",
+											"});",
+											"",
+											"console.log('✅ Prompt analyzed successfully');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"},
+									{"key": "Content-Type", "value": "application/json"}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"prompt\": \"Como implementar tratamento de erros em funções assíncronas?\",\n  \"challengeId\": \"{{challengeId}}\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/ai/governance/analyze-prompt",
+									"host": ["{{baseUrl}}"],
+									"path": ["ai", "governance", "analyze-prompt"]
+								},
+								"description": "Analyze a prompt for intent and complexity"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "⏱️ Governance - Temporal Behavior",
+			"description": "Temporal behavior analysis endpoints",
+			"item": [
+				{
+					"name": "Happy Path",
+					"item": [
+						{
+							"name": "[POST] Analyze Temporal Behavior",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Response has success structure', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"    pm.expect(responseJson).to.have.property('data');",
+											"});",
+											"",
+											"pm.test('Analysis structure is valid', function () {",
+											"    const analysis = pm.response.json().data.analysis;",
+											"    pm.expect(analysis).to.have.property('patterns');",
+											"    pm.expect(analysis).to.have.property('riskScore');",
+											"    pm.expect(analysis).to.have.property('recommendations');",
+											"    pm.expect(analysis).to.have.property('timeWindow');",
+											"});",
+											"",
+											"console.log('✅ Temporal behavior analyzed successfully');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"},
+									{"key": "Content-Type", "value": "application/json"}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"userId\": \"{{userId}}\",\n  \"timeWindow\": \"1h\",\n  \"analysisType\": \"interaction_pattern\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/ai/governance/analyze-temporal-behavior",
+									"host": ["{{baseUrl}}"],
+									"path": ["ai", "governance", "analyze-temporal-behavior"]
+								},
+								"description": "Analyze temporal behavior patterns"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "📚 Governance - Educational Feedback",
+			"description": "Educational feedback generation endpoints",
+			"item": [
+				{
+					"name": "Happy Path",
+					"item": [
+						{
+							"name": "[POST] Generate Educational Feedback",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Response has success structure', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"    pm.expect(responseJson).to.have.property('data');",
+											"});",
+											"",
+											"pm.test('Feedback structure is valid', function () {",
+											"    const feedback = pm.response.json().data.feedback;",
+											"    pm.expect(feedback).to.have.property('message');",
+											"    pm.expect(feedback).to.have.property('suggestions');",
+											"    pm.expect(feedback).to.have.property('educationalContent');",
+											"});",
+											"",
+											"console.log('✅ Educational feedback generated successfully');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"},
+									{"key": "Content-Type", "value": "application/json"}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"challengeId\": \"{{challengeId}}\",\n  \"riskScore\": 65,\n  \"reasons\": [\"Pergunta fora do tópico\", \"Busca solução direta\"],\n  \"userLevel\": 2,\n  \"tone\": \"encouraging\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/ai/governance/generate-feedback",
+									"host": ["{{baseUrl}}"],
+									"path": ["ai", "governance", "generate-feedback"]
+								},
+								"description": "Generate educational feedback"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "📊 Governance - Metrics (Admin)",
+			"description": "Governance metrics endpoints (ARCHITECT/TECH_LEAD only)",
+			"item": [
+				{
+					"name": "Happy Path",
+					"item": [
+						{
+							"name": "[GET] Get Governance Metrics",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Response has success structure', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"    pm.expect(responseJson).to.have.property('data');",
+											"});",
+											"",
+											"pm.test('Metrics structure is valid', function () {",
+											"    const data = pm.response.json().data;",
+											"    pm.expect(data).to.have.property('metrics');",
+											"});",
+											"",
+											"console.log('✅ Governance metrics retrieved successfully');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{techLeadAccessToken}}"}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/ai/governance/metrics",
+									"host": ["{{baseUrl}}"],
+									"path": ["ai", "governance", "metrics"]
+								},
+								"description": "Get governance metrics (requires TECH_LEAD role)"
+							}
+						},
+						{
+							"name": "[GET] Get Governance Stats",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Stats structure is valid', function () {",
+											"    const data = pm.response.json().data;",
+											"    pm.expect(data).to.have.property('stats');",
+											"});",
+											"",
+											"console.log('✅ Governance stats retrieved successfully');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{techLeadAccessToken}}"}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/ai/governance/stats",
+									"host": ["{{baseUrl}}"],
+									"path": ["ai", "governance", "stats"]
+								},
+								"description": "Get governance statistics"
+							}
+						}
+					]
+				},
+				{
+					"name": "Security Tests",
+					"item": [
+						{
+							"name": "[GET] Metrics - Regular User (Forbidden)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 403', function () {",
+											"    pm.response.to.have.status(403);",
+											"});",
+											"",
+											"pm.test('Forbidden error returned', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('code', 'AUTH_FORBIDDEN');",
+											"});",
+											"",
+											"console.log('✅ Regular user blocked from admin endpoints');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/ai/governance/metrics",
+									"host": ["{{baseUrl}}"],
+									"path": ["ai", "governance", "metrics"]
+								}
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🗄️ Governance - Cache Management (Admin)",
+			"description": "Cache management endpoints (ARCHITECT/TECH_LEAD only)",
+			"item": [
+				{
+					"name": "Happy Path",
+					"item": [
+						{
+							"name": "[POST] Refresh Challenge Cache",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Response has success structure', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"    pm.expect(responseJson).to.have.property('data');",
+											"});",
+											"",
+											"console.log('✅ Challenge cache refreshed successfully');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{techLeadAccessToken}}"},
+									{"key": "Content-Type", "value": "application/json"}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"challengeIds\": [\"{{challengeId}}\"]\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/ai/governance/refresh-challenge-cache",
+									"host": ["{{baseUrl}}"],
+									"path": ["ai", "governance", "refresh-challenge-cache"]
+								},
+								"description": "Refresh challenge cache"
+							}
+						},
+						{
+							"name": "[POST] Prewarm Cache",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Cache prewarmed successfully', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"});",
+											"",
+											"console.log('✅ Cache prewarmed successfully');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{techLeadAccessToken}}"},
+									{"key": "Content-Type", "value": "application/json"}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"challengeIds\": [\"{{challengeId}}\"]\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/ai/governance/prewarm-cache",
+									"host": ["{{baseUrl}}"],
+									"path": ["ai", "governance", "prewarm-cache"]
+								},
+								"description": "Prewarm cache with challenges"
+							}
+						},
+						{
+							"name": "[POST] Clear Validation Cache",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Cache cleared successfully', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"});",
+											"",
+											"console.log('✅ Validation cache cleared successfully');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{techLeadAccessToken}}"}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/ai/governance/clear-validation-cache",
+									"host": ["{{baseUrl}}"],
+									"path": ["ai", "governance", "clear-validation-cache"]
+								},
+								"description": "Clear validation cache"
+							}
+						}
+					]
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"console.log('Running request to:', pm.request.url);",
+					"",
+					"if (!pm.request.headers.has('Content-Type') && pm.request.body && pm.request.body.mode === 'raw') {",
+					"    pm.request.headers.add({key: 'Content-Type', value: 'application/json'});",
+					"}"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"pm.test('Content-Type is JSON', function () {",
+					"    if (pm.response.code !== 204) {",
+					"        pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+					"    }",
+					"});",
+					"",
+					"pm.test('Response structure is consistent', function () {",
+					"    if (pm.response.code !== 204 && pm.response.text()) {",
+					"        const responseJson = pm.response.json();",
+					"        ",
+					"        if (pm.response.code >= 200 && pm.response.code < 300) {",
+					"            pm.expect(responseJson).to.have.property('success');",
+					"        }",
+					"        ",
+					"        if (pm.response.code >= 400) {",
+					"            pm.expect(responseJson).to.have.property('error');",
+					"        }",
+					"    }",
+					"});"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "collectionVersion",
+			"value": "1.0.0",
+			"type": "string"
+		},
+		{
+			"key": "timestamp",
+			"value": "{{$timestamp}}",
+			"type": "string"
+		}
+	]
+}

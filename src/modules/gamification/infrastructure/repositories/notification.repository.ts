@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { NotificationEntity } from '../../domain/entities/notification.entity';
 import { INotificationRepository, NotificationQuery } from '../../domain/repositories/notification.repository.interface';
+import { NotificationNotFoundError } from '../../domain/errors';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 
 export class NotificationRepository implements INotificationRepository {
@@ -46,7 +47,7 @@ export class NotificationRepository implements INotificationRepository {
     });
 
     if (!notification) {
-      throw new Error(`Notification with id ${id} not found for user ${userId}`);
+      throw new NotificationNotFoundError();
     }
 
     await this.prisma.notification.updateMany({

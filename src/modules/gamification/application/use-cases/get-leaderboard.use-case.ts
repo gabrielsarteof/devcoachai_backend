@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { LeaderboardService } from '../../domain/services/leaderboard.service';
 import { LeaderboardType, LeaderboardScope, LeaderboardPeriod } from '../../domain/enums/leaderboard.enum';
+import { LeaderboardNotAvailableError } from '../../domain/errors';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 
 export const GetLeaderboardSchema = z.object({
@@ -66,7 +67,7 @@ export class GetLeaderboardUseCase {
       );
 
       if (!serviceResult || !serviceResult.entries) {
-        throw new Error('Invalid leaderboard result from service');
+        throw new LeaderboardNotAvailableError();
       }
 
       logger.info({

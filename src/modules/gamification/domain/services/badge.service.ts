@@ -2,6 +2,7 @@ import { BadgeEntity } from '../entities/badge.entity';
 import { IBadgeRepository } from '../repositories/badge.repository.interface';
 import { BadgeEvaluationStrategyFactory } from './badge-evaluation-strategy';
 import { ICacheService } from '../../infrastructure/services/cache.service';
+import { BadgeNotFoundError, BadgeAlreadyUnlockedError } from '../errors';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 
 export interface BadgeEvaluationResult {
@@ -70,12 +71,12 @@ export class BadgeService {
   async unlockBadge(userId: string, badgeId: string): Promise<BadgeEntity> {
     const badge = await this.repository.findById(badgeId);
     if (!badge) {
-      throw new Error('Badge not found');
+      throw new BadgeNotFoundError();
     }
 
     const isAlreadyUnlocked = await this.repository.isUnlocked(userId, badgeId);
     if (isAlreadyUnlocked) {
-      throw new Error('Badge already unlocked');
+      throw new BadgeAlreadyUnlockedError();
     }
 
     await this.repository.unlock(userId, badgeId);

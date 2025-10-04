@@ -3,6 +3,7 @@ import { BadgeEntity } from '../../domain/entities/badge.entity';
 import { IBadgeRepository, BadgeProgress } from '../../domain/repositories/badge.repository.interface';
 import { BadgeEvaluationContext } from '../../domain/services/badge-evaluation-strategy';
 import { ICacheService } from '../services/cache.service';
+import { UserNotFoundError } from '../../domain/errors';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 
 export class BadgeRepository implements IBadgeRepository {
@@ -140,7 +141,7 @@ export class BadgeRepository implements IBadgeRepository {
     });
 
     if (!user) {
-      throw new Error('User not found');
+      throw new UserNotFoundError();
     }
 
     const challengesCompleted = await this.prisma.challengeAttempt.count({

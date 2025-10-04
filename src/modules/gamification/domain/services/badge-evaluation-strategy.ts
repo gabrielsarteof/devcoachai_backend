@@ -1,4 +1,5 @@
 import { BadgeRequirement } from '../value-objects/badge-requirement.vo';
+import { BadgeStrategyNotFoundError } from '../errors';
 
 export interface BadgeEvaluationContext {
   userId: string;
@@ -160,7 +161,7 @@ export class BadgeEvaluationStrategyFactory {
   getStrategy(type: string): IBadgeEvaluationStrategy {
     const strategy = this.strategies.get(type);
     if (!strategy) {
-      throw new Error(`Badge evaluation strategy not found: ${type}`);
+      throw new BadgeStrategyNotFoundError(`Badge evaluation strategy not found: ${type}`);
     }
     return strategy;
   }

@@ -1,6 +1,7 @@
 import { StreakEntity, StreakActivityData, StreakConfig } from '../entities/streak.entity';
 import { IStreakRepository } from '../repositories/streak.repository.interface';
 import { ICacheService } from '../../infrastructure/services/cache.service';
+import { StreakNotFoundError, InvalidStreakOperationError } from '../errors';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 
 export class StreakManagerService {
@@ -69,7 +70,7 @@ export class StreakManagerService {
       const streak = await this.repository.findByUserId(userId);
       
       if (!streak) {
-        throw new Error('Streak not found');
+        throw new StreakNotFoundError();
       }
 
       const success = streak.freeze();

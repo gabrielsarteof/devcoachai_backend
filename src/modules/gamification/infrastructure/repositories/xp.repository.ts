@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { IXPRepository, LevelUpdateResult } from '../../domain/repositories/xp.repository.interface';
 import { XPTransactionEntity } from '../../domain/entities/xp-transaction.entity';
 import { LevelProgressionService } from '../../domain/services/level-progression.service';
+import { UserNotFoundError } from '../../domain/errors';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 
 export class XPRepository implements IXPRepository {
@@ -38,7 +39,7 @@ export class XPRepository implements IXPRepository {
         });
 
         if (!currentUser) {
-          throw new Error('User not found');
+          throw new UserNotFoundError();
         }
 
         const levelUpdate = this.levelService.checkLevelUp(
@@ -107,7 +108,7 @@ export class XPRepository implements IXPRepository {
     });
 
     if (!user) {
-      throw new Error('User not found');
+      throw new UserNotFoundError();
     }
 
     return user;

@@ -501,7 +501,7 @@ describe('Gamification Integration Tests', () => {
       const body = JSON.parse(response.body);
 
       expect(body.success).toBe(true);
-      expect(body.message).toBe('Notification acknowledged');
+      expect(body.data.message).toBe('Notification acknowledged');
     });
   });
 
@@ -667,11 +667,50 @@ describe('Gamification Integration Tests', () => {
         url: '/api/gamification/notifications/invalid-id/acknowledge',
         headers: {
           authorization: `Bearer ${authTokens.accessToken}`,
+          'content-type': 'application/json',
         },
-        payload: {},
+        payload: {
+          actionTaken: 'viewed'
+        },
       });
 
-      expect(response.statusCode).toBe(500);
+      expect(response.statusCode).toBe(404);
+      const body = JSON.parse(response.body);
+      expect(body.code).toBe('GAMIFICATION_NOTIFICATION_NOT_FOUND');
+      expect(body.statusCode).toBe(404);
     });
+
+    it('should handle validation errors for create notification', async () => {
+      const { user: adminUser, tokens: adminTokens } = await createTestUser(app, testId, 'admin');
+
+      await prisma.user.update({
+        where: { id: adminUser.id },
+        data: { role: UserRole.ARCHITECT },
+      });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/gamification/notifications',
+        headers: {
+          authorization: `Bearer ${adminTokens.accessToken}`,
+          'content-type': 'application/json',
+        },
+        payload: {
+          // Missing required fields
+          userId: '',
+          type: 'invalid_type',
+          title: '',
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body);
+      expect(body.code).toBe('GAMIFICATION_VALIDATION_FAILED');
+      expect(body.statusCode).toBe(400);
+      expect(body.details).toBeInstanceOf(Array);
+
+      await prisma.user.delete({ where: { id: adminUser.id } });
+    });
+
   });
 });

@@ -1,0 +1,13 @@
+export { GamificationError } from './gamification.error';
+export { ValidationError } from './validation.error';
+export { UserNotFoundError } from './user-not-found.error';
+export { BadgeNotFoundError } from './badge-not-found.error';
+export { BadgeAlreadyUnlockedError } from './badge-already-unlocked.error';
+export { NotificationNotFoundError } from './notification-not-found.error';
+export { NotificationAlreadyAcknowledgedError } from './notification-already-acknowledged.error';
+export { StreakNotFoundError } from './streak-not-found.error';
+export { InsufficientXPError } from './insufficient-xp.error';
+export { InvalidStreakOperationError } from './invalid-streak-operation.error';
+export { LeaderboardNotAvailableError } from './leaderboard-not-available.error';
+export { BadgeStrategyNotFoundError } from './badge-strategy-not-found.error';
+export { LevelNotFoundError } from './level-not-found.error';

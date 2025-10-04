@@ -6,6 +6,8 @@ import { GetStreakStatusUseCase } from '../../application/use-cases/get-streak-s
 import { CreateNotificationUseCase, CreateNotificationSchema } from '../../application/use-cases/create-notification.use-case';
 import { AcknowledgeNotificationUseCase, AcknowledgeNotificationSchema } from '../../application/use-cases/acknowledge-notification.use-case';
 import { NotificationService } from '../../domain/services/notification.service';
+import { GamificationError, ValidationError } from '../../domain/errors';
+import { ZodError } from 'zod';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 
 interface AuthenticatedRequest extends FastifyRequest {
@@ -24,7 +26,6 @@ export class GamificationController {
   ) {}
 
   async getDashboard(request: AuthenticatedRequest, reply: FastifyReply): Promise<void> {
-    const startTime = Date.now();
     const userId = request.user.id;
 
     try {
@@ -35,29 +36,26 @@ export class GamificationController {
         period: query.period || 'all-time'
       });
 
-      logger.info({
-        operation: 'get_dashboard_controller_input',
-        userId,
-        input
-      }, 'Dashboard input validated successfully');
-
       const dashboard = await this.getDashboardUseCase.execute(input);
 
-      logger.info({
-        operation: 'get_dashboard_controller_completed',
-        userId,
-        processingTime: Date.now() - startTime
-      }, 'Dashboard retrieved via REST API');
-
-      reply.send({ success: true, data: dashboard, timestamp: new Date() });
+      return reply.status(200).send({
+        success: true,
+        data: dashboard
+      });
     } catch (error) {
-      logger.error({
-        operation: 'get_dashboard_controller_failed',
-        userId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        errorStack: error instanceof Error ? error.stack : undefined
-      }, 'Failed to get dashboard via REST API');
-      reply.status(500).send({ success: false, error: 'Failed to get dashboard', timestamp: new Date() });
+      if (error instanceof ZodError) {
+        const validationError = new ValidationError(error);
+        return reply.status(validationError.statusCode).send(validationError.toJSON());
+      }
+
+      if (error instanceof GamificationError) {
+        return reply.status(error.statusCode).send(error.toJSON());
+      }
+
+      return reply.status(500).send({
+        error: 'Internal server error',
+        message: 'Failed to get dashboard',
+      });
     }
   }
 
@@ -65,21 +63,26 @@ export class GamificationController {
     const userId = request.user.id;
 
     try {
-      logger.info({ operation: 'get_user_badges_controller_started', userId }, 'Starting get user badges');
-
       const result = await this.getUserBadgesUseCase.execute({ userId });
 
-      logger.info({ operation: 'get_user_badges_controller_completed', userId, resultKeys: Object.keys(result) }, 'User badges retrieved successfully');
-
-      reply.send({ success: true, data: result, timestamp: new Date() });
+      return reply.status(200).send({
+        success: true,
+        data: result
+      });
     } catch (error) {
-      logger.error({
-        operation: 'get_user_badges_controller_failed',
-        userId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        errorStack: error instanceof Error ? error.stack : undefined
-      }, 'Failed to get user badges');
-      reply.status(500).send({ success: false, error: 'Failed to get badges', timestamp: new Date() });
+      if (error instanceof ZodError) {
+        const validationError = new ValidationError(error);
+        return reply.status(validationError.statusCode).send(validationError.toJSON());
+      }
+
+      if (error instanceof GamificationError) {
+        return reply.status(error.statusCode).send(error.toJSON());
+      }
+
+      return reply.status(500).send({
+        error: 'Internal server error',
+        message: 'Failed to get badges',
+      });
     }
   }
 
@@ -94,10 +97,24 @@ export class GamificationController {
 
       const result = await this.getLeaderboardUseCase.execute(queryWithUser);
 
-      reply.send({ success: true, data: result, timestamp: new Date() });
+      return reply.status(200).send({
+        success: true,
+        data: result
+      });
     } catch (error) {
-      logger.error({ operation: 'get_leaderboard_controller_failed', error: error instanceof Error ? error.message : 'Unknown error' }, 'Failed to get leaderboard');
-      reply.status(500).send({ success: false, error: 'Failed to get leaderboard', timestamp: new Date() });
+      if (error instanceof ZodError) {
+        const validationError = new ValidationError(error);
+        return reply.status(validationError.statusCode).send(validationError.toJSON());
+      }
+
+      if (error instanceof GamificationError) {
+        return reply.status(error.statusCode).send(error.toJSON());
+      }
+
+      return reply.status(500).send({
+        error: 'Internal server error',
+        message: 'Failed to get leaderboard',
+      });
     }
   }
 
@@ -106,10 +123,25 @@ export class GamificationController {
 
     try {
       const result = await this.getStreakStatusUseCase.execute({ userId });
-      reply.send({ success: true, data: result, timestamp: new Date() });
+
+      return reply.status(200).send({
+        success: true,
+        data: result
+      });
     } catch (error) {
-      logger.error({ operation: 'get_streak_status_controller_failed', userId, error: error instanceof Error ? error.message : 'Unknown error' }, 'Failed to get streak status');
-      reply.status(500).send({ success: false, error: 'Failed to get streak status', timestamp: new Date() });
+      if (error instanceof ZodError) {
+        const validationError = new ValidationError(error);
+        return reply.status(validationError.statusCode).send(validationError.toJSON());
+      }
+
+      if (error instanceof GamificationError) {
+        return reply.status(error.statusCode).send(error.toJSON());
+      }
+
+      return reply.status(500).send({
+        error: 'Internal server error',
+        message: 'Failed to get streak status',
+      });
     }
   }
 
@@ -126,18 +158,28 @@ export class GamificationController {
 
       const unreadCount = await this.notificationService.getUnreadCount(userId);
 
-      reply.send({
+      return reply.status(200).send({
         success: true,
         data: {
           notifications: notifications.map(n => n.toJSON()),
           unreadCount,
           hasMore: notifications.length === (query.limit ? parseInt(query.limit) : 20)
-        },
-        timestamp: new Date()
+        }
       });
     } catch (error) {
-      logger.error({ operation: 'get_user_notifications_controller_failed', userId, error: error instanceof Error ? error.message : 'Unknown error' }, 'Failed to get user notifications');
-      reply.status(500).send({ success: false, error: 'Failed to get notifications', timestamp: new Date() });
+      if (error instanceof ZodError) {
+        const validationError = new ValidationError(error);
+        return reply.status(validationError.statusCode).send(validationError.toJSON());
+      }
+
+      if (error instanceof GamificationError) {
+        return reply.status(error.statusCode).send(error.toJSON());
+      }
+
+      return reply.status(500).send({
+        error: 'Internal server error',
+        message: 'Failed to get notifications',
+      });
     }
   }
 
@@ -153,31 +195,51 @@ export class GamificationController {
       });
 
       await this.acknowledgeNotificationUseCase.execute(input);
-      reply.send({ success: true, message: 'Notification acknowledged', timestamp: new Date() });
+
+      return reply.status(200).send({
+        success: true,
+        data: { message: 'Notification acknowledged' }
+      });
     } catch (error) {
-      logger.error({ operation: 'acknowledge_notification_controller_failed', userId, notificationId, error: error instanceof Error ? error.message : 'Unknown error' }, 'Failed to acknowledge notification');
-      reply.status(500).send({ success: false, error: 'Failed to acknowledge notification', timestamp: new Date() });
+      if (error instanceof ZodError) {
+        const validationError = new ValidationError(error);
+        return reply.status(validationError.statusCode).send(validationError.toJSON());
+      }
+
+      if (error instanceof GamificationError) {
+        return reply.status(error.statusCode).send(error.toJSON());
+      }
+
+      return reply.status(500).send({
+        error: 'Internal server error',
+        message: 'Failed to acknowledge notification',
+      });
     }
   }
 
   async createNotification(request: AuthenticatedRequest, reply: FastifyReply): Promise<void> {
     try {
-      let input;
-      try {
-        input = CreateNotificationSchema.parse(request.body);
-      } catch (validationError) {
-        input = {
-          ...request.body,
-          priority: request.body.priority || 'medium',
-        };
-      }
-
+      const input = CreateNotificationSchema.parse(request.body);
       const notification = await this.createNotificationUseCase.execute(input);
 
-      reply.status(201).send({ success: true, data: notification.toJSON(), timestamp: new Date() });
+      return reply.status(201).send({
+        success: true,
+        data: notification.toJSON()
+      });
     } catch (error) {
-      logger.error({ operation: 'create_notification_controller_failed', error: error instanceof Error ? error.message : 'Unknown error' }, 'Failed to create notification');
-      reply.status(500).send({ success: false, error: 'Failed to create notification', timestamp: new Date() });
+      if (error instanceof ZodError) {
+        const validationError = new ValidationError(error);
+        return reply.status(validationError.statusCode).send(validationError.toJSON());
+      }
+
+      if (error instanceof GamificationError) {
+        return reply.status(error.statusCode).send(error.toJSON());
+      }
+
+      return reply.status(500).send({
+        error: 'Internal server error',
+        message: 'Failed to create notification',
+      });
     }
   }
 }

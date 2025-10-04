@@ -1,4 +1,5 @@
 import { logger } from '@/shared/infrastructure/monitoring/logger';
+import { LevelNotFoundError } from '../errors';
 
 export interface LevelProps {
   level: number;
@@ -27,7 +28,7 @@ export class LevelEntity {
     const levelData = levels.find(l => l.level === level);
     
     if (!levelData) {
-      throw new Error(`Level ${level} not found`);
+      throw new LevelNotFoundError(`Level ${level} not found`);
     }
 
     return new LevelEntity(levelData);

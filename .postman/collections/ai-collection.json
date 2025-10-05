@@ -1,8 +1,8 @@
 {
 	"info": {
 		"_postman_id": "ai1-2a3b-4c5d-6e7f-8901234567ab",
-		"name": "DevCoach AI - AI Module",
-		"description": "Comprehensive test collection for the DevCoach AI AI Module.\n\n## Test Coverage\n- ✅ AI Chat with multiple providers (OpenAI, Anthropic)\n- ✅ AI Models listing\n- ✅ AI Usage tracking and metrics\n- ✅ Copy/Paste tracking\n- ✅ Governance - Prompt validation\n- ✅ Governance - Prompt analysis\n- ✅ Governance - Temporal behavior analysis\n- ✅ Governance - Educational feedback\n- ✅ Governance - Metrics and Stats (ARCHITECT/TECH_LEAD)\n- ✅ Governance - Cache Management (ARCHITECT/TECH_LEAD)\n- ✅ Domain Error Validation\n\n## Prerequisites\n\n**Required API Keys:**\nYou must configure valid API keys in your .env file:\n- `OPENAI_API_KEY` - for OpenAI provider tests\n- `ANTHROPIC_API_KEY` - for Anthropic provider tests\n\n**Database:**\nRun seed to have challenges available:\n```bash\nnpm run prisma:seed\n```\n\n## How to Run\n\n### Quick Start\n1. Ensure API is running: `npm run dev`\n2. Ensure .env has valid AI provider keys\n3. Run collection - Setup creates test user automatically\n4. All tests will execute\n\n## Architecture\n\n**AI Module Flow:**\n1. Authenticate user (Setup section)\n2. Chat with AI (OpenAI or Anthropic)\n3. Track usage and metrics\n4. Validate prompts with governance\n5. Analyze temporal behavior\n6. Generate educational feedback\n7. Manage cache (admin only)\n\n**Domain Errors:**\n- AI_CHALLENGE_NOT_FOUND (404)\n- AI_INVALID_PROVIDER (400)\n- AI_MODEL_NOT_SUPPORTED (400)\n- AI_RATE_LIMIT_EXCEEDED (429)\n- AI_PROVIDER_ERROR (500)\n- AI_UNAUTHORIZED (401)\n- AI_FORBIDDEN (403)\n- AI_NOT_IMPLEMENTED (501)\n- AI_VALIDATION_FAILED (400)",
+		"name": "Journey - AI Module",
+		"description": "Comprehensive test collection for the Journey AI Module.\n\n## Test Coverage\n- ✅ AI Chat with multiple providers (OpenAI, Anthropic)\n- ✅ AI Models listing\n- ✅ AI Usage tracking and metrics\n- ✅ Copy/Paste tracking\n- ✅ Governance - Prompt validation\n- ✅ Governance - Prompt analysis\n- ✅ Governance - Temporal behavior analysis\n- ✅ Governance - Educational feedback\n- ✅ Governance - Metrics and Stats (ARCHITECT/TECH_LEAD)\n- ✅ Governance - Cache Management (ARCHITECT/TECH_LEAD)\n- ✅ Domain Error Validation\n\n## Prerequisites\n\n**Required API Keys:**\nYou must configure valid API keys in your .env file:\n- `OPENAI_API_KEY` - for OpenAI provider tests\n- `ANTHROPIC_API_KEY` - for Anthropic provider tests\n\n**Database:**\nRun seed to have challenges available:\n```bash\nnpm run prisma:seed\n```\n\n## How to Run\n\n### Quick Start\n1. Ensure API is running: `npm run dev`\n2. Ensure .env has valid AI provider keys\n3. Run collection - Setup creates test user automatically\n4. All tests will execute\n\n## Architecture\n\n**AI Module Flow:**\n1. Authenticate user (Setup section)\n2. Chat with AI (OpenAI or Anthropic)\n3. Track usage and metrics\n4. Validate prompts with governance\n5. Analyze temporal behavior\n6. Generate educational feedback\n7. Manage cache (admin only)\n\n**Domain Errors:**\n- AI_CHALLENGE_NOT_FOUND (404)\n- AI_INVALID_PROVIDER (400)\n- AI_MODEL_NOT_SUPPORTED (400)\n- AI_RATE_LIMIT_EXCEEDED (429)\n- AI_PROVIDER_ERROR (500)\n- AI_UNAUTHORIZED (401)\n- AI_FORBIDDEN (403)\n- AI_NOT_IMPLEMENTED (501)\n- AI_VALIDATION_FAILED (400)",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "12345678"
 	},
@@ -19,7 +19,7 @@
 							"script": {
 								"exec": [
 									"const timestamp = Date.now();",
-									"const email = `aitest_${timestamp}@devcoach.test`;",
+									"const email = `aitest_${timestamp}@journey.test`;",
 									"pm.collectionVariables.set('regularUserEmail', email);"
 								],
 								"type": "text/javascript"

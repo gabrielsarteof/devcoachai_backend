@@ -1,6 +1,6 @@
-# DevCoach AI - Postman Collections
+# Journey - Postman Collections
 
-Coleções Postman completas para testar todos os módulos da API DevCoach AI com automação total, CI/CD integrado e relatórios avançados.
+Coleções Postman completas para testar todos os módulos da API Journey com automação total, CI/CD integrado e relatórios avançados.
 
 ## 📚 Coleções Disponíveis
 
@@ -69,12 +69,12 @@ Os environments globais funcionam com todas as collections:
 
 ### **Staging**
 - Arquivo: `global-environment-staging.json`
-- URL: `https://api-staging.devcoach.ai`
+- URL: `https://api-staging.journey`
 - Timeout: 10s
 
 ### **Production**
 - Arquivo: `global-environment-production.json`
-- URL: `https://api.devcoach.ai`
+- URL: `https://api.journey`
 - Timeout: 15s
 
 **Benefícios:**

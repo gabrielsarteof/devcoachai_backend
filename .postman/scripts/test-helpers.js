@@ -1,5 +1,5 @@
 /**
- * Test Helper Scripts for DevCoach AI Auth Module
+ * Test Helper Scripts for Journey Auth Module
  *
  * This file contains reusable test scripts that can be used
  * across multiple requests in the collection.

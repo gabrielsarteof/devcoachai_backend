@@ -1,5 +1,5 @@
 /**
- * Pre-request Helper Scripts for DevCoach AI Auth Module
+ * Pre-request Helper Scripts for Journey Auth Module
  *
  * This file contains reusable pre-request scripts that can be used
  * across multiple requests in the collection.
@@ -109,7 +109,7 @@ function setDefaultHeaders() {
     if (!pm.request.headers.has('User-Agent')) {
         pm.request.headers.add({
             key: 'User-Agent',
-            value: 'PostmanRuntime/Postman DevCoach AI Tests'
+            value: 'PostmanRuntime/Postman Journey Tests'
         });
     }
 

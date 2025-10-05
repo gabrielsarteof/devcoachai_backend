@@ -1,6 +1,6 @@
 {
-	"id": "global-devcoachai-environment",
-	"name": "DevCoach AI - Global (Development)",
+	"id": "global-journey-environment",
+	"name": "Journey - Global (Development)",
 	"values": [
 		{
 			"key": "baseUrl",

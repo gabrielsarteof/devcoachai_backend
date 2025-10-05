@@ -1,5 +1,5 @@
 {
-  "name": "devcoachai_backend",
+  "name": "journey_backend",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -464,16 +464,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gabrielsarteof/devcoachai_backend.git"
+    "url": "git+https://github.com/gabrielsarteof/journey_backend.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/gabrielsarteof/devcoachai_backend/issues"
+    "url": "https://github.com/gabrielsarteof/journey_backend/issues"
   },
-  "homepage": "https://github.com/gabrielsarteof/devcoachai_backend#readme",
+  "homepage": "https://github.com/gabrielsarteof/journey_backend#readme",
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.34.0",

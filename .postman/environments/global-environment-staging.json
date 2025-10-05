@@ -1,10 +1,10 @@
 {
-	"id": "global-devcoachai-environment-staging",
-	"name": "DevCoach AI - Global (Staging)",
+	"id": "global-journey-environment-staging",
+	"name": "Journey - Global (Staging)",
 	"values": [
 		{
 			"key": "baseUrl",
-			"value": "https://api-staging.devcoach.ai/api",
+			"value": "https://api-staging.journey/api",
 			"description": "Base URL for the API server (staging)",
 			"type": "default",
 			"enabled": true

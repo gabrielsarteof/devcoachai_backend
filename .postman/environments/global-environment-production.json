@@ -1,10 +1,10 @@
 {
-	"id": "global-devcoachai-environment-production",
-	"name": "DevCoach AI - Global (Production)",
+	"id": "global-journey-environment-production",
+	"name": "Journey - Global (Production)",
 	"values": [
 		{
 			"key": "baseUrl",
-			"value": "https://api.devcoach.ai/api",
+			"value": "https://api.journey/api",
 			"description": "Base URL for the API server (production)",
 			"type": "default",
 			"enabled": true

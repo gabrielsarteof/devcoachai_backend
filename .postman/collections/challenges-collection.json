@@ -1,8 +1,8 @@
 {
 	"info": {
 		"_postman_id": "ch4l-l3ng-35a1-b2c3-d4e5f6789abc",
-		"name": "DevCoach AI - Challenges Module",
-		"description": "Comprehensive test collection for the DevCoach AI Challenges Module.\n\n## Test Coverage\n- ✅ Challenge Discovery (Public) - 100% self-contained\n- ✅ Challenge Attempts - 100% self-contained\n- ⚠️ Challenge Management (CRUD) - Requires seed\n\n## How to Run\n\n### Quick Start (Public + Attempts Tests)\n1. Ensure API is running: `npm run dev`\n2. Run collection - Setup creates test user automatically\n3. All public and attempt tests will pass\n\n### Full Test Suite (Including CRUD)\n1. Run seed: `npm run prisma:seed`\n2. Run collection - Setup logs in with seeded admin\n3. All 17 tests will pass\n\n## Architecture Decision\n\n**Why this approach?**\n- ✅ Regular user tests are 100% independent (best practice)\n- ✅ Admin operations use seed (industry standard)\n- ✅ Separates concerns: API security vs test convenience\n- ✅ Works seamlessly in CI/CD (seed runs automatically)\n\n**Seeded Admin Credentials:**\n- Email: admin@techcorp.com\n- Password: Admin@123\n- Role: TECH_LEAD",
+		"name": "Journey - Challenges Module",
+		"description": "Comprehensive test collection for the Journey Challenges Module.\n\n## Test Coverage\n- ✅ Challenge Discovery (Public) - 100% self-contained\n- ✅ Challenge Attempts - 100% self-contained\n- ⚠️ Challenge Management (CRUD) - Requires seed\n\n## How to Run\n\n### Quick Start (Public + Attempts Tests)\n1. Ensure API is running: `npm run dev`\n2. Run collection - Setup creates test user automatically\n3. All public and attempt tests will pass\n\n### Full Test Suite (Including CRUD)\n1. Run seed: `npm run prisma:seed`\n2. Run collection - Setup logs in with seeded admin\n3. All 17 tests will pass\n\n## Architecture Decision\n\n**Why this approach?**\n- ✅ Regular user tests are 100% independent (best practice)\n- ✅ Admin operations use seed (industry standard)\n- ✅ Separates concerns: API security vs test convenience\n- ✅ Works seamlessly in CI/CD (seed runs automatically)\n\n**Seeded Admin Credentials:**\n- Email: admin@techcorp.com\n- Password: Admin@123\n- Role: TECH_LEAD",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "12345678"
 	},
@@ -19,7 +19,7 @@
 							"script": {
 								"exec": [
 									"const timestamp = Date.now();",
-									"const email = `testuser_${timestamp}@devcoach.test`;",
+									"const email = `testuser_${timestamp}@journey.test`;",
 									"pm.collectionVariables.set('regularUserEmail', email);"
 								],
 								"type": "text/javascript"

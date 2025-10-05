@@ -1,8 +1,8 @@
 {
 	"info": {
 		"_postman_id": "master-test-collection-001",
-		"name": "DevCoach AI - All Tests (Master)",
-		"description": "🚀 **Master Test Collection** - Comprehensive API test suite\n\nThis collection provides automated testing for the DevCoach AI API with proper dependency management and execution ordering.\n\n**How to Use:**\n1. Select the appropriate environment (dev/staging/production)\n2. Click \"Run Collection\" in Postman\n3. All tests will execute in sequence with automatic token handling\n\n**Features:**\n- Automatic health checks before testing\n- Smart token management across requests\n- Detailed logging and error reporting\n- Execution statistics and summary reports\n- Global pre-request and test scripts\n\n**Requirements:**\n- API server must be running\n- Database must be accessible\n- Environment properly configured\n\n**Environment Variables (Auto-managed):**\n- `accessToken` - JWT access token\n- `refreshToken` - JWT refresh token\n- `userId` - Authenticated user ID\n- Additional context variables as needed",
+		"name": "Journey - All Tests (Master)",
+		"description": "🚀 **Master Test Collection** - Comprehensive API test suite\n\nThis collection provides automated testing for the Journey API with proper dependency management and execution ordering.\n\n**How to Use:**\n1. Select the appropriate environment (dev/staging/production)\n2. Click \"Run Collection\" in Postman\n3. All tests will execute in sequence with automatic token handling\n\n**Features:**\n- Automatic health checks before testing\n- Smart token management across requests\n- Detailed logging and error reporting\n- Execution statistics and summary reports\n- Global pre-request and test scripts\n\n**Requirements:**\n- API server must be running\n- Database must be accessible\n- Environment properly configured\n\n**Environment Variables (Auto-managed):**\n- `accessToken` - JWT access token\n- `refreshToken` - JWT refresh token\n- `userId` - Authenticated user ID\n- Additional context variables as needed",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "master-collection"
 	},
@@ -802,7 +802,7 @@
 					"// 1. Add common headers",
 					"pm.request.headers.add({",
 					"    key: 'User-Agent',",
-					"    value: 'PostmanRuntime/DevCoachAI-MasterTests/1.0'",
+					"    value: 'PostmanRuntime/Journey-MasterTests/1.0'",
 					"});",
 					"",
 					"pm.request.headers.add({",

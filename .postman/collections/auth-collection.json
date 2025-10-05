@@ -1,8 +1,8 @@
 {
 	"info": {
 		"_postman_id": "a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890",
-		"name": "DevCoach AI - Auth Module",
-		"description": "Comprehensive test collection for the DevCoach AI Authentication Module.\n\nThis collection provides complete coverage of authentication endpoints, including:\n- User Registration and Validation\n- Login and Session Management\n- Token Refresh and Security\n- Profile Access and Authorization\n- Error Handling and Edge Cases\n\nEach folder contains organized test scenarios with proper validation, error handling, and security testing.\n\n**Authentication Flow:**\n1. Register new user\n2. Login with credentials\n3. Access protected resources\n4. Refresh tokens when needed\n5. Logout to cleanup session\n\n**Environment Variables:**\nMake sure to configure the appropriate environment (dev/staging) with:\n- `baseUrl`: API base URL\n- `accessToken`: Will be set automatically after login\n- `refreshToken`: Will be set automatically after login\n- `userId`: Will be set automatically after registration/login",
+		"name": "Journey - Auth Module",
+		"description": "Comprehensive test collection for the Journey Authentication Module.\n\nThis collection provides complete coverage of authentication endpoints, including:\n- User Registration and Validation\n- Login and Session Management\n- Token Refresh and Security\n- Profile Access and Authorization\n- Error Handling and Edge Cases\n\nEach folder contains organized test scenarios with proper validation, error handling, and security testing.\n\n**Authentication Flow:**\n1. Register new user\n2. Login with credentials\n3. Access protected resources\n4. Refresh tokens when needed\n5. Logout to cleanup session\n\n**Environment Variables:**\nMake sure to configure the appropriate environment (dev/staging) with:\n- `baseUrl`: API base URL\n- `accessToken`: Will be set automatically after login\n- `refreshToken`: Will be set automatically after login\n- `userId`: Will be set automatically after registration/login",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "12345678"
 	},

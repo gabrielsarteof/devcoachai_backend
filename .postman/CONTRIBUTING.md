@@ -28,7 +28,7 @@ Quando adicionar um novo módulo (ex: Gamification, Metrics, Challenges):
 {
   "info": {
     "_postman_id": "unique-module-id",
-    "name": "DevCoach AI - {Module Name} Module",
+    "name": "Journey - {Module Name} Module",
     "description": "Descrição do módulo e seus testes",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
@@ -357,7 +357,7 @@ Criar `.postman/collections/gamification-collection.json`:
 {
   "info": {
     "_postman_id": "gam-1234-5678-9abc",
-    "name": "DevCoach AI - Gamification Module",
+    "name": "Journey - Gamification Module",
     "description": "Testes completos do módulo de gamificação..."
   },
   "item": [

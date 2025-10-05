@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================================
-# DevCoach AI - Run All Postman Tests
+# Journey - Run All Postman Tests
 # ==============================================================================
 # This script runs all Postman collections using Newman in the correct order
 # with proper error handling and reporting.
@@ -63,7 +63,7 @@ fi
 mkdir -p "${REPORTS_DIR}/${TIMESTAMP}"
 
 echo -e "${BLUE}╔════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║        DevCoach AI - API Test Suite (Newman)                  ║${NC}"
+echo -e "${BLUE}║        Journey - API Test Suite (Newman)                  ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "${GREEN}🌍 Environment:${NC} ${ENVIRONMENT}"

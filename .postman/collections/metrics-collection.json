@@ -1,8 +1,8 @@
 {
 	"info": {
 		"_postman_id": "m3tr-1c5a-4b2c-8d9e-f0123456789a",
-		"name": "DevCoach AI - Metrics Module",
-		"description": "Comprehensive test collection for the DevCoach AI Metrics Module.\n\n## Test Coverage\n- ✅ Metrics Tracking (POST /metrics) - 100% self-contained\n- ✅ Session Metrics Retrieval (GET /metrics/session/:attemptId) - 100% self-contained\n- ✅ Metrics Streaming (POST/DELETE /metrics/stream) - 100% self-contained\n- ✅ Error Handling & Validation - Domain error architecture\n\n## How to Run\n\n### Quick Start (All Tests)\n1. Ensure API is running: `npm run dev`\n2. Ensure seed is run: `npm run prisma:seed`\n3. Run collection - Setup creates test user automatically\n4. All tests will pass\n\n## Architecture Decision\n\n**Why this approach?**\n- ✅ Tests are 100% independent (best practice)\n- ✅ Tests validate domain error codes (METRIC_*)\n- ✅ Follows structured error architecture from last commit\n- ✅ Works seamlessly in CI/CD\n\n**Test User:**\n- Created automatically with timestamp\n- Role: JUNIOR_DEVELOPER (default)\n- Uses seeded challenge for attempts",
+		"name": "Journey - Metrics Module",
+		"description": "Comprehensive test collection for the Journey Metrics Module.\n\n## Test Coverage\n- ✅ Metrics Tracking (POST /metrics) - 100% self-contained\n- ✅ Session Metrics Retrieval (GET /metrics/session/:attemptId) - 100% self-contained\n- ✅ Metrics Streaming (POST/DELETE /metrics/stream) - 100% self-contained\n- ✅ Error Handling & Validation - Domain error architecture\n\n## How to Run\n\n### Quick Start (All Tests)\n1. Ensure API is running: `npm run dev`\n2. Ensure seed is run: `npm run prisma:seed`\n3. Run collection - Setup creates test user automatically\n4. All tests will pass\n\n## Architecture Decision\n\n**Why this approach?**\n- ✅ Tests are 100% independent (best practice)\n- ✅ Tests validate domain error codes (METRIC_*)\n- ✅ Follows structured error architecture from last commit\n- ✅ Works seamlessly in CI/CD\n\n**Test User:**\n- Created automatically with timestamp\n- Role: JUNIOR_DEVELOPER (default)\n- Uses seeded challenge for attempts",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "12345678"
 	},
@@ -19,7 +19,7 @@
 							"script": {
 								"exec": [
 									"const timestamp = Date.now();",
-									"const email = `metrics-test-user-${timestamp}@devcoach.test`;",
+									"const email = `metrics-test-user-${timestamp}@journey.test`;",
 									"pm.collectionVariables.set('testUserEmail', email);"
 								],
 								"type": "text/javascript"

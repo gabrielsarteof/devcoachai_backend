@@ -1,8 +1,8 @@
 {
 	"info": {
 		"_postman_id": "gm4f-1c4t-10n-a1b2-c3d4e5f6789a",
-		"name": "DevCoach AI - Gamification Module",
-		"description": "Comprehensive test collection for the DevCoach AI Gamification Module.\n\n## Test Coverage\n- ✅ Dashboard & User Progress - 100% self-contained\n- ✅ Badge System - 100% self-contained  \n- ✅ Leaderboard & Rankings - 100% self-contained\n- ✅ Streak Management - 100% self-contained\n- ✅ Notification System - 100% self-contained\n- ⚠️ Admin Operations (Create Notifications) - Requires admin seed\n\n## How to Run\n\n### Quick Start (User Operations)\n1. Ensure API is running: `npm run dev`\n2. Run collection - Setup creates test user automatically\n3. All user operation tests will pass\n\n### Full Test Suite (Including Admin Operations)\n1. Run seed: `npm run prisma:seed`\n2. Run collection - Setup logs in with seeded admin\n3. All tests will pass including admin notification creation\n\n## Architecture Decision\n\n**Why this approach?**\n- ✅ Regular user tests are 100% independent (best practice)\n- ✅ Admin operations use seed (industry standard)\n- ✅ Separates concerns: API security vs test convenience\n- ✅ Works seamlessly in CI/CD (seed runs automatically)\n\n**Seeded Admin Credentials:**\n- Email: admin@techcorp.com\n- Password: Admin@123\n- Role: TECH_LEAD\n\n## Response Structure\nAll endpoints follow the robust domain error architecture:\n- Success: `{success: true, data: {...}}`\n- Error: `{error: string, code: string, statusCode: number, details?: any}`",
+		"name": "Journey - Gamification Module",
+		"description": "Comprehensive test collection for the Journey Gamification Module.\n\n## Test Coverage\n- ✅ Dashboard & User Progress - 100% self-contained\n- ✅ Badge System - 100% self-contained  \n- ✅ Leaderboard & Rankings - 100% self-contained\n- ✅ Streak Management - 100% self-contained\n- ✅ Notification System - 100% self-contained\n- ⚠️ Admin Operations (Create Notifications) - Requires admin seed\n\n## How to Run\n\n### Quick Start (User Operations)\n1. Ensure API is running: `npm run dev`\n2. Run collection - Setup creates test user automatically\n3. All user operation tests will pass\n\n### Full Test Suite (Including Admin Operations)\n1. Run seed: `npm run prisma:seed`\n2. Run collection - Setup logs in with seeded admin\n3. All tests will pass including admin notification creation\n\n## Architecture Decision\n\n**Why this approach?**\n- ✅ Regular user tests are 100% independent (best practice)\n- ✅ Admin operations use seed (industry standard)\n- ✅ Separates concerns: API security vs test convenience\n- ✅ Works seamlessly in CI/CD (seed runs automatically)\n\n**Seeded Admin Credentials:**\n- Email: admin@techcorp.com\n- Password: Admin@123\n- Role: TECH_LEAD\n\n## Response Structure\nAll endpoints follow the robust domain error architecture:\n- Success: `{success: true, data: {...}}`\n- Error: `{error: string, code: string, statusCode: number, details?: any}`",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "12345678"
 	},
@@ -19,7 +19,7 @@
 							"script": {
 								"exec": [
 									"const timestamp = Date.now();",
-									"const email = `testuser_${timestamp}@devcoach.test`;",
+									"const email = `testuser_${timestamp}@journey.test`;",
 									"pm.collectionVariables.set('regularUserEmail', email);"
 								],
 								"type": "text/javascript"

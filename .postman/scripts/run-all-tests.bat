@@ -1,6 +1,6 @@
 @echo off
 REM ==============================================================================
-REM DevCoach AI - Run All Postman Tests (Windows)
+REM Journey - Run All Postman Tests (Windows)
 REM ==============================================================================
 REM This script runs all Postman collections using Newman in the correct order
 REM with proper error handling and reporting.
@@ -60,7 +60,7 @@ REM Create reports directory
 if not exist "%REPORTS_DIR%\%TIMESTAMP%" mkdir "%REPORTS_DIR%\%TIMESTAMP%"
 
 echo ╔════════════════════════════════════════════════════════════════╗
-echo ║        DevCoach AI - API Test Suite (Newman)                  ║
+echo ║        Journey - API Test Suite (Newman)                  ║
 echo ╚════════════════════════════════════════════════════════════════╝
 echo.
 echo Environment: %ENVIRONMENT%

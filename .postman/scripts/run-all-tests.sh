@@ -150,6 +150,12 @@ run_collection \
 TOTAL_TESTS=$((TOTAL_TESTS + 1))
 
 run_collection \
+    "Gamification Module" \
+    "${COLLECTIONS_DIR}/gamification-collection.json" \
+    "gamification"
+TOTAL_TESTS=$((TOTAL_TESTS + 1))
+
+run_collection \
     "AI Module" \
     "${COLLECTIONS_DIR}/ai-collection.json" \
     "ai"

@@ -39,8 +39,10 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/health",
-							"host": ["{{baseUrl}}"],
+							"raw": "http://localhost:3333/health",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "3333",
 							"path": ["health"]
 						},
 						"description": "Check if API is running and accessible"
@@ -412,7 +414,302 @@
 			]
 		},
 		{
-			"name": "✅ 4. Final Summary",
+			"name": "🎮 4. Gamification Module",
+			"description": "Test gamification features including badges, leaderboards, streaks, and notifications",
+			"item": [
+				{
+					"name": "Get User Dashboard",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Dashboard retrieved successfully', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Dashboard contains required data', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('success', true);",
+									"    pm.expect(responseJson).to.have.property('data');",
+									"    const data = responseJson.data;",
+									"    pm.expect(data).to.have.property('user');",
+									"    pm.expect(data).to.have.property('badges');",
+									"    pm.expect(data).to.have.property('streak');",
+									"    pm.expect(data).to.have.property('ranking');",
+									"});",
+									"",
+									"console.log('✅ User dashboard retrieved');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/gamification/dashboard",
+							"host": ["{{baseUrl}}"],
+							"path": ["gamification", "dashboard"]
+						},
+						"description": "Get user's gamification dashboard"
+					}
+				},
+				{
+					"name": "Get User Badges",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Badges retrieved successfully', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains badges data', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('success', true);",
+									"    pm.expect(responseJson).to.have.property('data');",
+									"    const data = responseJson.data;",
+									"    pm.expect(data).to.have.property('unlocked');",
+									"    pm.expect(data).to.have.property('locked');",
+									"    pm.expect(data).to.have.property('stats');",
+									"    pm.expect(data.unlocked).to.be.an('array');",
+									"});",
+									"",
+									"console.log('✅ User badges retrieved');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/gamification/badges",
+							"host": ["{{baseUrl}}"],
+							"path": ["gamification", "badges"]
+						},
+						"description": "Get user's badge collection"
+					}
+				},
+				{
+					"name": "Get Global XP Leaderboard",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Leaderboard retrieved successfully', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Leaderboard contains rankings', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('success', true);",
+									"    pm.expect(responseJson.data).to.have.property('rankings');",
+									"    pm.expect(responseJson.data.rankings).to.be.an('array');",
+									"});",
+									"",
+									"console.log('✅ Global leaderboard retrieved');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/gamification/leaderboard?type=XP_TOTAL&scope=GLOBAL&period=ALL_TIME",
+							"host": ["{{baseUrl}}"],
+							"path": ["gamification", "leaderboard"],
+							"query": [
+								{
+									"key": "type",
+									"value": "XP_TOTAL"
+								},
+								{
+									"key": "scope",
+									"value": "GLOBAL"
+								},
+								{
+									"key": "period",
+									"value": "ALL_TIME"
+								}
+							]
+						},
+						"description": "Get global XP leaderboard"
+					}
+				},
+				{
+					"name": "Get Weekly Streak Leaderboard",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Weekly leaderboard retrieved successfully', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Weekly leaderboard has proper structure', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('success', true);",
+									"    pm.expect(responseJson.data).to.have.property('type', 'XP_WEEKLY');",
+									"    pm.expect(responseJson.data).to.have.property('scope', 'GLOBAL');",
+									"    pm.expect(responseJson.data).to.have.property('period', 'WEEKLY');",
+									"});",
+									"",
+									"console.log('✅ Weekly leaderboard retrieved');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/gamification/leaderboard?type=XP_WEEKLY&scope=GLOBAL&period=WEEKLY",
+							"host": ["{{baseUrl}}"],
+							"path": ["gamification", "leaderboard"],
+							"query": [
+								{
+									"key": "type",
+									"value": "XP_WEEKLY"
+								},
+								{
+									"key": "scope",
+									"value": "GLOBAL"
+								},
+								{
+									"key": "period",
+									"value": "WEEKLY"
+								}
+							]
+						},
+						"description": "Get weekly streak leaderboard"
+					}
+				},
+				{
+					"name": "Get Streak Status",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Streak status retrieved successfully', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Streak status contains required fields', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('success', true);",
+									"    pm.expect(responseJson).to.have.property('data');",
+									"    const data = responseJson.data;",
+									"    pm.expect(data).to.have.property('currentStreak');",
+									"    pm.expect(data).to.have.property('longestStreak');",
+									"    pm.expect(data).to.have.property('status');",
+									"    pm.expect(data.currentStreak).to.be.a('number');",
+									"    pm.expect(data.longestStreak).to.be.a('number');",
+									"});",
+									"",
+									"console.log('✅ Streak status retrieved');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/gamification/streak",
+							"host": ["{{baseUrl}}"],
+							"path": ["gamification", "streak"]
+						},
+						"description": "Get user's streak status"
+					}
+				},
+				{
+					"name": "Get User Notifications",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Notifications retrieved successfully', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Notifications response has proper structure', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('success', true);",
+									"    pm.expect(responseJson.data).to.have.property('notifications');",
+									"    pm.expect(responseJson.data).to.have.property('unreadCount');",
+									"    pm.expect(responseJson.data.notifications).to.be.an('array');",
+									"});",
+									"",
+									"console.log('✅ User notifications retrieved');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/gamification/notifications?limit=10",
+							"host": ["{{baseUrl}}"],
+							"path": ["gamification", "notifications"],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Get user's gamification notifications"
+					}
+				}
+			]
+		},
+		{
+			"name": "✅ 5. Final Summary",
 			"description": "Generate test execution summary",
 			"item": [
 				{
@@ -479,8 +776,10 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseUrl}}/health",
-							"host": ["{{baseUrl}}"],
+							"raw": "http://localhost:3333/health",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "3333",
 							"path": ["health"]
 						},
 						"description": "Final health check and summary generation"

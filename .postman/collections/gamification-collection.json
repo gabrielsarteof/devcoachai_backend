@@ -1,0 +1,1210 @@
+{
+	"info": {
+		"_postman_id": "gm4f-1c4t-10n-a1b2-c3d4e5f6789a",
+		"name": "DevCoach AI - Gamification Module",
+		"description": "Comprehensive test collection for the DevCoach AI Gamification Module.\n\n## Test Coverage\n- ✅ Dashboard & User Progress - 100% self-contained\n- ✅ Badge System - 100% self-contained  \n- ✅ Leaderboard & Rankings - 100% self-contained\n- ✅ Streak Management - 100% self-contained\n- ✅ Notification System - 100% self-contained\n- ⚠️ Admin Operations (Create Notifications) - Requires admin seed\n\n## How to Run\n\n### Quick Start (User Operations)\n1. Ensure API is running: `npm run dev`\n2. Run collection - Setup creates test user automatically\n3. All user operation tests will pass\n\n### Full Test Suite (Including Admin Operations)\n1. Run seed: `npm run prisma:seed`\n2. Run collection - Setup logs in with seeded admin\n3. All tests will pass including admin notification creation\n\n## Architecture Decision\n\n**Why this approach?**\n- ✅ Regular user tests are 100% independent (best practice)\n- ✅ Admin operations use seed (industry standard)\n- ✅ Separates concerns: API security vs test convenience\n- ✅ Works seamlessly in CI/CD (seed runs automatically)\n\n**Seeded Admin Credentials:**\n- Email: admin@techcorp.com\n- Password: Admin@123\n- Role: TECH_LEAD\n\n## Response Structure\nAll endpoints follow the robust domain error architecture:\n- Success: `{success: true, data: {...}}`\n- Error: `{error: string, code: string, statusCode: number, details?: any}`",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "12345678"
+	},
+	"item": [
+		{
+			"name": "🔧 Setup (Run First)",
+			"description": "Prepares test environment by creating regular user and logging in admin.\n\n**What happens:**\n1. Creates fresh test user for regular operations\n2. Logs in with seeded admin (requires seed)\n3. Sets up environment variables\n4. Initializes gamification data\n\n**Note:** If seed not run, admin login will fail (admin tests will be skipped)",
+			"item": [
+				{
+					"name": "[POST] Create Regular User",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const timestamp = Date.now();",
+									"const email = `testuser_${timestamp}@devcoach.test`;",
+									"pm.collectionVariables.set('regularUserEmail', email);"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Regular user created', function () {",
+									"    pm.response.to.have.status(201);",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('success', true);",
+									"    pm.environment.set('regularUserId', responseJson.data.user.id);",
+									"});",
+									"",
+									"console.log('✅ Regular user created for gamification tests');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{"key": "Content-Type", "value": "application/json"}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"{{regularUserEmail}}\",\n  \"password\": \"Test@123\",\n  \"name\": \"Test User Gamification\",\n  \"acceptTerms\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "register"]
+						}
+					}
+				},
+				{
+					"name": "[POST] Login Regular User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Regular user logged in', function () {",
+									"    pm.response.to.have.status(200);",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('success', true);",
+									"    pm.environment.set('accessToken', responseJson.data.accessToken);",
+									"    pm.environment.set('userId', responseJson.data.user.id);",
+									"});",
+									"",
+									"console.log('✅ Regular user authenticated for gamification tests');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{"key": "Content-Type", "value": "application/json"}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"{{regularUserEmail}}\",\n  \"password\": \"Test@123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "login"]
+						}
+					}
+				},
+				{
+					"name": "[POST] Login Admin (Seeded)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Admin logged in', function () {",
+									"    pm.response.to.have.status(200);",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('success', true);",
+									"    pm.environment.set('adminAccessToken', responseJson.data.accessToken);",
+									"    pm.environment.set('adminUserId', responseJson.data.user.id);",
+									"});",
+									"",
+									"console.log('✅ Admin authenticated for gamification admin tests');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{"key": "Content-Type", "value": "application/json"}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@techcorp.com\",\n  \"password\": \"Admin@123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "login"]
+						},
+						"description": "Logs in with seeded admin user. Requires: npm run prisma:seed"
+					}
+				}
+			]
+		},
+		{
+			"name": "🎮 Dashboard & User Progress",
+			"description": "Dashboard endpoints for user gamification overview and progress tracking",
+			"item": [
+				{
+					"name": "Happy Path",
+					"item": [
+						{
+							"name": "[GET] Get Dashboard - Basic",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Response has success structure', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"    pm.expect(responseJson).to.have.property('data');",
+											"});",
+											"",
+											"pm.test('Dashboard structure is complete', function () {",
+											"    const data = pm.response.json().data;",
+											"    pm.expect(data).to.have.property('user');",
+											"    pm.expect(data).to.have.property('badges');",
+											"    pm.expect(data).to.have.property('streak');",
+											"    pm.expect(data).to.have.property('ranking');",
+											"    pm.expect(data).to.have.property('dailyGoal');",
+											"    pm.expect(data).to.have.property('notifications');",
+											"});",
+											"",
+											"pm.test('User progress data is valid', function () {",
+											"    const user = pm.response.json().data.user;",
+											"    pm.expect(user).to.have.property('level');",
+											"    pm.expect(user).to.have.property('currentXP');",
+											"    pm.expect(user).to.have.property('levelTitle');",
+											"    pm.expect(user).to.have.property('nextLevelXP');",
+											"    pm.expect(user).to.have.property('nextLevelProgress');",
+											"    pm.expect(user).to.have.property('levelPerks');",
+											"    pm.expect(user.level).to.be.a('number');",
+											"    pm.expect(user.currentXP).to.be.a('number');",
+											"    pm.expect(user.levelPerks).to.be.an('array');",
+											"});",
+											"",
+											"pm.test('Badges summary is valid', function () {",
+											"    const badges = pm.response.json().data.badges;",
+											"    pm.expect(badges).to.have.property('total');",
+											"    pm.expect(badges).to.have.property('unlocked');",
+											"    pm.expect(badges).to.have.property('recent');",
+											"    pm.expect(badges.total).to.be.a('number');",
+											"    pm.expect(badges.unlocked).to.be.a('number');",
+											"    pm.expect(badges.recent).to.be.an('array');",
+											"});",
+											"",
+											"pm.test('Streak data is valid', function () {",
+											"    const streak = pm.response.json().data.streak;",
+											"    pm.expect(streak).to.have.property('current');",
+											"    pm.expect(streak).to.have.property('longest');",
+											"    pm.expect(streak).to.have.property('status');",
+											"    pm.expect(streak).to.have.property('freezesAvailable');",
+											"    pm.expect(streak).to.have.property('willExpireAt');",
+											"    pm.expect(streak.current).to.be.a('number');",
+											"    pm.expect(streak.longest).to.be.a('number');",
+											"});",
+											"",
+											"console.log('✅ Dashboard retrieved successfully');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/gamification/dashboard",
+									"host": ["{{baseUrl}}"],
+									"path": ["gamification", "dashboard"]
+								},
+								"description": "Get user's gamification dashboard with basic information"
+							}
+						},
+						{
+							"name": "[GET] Get Dashboard - With Details & Period",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Response has success structure', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"    pm.expect(responseJson).to.have.property('data');",
+											"});",
+											"",
+											"pm.test('Dashboard includes detailed information', function () {",
+											"    const data = pm.response.json().data;",
+											"    pm.expect(data).to.have.property('user');",
+											"    pm.expect(data).to.have.property('badges');",
+											"    pm.expect(data).to.have.property('streak');",
+											"    pm.expect(data).to.have.property('ranking');",
+											"});",
+											"",
+											"console.log('✅ Dashboard with details retrieved successfully');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/gamification/dashboard?includeDetails=true&period=weekly",
+									"host": ["{{baseUrl}}"],
+									"path": ["gamification", "dashboard"],
+									"query": [
+										{"key": "includeDetails", "value": "true"},
+										{"key": "period", "value": "weekly"}
+									]
+								},
+								"description": "Get dashboard with detailed information and weekly period filter"
+							}
+						}
+					]
+				},
+				{
+					"name": "Error Handling",
+					"item": [
+						{
+							"name": "[GET] Dashboard - No Authentication",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 401', function () {",
+											"    pm.response.to.have.status(401);",
+											"});",
+											"",
+											"pm.test('Unauthorized error returned', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('error');",
+											"});",
+											"",
+											"console.log('✅ Unauthorized access handled correctly');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/gamification/dashboard",
+									"host": ["{{baseUrl}}"],
+									"path": ["gamification", "dashboard"]
+								},
+								"description": "Test authentication requirement for dashboard endpoint"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🏆 Badge System",
+			"description": "Badge management, unlocking, and user progress tracking",
+			"item": [
+				{
+					"name": "Happy Path",
+					"item": [
+						{
+							"name": "[GET] Get User Badges",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Response has success structure', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"    pm.expect(responseJson).to.have.property('data');",
+											"});",
+											"",
+											"pm.test('Badge data structure is valid', function () {",
+											"    const data = pm.response.json().data;",
+											"    pm.expect(data).to.have.property('unlocked');",
+											"    pm.expect(data).to.have.property('locked');",
+											"    pm.expect(data).to.have.property('stats');",
+											"    pm.expect(data.unlocked).to.be.an('array');",
+											"    pm.expect(data.locked).to.be.an('array');",
+											"});",
+											"",
+											"pm.test('Badge stats are complete', function () {",
+											"    const stats = pm.response.json().data.stats;",
+											"    pm.expect(stats).to.have.property('total');",
+											"    pm.expect(stats).to.have.property('unlocked');",
+											"    pm.expect(stats).to.have.property('byRarity');",
+											"    pm.expect(stats.total).to.be.a('number');",
+											"    pm.expect(stats.unlocked).to.be.a('number');",
+											"    pm.expect(stats.byRarity).to.be.an('object');",
+											"});",
+											"",
+											"pm.test('Badge rarity breakdown is valid', function () {",
+											"    const byRarity = pm.response.json().data.stats.byRarity;",
+											"    pm.expect(byRarity).to.have.property('COMMON');",
+											"    pm.expect(byRarity).to.have.property('RARE');",
+											"    pm.expect(byRarity).to.have.property('EPIC');",
+											"    pm.expect(byRarity).to.have.property('LEGENDARY');",
+											"});",
+											"",
+											"if (pm.response.json().data.locked.length > 0) {",
+											"    pm.test('Locked badges have required fields', function () {",
+											"        const lockedBadge = pm.response.json().data.locked[0];",
+											"        pm.expect(lockedBadge).to.have.property('key');",
+											"        pm.expect(lockedBadge).to.have.property('name');",
+											"        pm.expect(lockedBadge).to.have.property('description');",
+											"        pm.expect(lockedBadge).to.have.property('icon');",
+											"        pm.expect(lockedBadge).to.have.property('rarity');",
+											"        pm.expect(lockedBadge).to.have.property('requirements');",
+											"    });",
+											"}",
+											"",
+											"console.log('✅ User badges retrieved successfully');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/gamification/badges",
+									"host": ["{{baseUrl}}"],
+									"path": ["gamification", "badges"]
+								},
+								"description": "Get user's badges (unlocked and locked) with progress"
+							}
+						}
+					]
+				},
+				{
+					"name": "Error Handling",
+					"item": [
+						{
+							"name": "[GET] Badges - No Authentication",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 401', function () {",
+											"    pm.response.to.have.status(401);",
+											"});",
+											"",
+											"pm.test('Unauthorized error returned', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('error');",
+											"});",
+											"",
+											"console.log('✅ Unauthorized access to badges handled correctly');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/gamification/badges",
+									"host": ["{{baseUrl}}"],
+									"path": ["gamification", "badges"]
+								},
+								"description": "Test authentication requirement for badges endpoint"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🏅 Leaderboard & Rankings",
+			"description": "Leaderboard system with rankings, scoring, and user positioning",
+			"item": [
+				{
+					"name": "Happy Path",
+					"item": [
+						{
+							"name": "[GET] Get Leaderboard - Default",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Response has success structure', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"    pm.expect(responseJson).to.have.property('data');",
+											"});",
+											"",
+											"pm.test('Leaderboard structure is valid', function () {",
+											"    const data = pm.response.json().data;",
+											"    pm.expect(data).to.have.property('rankings');",
+											"    pm.expect(data).to.have.property('userRanking');",
+											"    pm.expect(data).to.have.property('totalParticipants');",
+											"    pm.expect(data).to.have.property('period');",
+											"    pm.expect(data).to.have.property('type');",
+											"    pm.expect(data).to.have.property('scope');",
+											"    pm.expect(data.rankings).to.be.an('array');",
+											"});",
+											"",
+											"pm.test('User ranking is valid', function () {",
+											"    const userRanking = pm.response.json().data.userRanking;",
+											"    pm.expect(userRanking).to.have.property('userId');",
+											"    pm.expect(userRanking).to.have.property('position');",
+											"    pm.expect(userRanking).to.have.property('score');",
+											"    pm.expect(userRanking).to.have.property('percentile');",
+											"    pm.expect(userRanking.position).to.be.a('number');",
+											"    pm.expect(userRanking.score).to.be.a('number');",
+											"    pm.expect(userRanking.percentile).to.be.a('number');",
+											"});",
+											"",
+											"pm.test('Default leaderboard parameters are correct', function () {",
+											"    const data = pm.response.json().data;",
+											"    pm.expect(data.period).to.equal('ALL_TIME');",
+											"    pm.expect(data.type).to.equal('XP_TOTAL');",
+											"    pm.expect(data.scope).to.equal('GLOBAL');",
+											"});",
+											"",
+											"console.log('✅ Default leaderboard retrieved successfully');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/gamification/leaderboard",
+									"host": ["{{baseUrl}}"],
+									"path": ["gamification", "leaderboard"]
+								},
+								"description": "Get global leaderboard with default parameters (all-time XP total)"
+							}
+						},
+						{
+							"name": "[GET] Get Leaderboard - Weekly XP",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Response has success structure', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"    pm.expect(responseJson).to.have.property('data');",
+											"});",
+											"",
+											"pm.test('Weekly leaderboard parameters are correct', function () {",
+											"    const data = pm.response.json().data;",
+											"    pm.expect(data.period).to.equal('WEEKLY');",
+											"    pm.expect(data.type).to.equal('XP_WEEKLY');",
+											"    pm.expect(data).to.have.property('rankings');",
+											"    pm.expect(data).to.have.property('userRanking');",
+											"});",
+											"",
+											"console.log('✅ Weekly leaderboard retrieved successfully');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/gamification/leaderboard?period=WEEKLY&type=XP_WEEKLY",
+									"host": ["{{baseUrl}}"],
+									"path": ["gamification", "leaderboard"],
+									"query": [
+										{"key": "period", "value": "WEEKLY"},
+										{"key": "type", "value": "XP_WEEKLY"}
+									]
+								},
+								"description": "Get weekly XP leaderboard with specific time period"
+							}
+						},
+						{
+							"name": "[GET] Get Leaderboard - Company Scope",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Response has success structure', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"    pm.expect(responseJson).to.have.property('data');",
+											"});",
+											"",
+											"pm.test('Company scope leaderboard is valid', function () {",
+											"    const data = pm.response.json().data;",
+											"    pm.expect(data).to.have.property('rankings');",
+											"    pm.expect(data).to.have.property('userRanking');",
+											"    pm.expect(data).to.have.property('scope');",
+											"});",
+											"",
+											"console.log('✅ Company scope leaderboard retrieved successfully');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/gamification/leaderboard?scope=COMPANY&limit=10",
+									"host": ["{{baseUrl}}"],
+									"path": ["gamification", "leaderboard"],
+									"query": [
+										{"key": "scope", "value": "COMPANY"},
+										{"key": "limit", "value": "10"}
+									]
+								},
+								"description": "Get company-scoped leaderboard with limited results"
+							}
+						}
+					]
+				},
+				{
+					"name": "Error Handling",
+					"item": [
+						{
+							"name": "[GET] Leaderboard - No Authentication",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 401', function () {",
+											"    pm.response.to.have.status(401);",
+											"});",
+											"",
+											"pm.test('Unauthorized error returned', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('error');",
+											"});",
+											"",
+											"console.log('✅ Unauthorized access to leaderboard handled correctly');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/gamification/leaderboard",
+									"host": ["{{baseUrl}}"],
+									"path": ["gamification", "leaderboard"]
+								},
+								"description": "Test authentication requirement for leaderboard endpoint"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🔥 Streak Management",
+			"description": "Daily streak tracking, status monitoring, and freeze management",
+			"item": [
+				{
+					"name": "Happy Path",
+					"item": [
+						{
+							"name": "[GET] Get Streak Status",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Response has success structure', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"    pm.expect(responseJson).to.have.property('data');",
+											"});",
+											"",
+											"pm.test('Streak data structure is complete', function () {",
+											"    const data = pm.response.json().data;",
+											"    pm.expect(data).to.have.property('currentStreak');",
+											"    pm.expect(data).to.have.property('longestStreak');",
+											"    pm.expect(data).to.have.property('status');",
+											"    pm.expect(data).to.have.property('nextMilestone');",
+											"    pm.expect(data).to.have.property('daysUntilMilestone');",
+											"    pm.expect(data).to.have.property('freezesAvailable');",
+											"    pm.expect(data).to.have.property('willExpireAt');",
+											"    pm.expect(data).to.have.property('lastActivityDate');",
+											"});",
+											"",
+											"pm.test('Streak values are valid', function () {",
+											"    const data = pm.response.json().data;",
+											"    pm.expect(data.currentStreak).to.be.a('number');",
+											"    pm.expect(data.longestStreak).to.be.a('number');",
+											"    pm.expect(data.nextMilestone).to.be.a('number');",
+											"    pm.expect(data.daysUntilMilestone).to.be.a('number');",
+											"    pm.expect(data.freezesAvailable).to.be.a('number');",
+											"    pm.expect(data.status).to.be.a('string');",
+											"    pm.expect(data.willExpireAt).to.be.a('string');",
+											"    pm.expect(data.lastActivityDate).to.be.a('string');",
+											"});",
+											"",
+											"pm.test('Streak status is valid', function () {",
+											"    const status = pm.response.json().data.status;",
+											"    const validStatuses = ['ACTIVE', 'EXPIRED', 'FROZEN', 'NEW'];",
+											"    pm.expect(validStatuses).to.include(status);",
+											"});",
+											"",
+											"console.log('✅ Streak status retrieved successfully');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/gamification/streak",
+									"host": ["{{baseUrl}}"],
+									"path": ["gamification", "streak"]
+								},
+								"description": "Get user's current streak status and statistics"
+							}
+						}
+					]
+				},
+				{
+					"name": "Error Handling",
+					"item": [
+						{
+							"name": "[GET] Streak - No Authentication",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 401', function () {",
+											"    pm.response.to.have.status(401);",
+											"});",
+											"",
+											"pm.test('Unauthorized error returned', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('error');",
+											"});",
+											"",
+											"console.log('✅ Unauthorized access to streak handled correctly');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/gamification/streak",
+									"host": ["{{baseUrl}}"],
+									"path": ["gamification", "streak"]
+								},
+								"description": "Test authentication requirement for streak endpoint"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🔔 Notification System",
+			"description": "User notifications, acknowledgments, and admin notification creation",
+			"item": [
+				{
+					"name": "Happy Path",
+					"item": [
+						{
+							"name": "[GET] Get User Notifications",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Response has success structure', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"    pm.expect(responseJson).to.have.property('data');",
+											"});",
+											"",
+											"pm.test('Notifications data structure is valid', function () {",
+											"    const data = pm.response.json().data;",
+											"    pm.expect(data).to.have.property('notifications');",
+											"    pm.expect(data).to.have.property('unreadCount');",
+											"    pm.expect(data).to.have.property('hasMore');",
+											"    pm.expect(data.notifications).to.be.an('array');",
+											"    pm.expect(data.unreadCount).to.be.a('number');",
+											"    pm.expect(data.hasMore).to.be.a('boolean');",
+											"});",
+											"",
+											"if (pm.response.json().data.notifications.length > 0) {",
+											"    pm.test('Notification structure is complete', function () {",
+											"        const notification = pm.response.json().data.notifications[0];",
+											"        pm.expect(notification).to.have.property('id');",
+											"        pm.expect(notification).to.have.property('type');",
+											"        pm.expect(notification).to.have.property('title');",
+											"        pm.expect(notification).to.have.property('message');",
+											"        pm.expect(notification).to.have.property('icon');",
+											"        pm.expect(notification).to.have.property('acknowledged');",
+											"        pm.expect(notification).to.have.property('createdAt');",
+											"    });",
+											"}",
+											"",
+											"console.log('✅ User notifications retrieved successfully');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/gamification/notifications",
+									"host": ["{{baseUrl}}"],
+									"path": ["gamification", "notifications"]
+								},
+								"description": "Get user's notifications with default pagination"
+							}
+						},
+						{
+							"name": "[GET] Get Notifications - With Filters",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Response has success structure', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"    pm.expect(responseJson).to.have.property('data');",
+											"});",
+											"",
+											"pm.test('Filtered notifications returned', function () {",
+											"    const data = pm.response.json().data;",
+											"    pm.expect(data.notifications).to.be.an('array');",
+											"    pm.expect(data.notifications.length).to.be.at.most(5);",
+											"});",
+											"",
+											"console.log('✅ Filtered notifications retrieved successfully');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/gamification/notifications?unreadOnly=true&limit=5&offset=0",
+									"host": ["{{baseUrl}}"],
+									"path": ["gamification", "notifications"],
+									"query": [
+										{"key": "unreadOnly", "value": "true"},
+										{"key": "limit", "value": "5"},
+										{"key": "offset", "value": "0"}
+									]
+								},
+								"description": "Get unread notifications only with pagination"
+							}
+						}
+					]
+				},
+				{
+					"name": "Notification Management",
+					"item": [
+						{
+							"name": "[POST] Create Test Notification (Admin)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 201', function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test('Response has success structure', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"    pm.expect(responseJson).to.have.property('data');",
+											"});",
+											"",
+											"pm.test('Notification created successfully', function () {",
+											"    const data = pm.response.json().data;",
+											"    pm.expect(data).to.have.property('id');",
+											"    pm.expect(data).to.have.property('type', 'maintenance');",
+											"    pm.expect(data).to.have.property('title', 'Test Notification');",
+											"    pm.expect(data).to.have.property('acknowledged', false);",
+											"    ",
+											"    // Store notification ID for acknowledgment test",
+											"    pm.environment.set('testNotificationId', data.id);",
+											"    console.log('✅ Stored testNotificationId:', data.id);",
+											"});",
+											"",
+											"console.log('✅ Test notification created successfully');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{adminAccessToken}}"},
+									{"key": "Content-Type", "value": "application/json"}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"userId\": \"{{userId}}\",\n  \"type\": \"maintenance\",\n  \"title\": \"Test Notification\",\n  \"message\": \"This is a test notification created via Postman collection for testing purposes.\",\n  \"icon\": \"🔧\",\n  \"metadata\": {\n    \"testRun\": true,\n    \"collectionVersion\": \"1.0.0\"\n  }\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/gamification/notifications",
+									"host": ["{{baseUrl}}"],
+									"path": ["gamification", "notifications"]
+								},
+								"description": "Create a test notification as admin user (requires seeded admin)"
+							}
+						},
+						{
+							"name": "[POST] Acknowledge Notification",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 200', function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test('Response has success structure', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('success', true);",
+											"    pm.expect(responseJson).to.have.property('data');",
+											"});",
+											"",
+											"pm.test('Notification acknowledged', function () {",
+											"    const data = pm.response.json().data;",
+											"    pm.expect(data).to.have.property('message', 'Notification acknowledged');",
+											"});",
+											"",
+											"console.log('✅ Notification acknowledged successfully');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"},
+									{"key": "Content-Type", "value": "application/json"}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"actionTaken\": \"viewed\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/gamification/notifications/{{testNotificationId}}/acknowledge",
+									"host": ["{{baseUrl}}"],
+									"path": ["gamification", "notifications", "{{testNotificationId}}", "acknowledge"]
+								},
+								"description": "Acknowledge a notification (mark as read)"
+							}
+						}
+					]
+				},
+				{
+					"name": "Error Handling",
+					"item": [
+						{
+							"name": "[GET] Notifications - No Authentication",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 401', function () {",
+											"    pm.response.to.have.status(401);",
+											"});",
+											"",
+											"pm.test('Unauthorized error returned', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('error');",
+											"});",
+											"",
+											"console.log('✅ Unauthorized access to notifications handled correctly');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/gamification/notifications",
+									"host": ["{{baseUrl}}"],
+									"path": ["gamification", "notifications"]
+								},
+								"description": "Test authentication requirement for notifications endpoint"
+							}
+						},
+						{
+							"name": "[POST] Acknowledge Invalid Notification",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 404', function () {",
+											"    pm.response.to.have.status(404);",
+											"});",
+											"",
+											"pm.test('Error structure is correct', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('error');",
+											"    pm.expect(responseJson).to.have.property('code', 'GAMIFICATION_NOTIFICATION_NOT_FOUND');",
+											"    pm.expect(responseJson).to.have.property('statusCode', 404);",
+											"});",
+											"",
+											"console.log('✅ Invalid notification ID error handled correctly');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"},
+									{"key": "Content-Type", "value": "application/json"}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"actionTaken\": \"viewed\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/gamification/notifications/00000000-0000-0000-0000-000000000000/acknowledge",
+									"host": ["{{baseUrl}}"],
+									"path": ["gamification", "notifications", "00000000-0000-0000-0000-000000000000", "acknowledge"]
+								},
+								"description": "Test error handling for non-existent notification"
+							}
+						},
+						{
+							"name": "[POST] Create Notification - Invalid Data",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 400', function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test('Validation error structure is correct', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('error');",
+											"    pm.expect(responseJson).to.have.property('code', 'GAMIFICATION_VALIDATION_FAILED');",
+											"    pm.expect(responseJson).to.have.property('statusCode', 400);",
+											"    pm.expect(responseJson).to.have.property('details');",
+											"    pm.expect(responseJson.details).to.be.an('array');",
+											"});",
+											"",
+											"console.log('✅ Validation error handled correctly');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{adminAccessToken}}"},
+									{"key": "Content-Type", "value": "application/json"}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"userId\": \"\",\n  \"type\": \"invalid_type\",\n  \"title\": \"\",\n  \"message\": \"\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/gamification/notifications",
+									"host": ["{{baseUrl}}"],
+									"path": ["gamification", "notifications"]
+								},
+								"description": "Test validation error handling for create notification"
+							}
+						},
+						{
+							"name": "[POST] Create Notification - Forbidden (Non-Admin)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test('Status code is 403', function () {",
+											"    pm.response.to.have.status(403);",
+											"});",
+											"",
+											"pm.test('Forbidden error returned', function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property('error');",
+											"});",
+											"",
+											"console.log('✅ Authorization error for non-admin handled correctly');"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{"key": "Authorization", "value": "Bearer {{accessToken}}"},
+									{"key": "Content-Type", "value": "application/json"}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"userId\": \"{{userId}}\",\n  \"type\": \"reminder\",\n  \"title\": \"Unauthorized Test\",\n  \"message\": \"This should fail for non-admin users\",\n  \"icon\": \"❌\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/gamification/notifications",
+									"host": ["{{baseUrl}}"],
+									"path": ["gamification", "notifications"]
+								},
+								"description": "Test authorization requirement for notification creation"
+							}
+						}
+					]
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"console.log('Running gamification request to:', pm.request.url);",
+					"",
+					"if (!pm.request.headers.has('Content-Type') && pm.request.body && pm.request.body.mode === 'raw') {",
+					"    pm.request.headers.add({key: 'Content-Type', value: 'application/json'});",
+					"}"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"pm.test('Content-Type is JSON', function () {",
+					"    if (pm.response.code !== 204) {",
+					"        pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+					"    }",
+					"});",
+					"",
+					"pm.test('Response structure follows gamification domain error architecture', function () {",
+					"    if (pm.response.code !== 204 && pm.response.text()) {",
+					"        const responseJson = pm.response.json();",
+					"        ",
+					"        if (pm.response.code >= 200 && pm.response.code < 300) {",
+					"            // Success response structure",
+					"            pm.expect(responseJson).to.have.property('success', true);",
+					"            pm.expect(responseJson).to.have.property('data');",
+					"        }",
+					"        ",
+					"        if (pm.response.code >= 400) {",
+					"            // Error response structure",
+					"            pm.expect(responseJson).to.have.property('error');",
+					"            if (responseJson.code) {",
+					"                pm.expect(responseJson.code).to.be.a('string');",
+					"                pm.expect(responseJson.statusCode).to.be.a('number');",
+					"            }",
+					"        }",
+					"    }",
+					"});"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "collectionVersion",
+			"value": "1.0.0",
+			"type": "string"
+		},
+		{
+			"key": "timestamp",
+			"value": "{{$timestamp}}",
+			"type": "string"
+		}
+	]
+}

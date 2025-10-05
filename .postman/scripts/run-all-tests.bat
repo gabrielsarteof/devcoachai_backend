@@ -177,6 +177,30 @@ if %errorlevel% equ 0 (
 )
 set /a TOTAL_TESTS+=1
 
+REM Run Gamification Collection
+echo.
+echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+echo Running: Gamification Module
+echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+echo.
+
+newman run "%COLLECTIONS_DIR%\gamification-collection.json" ^
+    -e "%ENV_FILE%" ^
+    --reporters cli,json,htmlextra ^
+    --reporter-json-export "%REPORTS_DIR%\%TIMESTAMP%\gamification-report.json" ^
+    --reporter-htmlextra-export "%REPORTS_DIR%\%TIMESTAMP%\gamification-report.html" ^
+    --reporter-htmlextra-title "Gamification Module" ^
+    --color on ^
+    --delay-request 100
+
+if %errorlevel% equ 0 (
+    echo [PASSED] Gamification Module
+) else (
+    echo [FAILED] Gamification Module
+    set /a FAILED_TESTS+=1
+)
+set /a TOTAL_TESTS+=1
+
 REM Run AI Collection
 echo.
 echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

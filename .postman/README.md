@@ -46,29 +46,21 @@ Coleções Postman completas para testar todos os módulos da API DevCoach AI co
 - Domain Error Validation (METRIC_INVALID_ATTEMPT, METRIC_VALIDATION_FAILED, METRIC_DATA_INCONSISTENT, METRIC_ATTEMPT_NOT_FOUND)
 - Risk Assessment e Performance Insights
 
-### 4. **AI Module** (`ai-collection.json`)
-- ✅ 40+ testes organizados
-- AI Chat (POST /ai/chat com múltiplos providers: OpenAI, Anthropic)
-- AI Models (GET /ai/models listando modelos disponíveis)
-- AI Usage (GET /ai/usage tracking de tokens e custos)
-- Copy/Paste Tracking (POST /ai/track-copy-paste)
-- Governance - Prompt Validation (POST /ai/governance/validate)
-- Governance - Prompt Analysis (POST /ai/governance/analyze-prompt)
-- Governance - Temporal Behavior (POST /ai/governance/analyze-temporal-behavior)
-- Governance - Educational Feedback (POST /ai/governance/generate-feedback)
-- Governance - Metrics & Stats (GET /ai/governance/metrics, GET /ai/governance/stats - ARCHITECT/TECH_LEAD only)
-- Governance - Cache Management (POST /ai/governance/refresh-challenge-cache, POST /ai/governance/prewarm-cache, POST /ai/governance/clear-validation-cache - ARCHITECT/TECH_LEAD only)
-- Domain Error Validation (AI_CHALLENGE_NOT_FOUND, AI_INVALID_PROVIDER, AI_MODEL_NOT_SUPPORTED, AI_RATE_LIMIT_EXCEEDED, AI_PROVIDER_ERROR, AI_UNAUTHORIZED, AI_FORBIDDEN, AI_NOT_IMPLEMENTED, AI_VALIDATION_FAILED)
-
-**Important:** The AI module requires valid API keys configured in your .env file:
-- `OPENAI_API_KEY` - for OpenAI provider tests
-- `ANTHROPIC_API_KEY` - for Anthropic provider tests
-
----
+### 5. **Gamification Module** (`gamification-collection.json`)
+- ✅ 106 testes organizados
+- Dashboard (GET /gamification/dashboard com métricas XP, badges, streak)
+- Badges (GET /gamification/badges listando conquistas do usuário)
+- Leaderboards (GET /gamification/leaderboard com tipos: XP_TOTAL, XP_WEEKLY, BADGES_COUNT, STREAK_CURRENT)
+- Scopes (GLOBAL, COMPANY, TEAM) e Períodos (ALL_TIME, WEEKLY, DAILY, MONTHLY)
+- Streaks (GET /gamification/streak com status atual e histórico)
+- Notifications (GET/POST/PATCH /gamification/notifications com tipos: badge_unlock, level_up, streak_milestone, leaderboard_position, challenge_completion, maintenance)
+- Domain Error Validation (GAMIFICATION_USER_NOT_FOUND, LEADERBOARD_NOT_AVAILABLE, NOTIFICATION_NOT_FOUND, INVALID_NOTIFICATION_TYPE)
+- Cache Management para performance otimizada
+- Enterprise Features (company/team leaderboards, role-based notification creation)
 
 ## 🌍 Environments Consolidados
 
-Os environments globais funcionam com TODAS as collections:
+Os environments globais funcionam com todas as collections:
 
 ### **Development** (Recomendado)
 - Arquivo: `global-environment.json`
@@ -470,6 +462,7 @@ npm run dev
 │   ├── auth-collection.json                    # Auth module
 │   ├── challenges-collection.json              # Challenges module
 │   ├── metrics-collection.json                 # Metrics module
+│   ├── gamification-collection.json            # Gamification module
 │   └── ai-collection.json                      # AI module
 ├── environments/                                # Environments consolidados
 │   ├── global-environment.json                 # Development (recomendado)
@@ -488,6 +481,8 @@ npm run dev
         ├── challenges-report.json
         ├── metrics-report.html
         ├── metrics-report.json
+        ├── gamification-report.html
+        ├── gamification-report.json
         ├── ai-report.html
         └── ai-report.json
 ```

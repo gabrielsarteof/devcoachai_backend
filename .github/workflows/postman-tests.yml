@@ -120,6 +120,16 @@ jobs:
             --reporter-json-export ./newman/metrics-report.json \
             --color on
 
+      - name: 🎮 Run Gamification Module Tests
+        if: success() || failure()
+        run: |
+          newman run .postman/collections/gamification-collection.json \
+            -e .postman/environments/global-environment.json \
+            --env-var "baseUrl=http://localhost:3333" \
+            --reporters cli,json \
+            --reporter-json-export ./newman/gamification-report.json \
+            --color on
+
       - name: 🧪 Run AI Module Tests
         if: success() || failure()
         run: |

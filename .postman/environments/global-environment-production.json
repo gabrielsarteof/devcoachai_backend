@@ -92,6 +92,48 @@
 			"description": "Environment identifier",
 			"type": "default",
 			"enabled": true
+		},
+		{
+			"key": "gamificationDashboardCached",
+			"value": "",
+			"description": "Cached dashboard data for performance tests",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "userCurrentStreak",
+			"value": "",
+			"description": "User's current streak count (automatically set)",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "userLongestStreak",
+			"value": "",
+			"description": "User's longest streak record (automatically set)",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "leaderboardPosition",
+			"value": "",
+			"description": "User's position in leaderboard (automatically set)",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "totalGamificationNotifications",
+			"value": "",
+			"description": "Total notification count for pagination tests",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "unlockedBadgesCount",
+			"value": "",
+			"description": "Number of unlocked badges (automatically set)",
+			"type": "default",
+			"enabled": true
 		}
 	],
 	"_postman_variable_scope": "environment",

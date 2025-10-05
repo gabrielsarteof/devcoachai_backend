@@ -28,7 +28,19 @@ export class BadgeEntity {
 
   static create(data: Omit<BadgeProps, 'id'> & { requirement: BadgeRequirement }): BadgeEntity {
     const requirement = BadgeRequirementVO.create(data.requirement);
-    
+
+    const props: BadgeProps = {
+      id: randomUUID(),
+      ...data,
+      requirement,
+    };
+
+    return new BadgeEntity(props);
+  }
+
+  static createForTests(data: Omit<BadgeProps, 'id' | 'requirement'> & { requirement: BadgeRequirement }): BadgeEntity {
+    const requirement = BadgeRequirementVO.create(data.requirement);
+
     const props: BadgeProps = {
       id: randomUUID(),
       ...data,

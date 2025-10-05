@@ -140,7 +140,7 @@ describe('BadgeService', () => {
   });
 
   describe('unlockBadge', () => {
-    const mockBadge = BadgeEntity.create({
+    const mockBadge = BadgeEntity.createForTests({
       key: 'test-badge',
       name: 'Test Badge',
       description: 'A test badge',
@@ -183,7 +183,7 @@ describe('BadgeService', () => {
 
   describe('getAllBadges', () => {
     const mockBadges = [
-      BadgeEntity.create({
+      BadgeEntity.createForTests({
         key: 'badge-1',
         name: 'Badge 1',
         description: 'First badge',
@@ -221,7 +221,7 @@ describe('BadgeService', () => {
   describe('getUserBadges', () => {
     it('should return user badges from repository', async () => {
       const mockUserBadges = [
-        BadgeEntity.create({
+        BadgeEntity.createForTests({
           key: 'user-badge',
           name: 'User Badge',
           description: 'A user badge',

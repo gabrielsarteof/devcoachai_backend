@@ -77,7 +77,7 @@ describe('Challenge Module Integration Tests', () => {
 
     const techLeadResponse = await app.inject({
       method: 'POST',
-      url: '/auth/register',
+      url: '/api/auth/register',
       payload: {
         email: `techlead-${timestamp}@company.com`,
         password: 'TechLead@123',
@@ -101,7 +101,7 @@ describe('Challenge Module Integration Tests', () => {
 
     const techLeadLoginResponse = await app.inject({
       method: 'POST',
-      url: '/auth/login',
+      url: '/api/auth/login',
       payload: {
         email: `techlead-${timestamp}@company.com`,
         password: 'TechLead@123',
@@ -117,7 +117,7 @@ describe('Challenge Module Integration Tests', () => {
 
     const juniorResponse = await app.inject({
       method: 'POST',
-      url: '/auth/register',
+      url: '/api/auth/register',
       payload: {
         email: `junior-${timestamp}@company.com`,
         password: 'Junior@123',
@@ -136,7 +136,7 @@ describe('Challenge Module Integration Tests', () => {
 
     const seniorResponse = await app.inject({
       method: 'POST',
-      url: '/auth/register',
+      url: '/api/auth/register',
       payload: {
         email: `senior-${timestamp}@company.com`,
         password: 'Senior@123',
@@ -160,7 +160,7 @@ describe('Challenge Module Integration Tests', () => {
 
     const seniorLoginResponse = await app.inject({
       method: 'POST',
-      url: '/auth/login',
+      url: '/api/auth/login',
       payload: {
         email: `senior-${timestamp}@company.com`,
         password: 'Senior@123',
@@ -234,7 +234,7 @@ describe('Challenge Module Integration Tests', () => {
 
     const createChallengeResponse = await app.inject({
       method: 'POST',
-      url: '/challenges',
+      url: '/api/challenges',
       headers: {
         authorization: `Bearer ${techLeadTokens.accessToken}`,
       },
@@ -254,7 +254,7 @@ describe('Challenge Module Integration Tests', () => {
   });
 
 describe('Challenge Management (Admin Routes)', () => {
-  describe('POST /challenges', () => {
+  describe('POST /api/challenges', () => {
     it('should allow TECH_LEAD to create a challenge', async () => {
       const challengeData = {
         slug: 'new-challenge',
@@ -301,7 +301,7 @@ describe('Challenge Management (Admin Routes)', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: '/challenges',
+        url: '/api/challenges',
         headers: {
           authorization: `Bearer ${techLeadTokens.accessToken}`,
         },
@@ -369,7 +369,7 @@ describe('Challenge Management (Admin Routes)', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: '/challenges',
+        url: '/api/challenges',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
         },
@@ -432,7 +432,7 @@ describe('Challenge Management (Admin Routes)', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: '/challenges',
+        url: '/api/challenges',
         headers: {
           authorization: `Bearer ${techLeadTokens.accessToken}`,
         },
@@ -491,7 +491,7 @@ describe('Challenge Management (Admin Routes)', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: '/challenges',
+        url: '/api/challenges',
         headers: {
           authorization: `Bearer ${techLeadTokens.accessToken}`,
         },
@@ -513,7 +513,7 @@ describe('Challenge Management (Admin Routes)', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: '/challenges',
+        url: '/api/challenges',
         headers: {
           authorization: `Bearer ${techLeadTokens.accessToken}`,
         },
@@ -535,7 +535,7 @@ describe('Challenge Management (Admin Routes)', () => {
 
       const response = await app.inject({
         method: 'PATCH',
-        url: `/challenges/${testChallenge.id}`,
+        url: `/api/challenges/${testChallenge.id}`,
         headers: {
           authorization: `Bearer ${techLeadTokens.accessToken}`,
         },
@@ -560,7 +560,7 @@ describe('Challenge Management (Admin Routes)', () => {
 
       const response = await app.inject({
         method: 'PATCH',
-        url: `/challenges/${nonExistentId}`,
+        url: `/api/challenges/${nonExistentId}`,
         headers: {
           authorization: `Bearer ${techLeadTokens.accessToken}`,
         },
@@ -582,7 +582,7 @@ describe('Challenge Management (Admin Routes)', () => {
 
       const response = await app.inject({
         method: 'PATCH',
-        url: `/challenges/${testChallenge.id}`,
+        url: `/api/challenges/${testChallenge.id}`,
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
         },
@@ -630,7 +630,7 @@ describe('Challenge Management (Admin Routes)', () => {
 
       await app.inject({
         method: 'POST',
-        url: '/challenges',
+        url: '/api/challenges',
         headers: {
           authorization: `Bearer ${techLeadTokens.accessToken}`,
         },
@@ -643,7 +643,7 @@ describe('Challenge Management (Admin Routes)', () => {
 
       const response = await app.inject({
         method: 'PATCH',
-        url: `/challenges/${testChallenge.id}`,
+        url: `/api/challenges/${testChallenge.id}`,
         headers: {
           authorization: `Bearer ${techLeadTokens.accessToken}`,
         },
@@ -658,7 +658,7 @@ describe('Challenge Management (Admin Routes)', () => {
     it('should allow TECH_LEAD to delete a challenge', async () => {
       const response = await app.inject({
         method: 'DELETE',
-        url: `/challenges/${testChallenge.id}`,
+        url: `/api/challenges/${testChallenge.id}`,
         headers: {
           authorization: `Bearer ${techLeadTokens.accessToken}`,
         },
@@ -675,7 +675,7 @@ describe('Challenge Management (Admin Routes)', () => {
     it('should forbid SENIOR from deleting a challenge', async () => {
       const response = await app.inject({
         method: 'DELETE',
-        url: `/challenges/${testChallenge.id}`,
+        url: `/api/challenges/${testChallenge.id}`,
         headers: {
           authorization: `Bearer ${seniorTokens.accessToken}`,
         },
@@ -694,7 +694,7 @@ describe('Challenge Management (Admin Routes)', () => {
     it('should return 404 when deleting non-existent challenge', async () => {
       const response = await app.inject({
         method: 'DELETE',
-        url: '/challenges/cuid-that-does-not-exist',
+        url: '/api/challenges/cuid-that-does-not-exist',
         headers: {
           authorization: `Bearer ${techLeadTokens.accessToken}`,
         },
@@ -709,11 +709,11 @@ describe('Challenge Management (Admin Routes)', () => {
 });
 
 describe('User Interaction (Authenticated Routes)', () => {
-  describe('POST /challenges/:id/start', () => {
+  describe('POST /api/challenges/:id/start', () => {
     it('should allow JUNIOR to start a challenge attempt', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: `/challenges/${testChallenge.id}/start`,
+        url: `/api/challenges/${testChallenge.id}/start`,
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
         },
@@ -743,7 +743,7 @@ describe('User Interaction (Authenticated Routes)', () => {
     it('should fail when language is not supported', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: `/challenges/${testChallenge.id}/start`,
+        url: `/api/challenges/${testChallenge.id}/start`,
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
         },
@@ -761,7 +761,7 @@ describe('User Interaction (Authenticated Routes)', () => {
     it('should resume existing attempt if one is IN_PROGRESS', async () => {
       const firstResponse = await app.inject({
         method: 'POST',
-        url: `/challenges/${testChallenge.id}/start`,
+        url: `/api/challenges/${testChallenge.id}/start`,
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
         },
@@ -774,7 +774,7 @@ describe('User Interaction (Authenticated Routes)', () => {
 
       const secondResponse = await app.inject({
         method: 'POST',
-        url: `/challenges/${testChallenge.id}/start`,
+        url: `/api/challenges/${testChallenge.id}/start`,
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
         },
@@ -795,7 +795,7 @@ describe('User Interaction (Authenticated Routes)', () => {
     it('should return 401 when starting challenge without authentication', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: `/challenges/${testChallenge.id}/start`,
+        url: `/api/challenges/${testChallenge.id}/start`,
         payload: {
           language: 'javascript',
         },
@@ -813,7 +813,7 @@ describe('User Interaction (Authenticated Routes)', () => {
     beforeEach(async () => {
       const startResponse = await app.inject({
         method: 'POST',
-        url: `/challenges/${testChallenge.id}/start`,
+        url: `/api/challenges/${testChallenge.id}/start`,
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
         },
@@ -831,7 +831,7 @@ describe('User Interaction (Authenticated Routes)', () => {
     it('should successfully submit a correct solution', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/challenges/submit',
+        url: '/api/challenges/submit',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
         },
@@ -863,7 +863,7 @@ describe('User Interaction (Authenticated Routes)', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: '/challenges/submit',
+        url: '/api/challenges/submit',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
         },
@@ -883,7 +883,7 @@ describe('User Interaction (Authenticated Routes)', () => {
     it('should fail when user does not own the attempt', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/challenges/submit',
+        url: '/api/challenges/submit',
         headers: {
           authorization: `Bearer ${seniorTokens.accessToken}`,
         },
@@ -901,7 +901,7 @@ describe('User Interaction (Authenticated Routes)', () => {
     it('should return 401 when submitting solution without authentication', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/challenges/submit',
+        url: '/api/challenges/submit',
         payload: {
           challengeId: testChallenge.id,
           attemptId: 'some-attempt-id',
@@ -922,7 +922,7 @@ describe('User Interaction (Authenticated Routes)', () => {
     beforeEach(async () => {
       const startResponse = await app.inject({
         method: 'POST',
-        url: `/challenges/${testChallenge.id}/start`,
+        url: `/api/challenges/${testChallenge.id}/start`,
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
         },
@@ -940,7 +940,7 @@ describe('User Interaction (Authenticated Routes)', () => {
     it('should analyze code and detect traps', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/challenges/analyze',
+        url: '/api/challenges/analyze',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
         },
@@ -967,7 +967,7 @@ describe('User Interaction (Authenticated Routes)', () => {
     it('should return 401 when analyzing code without authentication', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/challenges/analyze',
+        url: '/api/challenges/analyze',
         payload: {
           challengeId: testChallenge.id,
           attemptId: attemptId,
@@ -984,7 +984,7 @@ describe('User Interaction (Authenticated Routes)', () => {
     it('should return 403 when analyzing code from another user attempt', async () => {
       const anotherUserStartResponse = await app.inject({
         method: 'POST',
-        url: `/challenges/${testChallenge.id}/start`,
+        url: `/api/challenges/${testChallenge.id}/start`,
         headers: {
           authorization: `Bearer ${seniorTokens.accessToken}`,
         },
@@ -999,7 +999,7 @@ describe('User Interaction (Authenticated Routes)', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: '/challenges/analyze',
+        url: '/api/challenges/analyze',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
         },
@@ -1019,11 +1019,11 @@ describe('User Interaction (Authenticated Routes)', () => {
 });
 
 describe('Challenge Discovery (Public Routes)', () => {
-  describe('GET /challenges', () => {
+  describe('GET /api/challenges', () => {
     it('should list challenges for anonymous users', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/challenges',
+        url: '/api/challenges',
       });
 
       expect(response.statusCode).toBe(200);
@@ -1040,7 +1040,7 @@ describe('Challenge Discovery (Public Routes)', () => {
     it('should list challenges with completion status for authenticated users', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/challenges',
+        url: '/api/challenges',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
         },
@@ -1060,7 +1060,7 @@ describe('Challenge Discovery (Public Routes)', () => {
     it('should filter challenges by difficulty', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/challenges?difficulty=EASY',
+        url: '/api/challenges?difficulty=EASY',
       });
 
       expect(response.statusCode).toBe(200);
@@ -1073,7 +1073,7 @@ describe('Challenge Discovery (Public Routes)', () => {
     it('should filter challenges by category', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/challenges?category=BACKEND',
+        url: '/api/challenges?category=BACKEND',
       });
 
       expect(response.statusCode).toBe(200);
@@ -1086,7 +1086,7 @@ describe('Challenge Discovery (Public Routes)', () => {
     it('should paginate results with limit and offset', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/challenges?limit=1&offset=0',
+        url: '/api/challenges?limit=1&offset=0',
       });
 
       expect(response.statusCode).toBe(200);
@@ -1096,11 +1096,11 @@ describe('Challenge Discovery (Public Routes)', () => {
     });
   });
 
-  describe('GET /challenges/:idOrSlug', () => {
+  describe('GET /api/challenges/:idOrSlug', () => {
     it('should get challenge by ID', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: `/challenges/${testChallenge.id}`,
+        url: `/api/challenges/${testChallenge.id}`,
       });
 
       expect(response.statusCode).toBe(200);
@@ -1116,7 +1116,7 @@ describe('Challenge Discovery (Public Routes)', () => {
     it('should get challenge by slug', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/challenges/test-challenge',
+        url: '/api/challenges/test-challenge',
       });
 
       expect(response.statusCode).toBe(200);
@@ -1129,7 +1129,7 @@ describe('Challenge Discovery (Public Routes)', () => {
     it('should include user attempts when authenticated', async () => {
       await app.inject({
         method: 'POST',
-        url: `/challenges/${testChallenge.id}/start`,
+        url: `/api/challenges/${testChallenge.id}/start`,
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
         },
@@ -1140,7 +1140,7 @@ describe('Challenge Discovery (Public Routes)', () => {
 
       const response = await app.inject({
         method: 'GET',
-        url: `/challenges/${testChallenge.id}`,
+        url: `/api/challenges/${testChallenge.id}`,
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
         },
@@ -1157,7 +1157,7 @@ describe('Challenge Discovery (Public Routes)', () => {
     it('should return 404 for non-existent slug', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/challenges/non-existent-challenge',
+        url: '/api/challenges/non-existent-challenge',
       });
 
       expect(response.statusCode).toBe(404);

@@ -4,7 +4,7 @@
 	"values": [
 		{
 			"key": "baseUrl",
-			"value": "http://localhost:3333",
+			"value": "http://localhost:3333/api",
 			"description": "Base URL for the API server",
 			"type": "default",
 			"enabled": true

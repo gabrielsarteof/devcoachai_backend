@@ -51,7 +51,7 @@ describe('Authentication Integration Tests', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: '/auth/register',
+        url: '/api/auth/register',
         payload: userData,
       });
 
@@ -87,7 +87,7 @@ describe('Authentication Integration Tests', () => {
     it('should fail with invalid email format', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/auth/register',
+        url: '/api/auth/register',
         payload: {
           email: 'invalid-email',
           password: 'Test@123456',
@@ -104,7 +104,7 @@ describe('Authentication Integration Tests', () => {
     it('should fail with weak password', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/auth/register',
+        url: '/api/auth/register',
         payload: {
           email: 'test@example.com',
           password: 'weak',
@@ -129,7 +129,7 @@ describe('Authentication Integration Tests', () => {
       // Primeiro registro
       const firstResponse = await app.inject({
         method: 'POST',
-        url: '/auth/register',
+        url: '/api/auth/register',
         payload: userData,
       });
       expect(firstResponse.statusCode).toBe(201);
@@ -137,7 +137,7 @@ describe('Authentication Integration Tests', () => {
       // Segundo registro com mesmo email
       const response = await app.inject({
         method: 'POST',
-        url: '/auth/register',
+        url: '/api/auth/register',
         payload: {
           ...userData,
           name: 'Another User',
@@ -156,7 +156,7 @@ describe('Authentication Integration Tests', () => {
       // Criar usuário de teste antes de cada login test
       const response = await app.inject({
         method: 'POST',
-        url: '/auth/register',
+        url: '/api/auth/register',
         payload: {
           email: 'test@example.com',
           password: 'Test@123456',
@@ -173,7 +173,7 @@ describe('Authentication Integration Tests', () => {
     it('should login successfully with valid credentials', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/auth/login',
+        url: '/api/auth/login',
         payload: {
           email: 'test@example.com',
           password: 'Test@123456',
@@ -201,7 +201,7 @@ describe('Authentication Integration Tests', () => {
     it('should fail with invalid password', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/auth/login',
+        url: '/api/auth/login',
         payload: {
           email: 'test@example.com',
           password: 'WrongPassword@123',
@@ -216,7 +216,7 @@ describe('Authentication Integration Tests', () => {
     it('should fail with non-existent email', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/auth/login',
+        url: '/api/auth/login',
         payload: {
           email: 'nonexistent@example.com',
           password: 'Test@123456',
@@ -231,7 +231,7 @@ describe('Authentication Integration Tests', () => {
     it('should fail with invalid email format', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/auth/login',
+        url: '/api/auth/login',
         payload: {
           email: 'invalid-email',
           password: 'Test@123456',
@@ -249,7 +249,7 @@ describe('Authentication Integration Tests', () => {
       // Criar usuário e obter tokens
       const response = await app.inject({
         method: 'POST',
-        url: '/auth/register',
+        url: '/api/auth/register',
         payload: {
           email: 'test@example.com',
           password: 'Test@123456',
@@ -269,7 +269,7 @@ describe('Authentication Integration Tests', () => {
     it('should refresh tokens successfully', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/auth/refresh',
+        url: '/api/auth/refresh',
         payload: {
           refreshToken: tokens.refreshToken,
         },
@@ -286,7 +286,7 @@ describe('Authentication Integration Tests', () => {
       // Verificar se o novo token funciona
       const testNewToken = await app.inject({
         method: 'GET',
-        url: '/auth/me',
+        url: '/api/auth/me',
         headers: {
           authorization: `Bearer ${body.data.accessToken}`,
         },
@@ -298,7 +298,7 @@ describe('Authentication Integration Tests', () => {
     it('should fail with invalid refresh token', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/auth/refresh',
+        url: '/api/auth/refresh',
         payload: {
           refreshToken: 'invalid-token',
         },
@@ -312,7 +312,7 @@ describe('Authentication Integration Tests', () => {
     it('should fail without refresh token', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/auth/refresh',
+        url: '/api/auth/refresh',
         payload: {},
       });
 
@@ -322,12 +322,12 @@ describe('Authentication Integration Tests', () => {
     });
   });
 
-  describe('GET /auth/me', () => {
+  describe('GET /api/auth/me', () => {
     beforeEach(async () => {
       // Criar usuário e obter tokens
       const response = await app.inject({
         method: 'POST',
-        url: '/auth/register',
+        url: '/api/auth/register',
         payload: {
           email: 'test@example.com',
           password: 'Test@123456',
@@ -348,7 +348,7 @@ describe('Authentication Integration Tests', () => {
     it('should return current user with valid token', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/auth/me',
+        url: '/api/auth/me',
         headers: {
           authorization: `Bearer ${tokens.accessToken}`,
         },
@@ -359,16 +359,17 @@ describe('Authentication Integration Tests', () => {
 
       expect(body).toHaveProperty('success', true);
       expect(body).toHaveProperty('data');
-      expect(body.data.id).toBe(testUser.id);
-      expect(body.data.email).toBe('test@example.com');
-      expect(body.data.name).toBe('Test User');
-      expect(body.data).not.toHaveProperty('password');
+      expect(body.data).toHaveProperty('user');
+      expect(body.data.user.id).toBe(testUser.id);
+      expect(body.data.user.email).toBe('test@example.com');
+      expect(body.data.user.name).toBe('Test User');
+      expect(body.data.user).not.toHaveProperty('password');
     });
 
     it('should fail without authorization header', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/auth/me',
+        url: '/api/auth/me',
       });
 
       expect(response.statusCode).toBe(401);
@@ -379,7 +380,7 @@ describe('Authentication Integration Tests', () => {
     it('should fail with invalid token', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/auth/me',
+        url: '/api/auth/me',
         headers: {
           authorization: 'Bearer invalid-token',
         },
@@ -396,7 +397,7 @@ describe('Authentication Integration Tests', () => {
       // Criar usuário e obter tokens
       const response = await app.inject({
         method: 'POST',
-        url: '/auth/register',
+        url: '/api/auth/register',
         payload: {
           email: 'test@example.com',
           password: 'Test@123456',
@@ -416,7 +417,7 @@ describe('Authentication Integration Tests', () => {
     it('should logout successfully', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/auth/logout',
+        url: '/api/auth/logout',
         headers: {
           authorization: `Bearer ${tokens.accessToken}`,
         },
@@ -430,7 +431,7 @@ describe('Authentication Integration Tests', () => {
       // Verificar se o refresh token foi invalidado tentando refrescar
       const refreshResponse = await app.inject({
         method: 'POST',
-        url: '/auth/refresh',
+        url: '/api/auth/refresh',
         payload: {
           refreshToken: tokens.refreshToken,
         },
@@ -443,7 +444,7 @@ describe('Authentication Integration Tests', () => {
     it('should fail without authentication', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/auth/logout',
+        url: '/api/auth/logout',
         payload: {
           refreshToken: tokens.refreshToken,
         },
@@ -457,7 +458,7 @@ describe('Authentication Integration Tests', () => {
     it('should fail with invalid refresh token in payload', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/auth/logout',
+        url: '/api/auth/logout',
         headers: {
           authorization: `Bearer ${tokens.accessToken}`,
         },

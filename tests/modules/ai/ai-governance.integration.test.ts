@@ -80,7 +80,7 @@ describe('AI Governance Integration Tests', () => {
     // Criação de usuário admin
     const adminResponse = await app.inject({
       method: 'POST',
-      url: '/auth/register',
+      url: '/api/auth/register',
       payload: {
         email: `admin-${timestamp}@company.com`,
         password: 'Admin@123',
@@ -109,7 +109,7 @@ describe('AI Governance Integration Tests', () => {
     // Login admin para tokens atualizados
     const adminLoginResponse = await app.inject({
       method: 'POST',
-      url: '/auth/login',
+      url: '/api/auth/login',
       payload: {
         email: `admin-${timestamp}@company.com`,
         password: 'Admin@123',
@@ -130,7 +130,7 @@ describe('AI Governance Integration Tests', () => {
     // Criação de usuário junior
     const juniorResponse = await app.inject({
       method: 'POST',
-      url: '/auth/register',
+      url: '/api/auth/register',
       payload: {
         email: `junior-${timestamp}@company.com`,
         password: 'Junior@123',
@@ -150,7 +150,7 @@ describe('AI Governance Integration Tests', () => {
     // Criação de usuário senior
     const seniorResponse = await app.inject({
       method: 'POST',
-      url: '/auth/register',
+      url: '/api/auth/register',
       payload: {
         email: `senior-${timestamp}@company.com`,
         password: 'Senior@123',
@@ -175,7 +175,7 @@ describe('AI Governance Integration Tests', () => {
     // Login senior para tokens atualizados
     const seniorLoginResponse = await app.inject({
       method: 'POST',
-      url: '/auth/login',
+      url: '/api/auth/login',
       payload: {
         email: `senior-${timestamp}@company.com`,
         password: 'Senior@123',
@@ -192,7 +192,7 @@ describe('AI Governance Integration Tests', () => {
     // Criação de challenge para testes
     const challengeResponse = await app.inject({
       method: 'POST',
-      url: '/challenges',
+      url: 'api/challenges',
       headers: {
         authorization: `Bearer ${seniorTokens.accessToken}`,
       },
@@ -234,7 +234,7 @@ describe('AI Governance Integration Tests', () => {
     // Criação de attempt para testes
     const attemptResponse = await app.inject({
       method: 'POST',
-      url: `/challenges/${testChallenge.id}/start`,
+      url: `api/challenges/${testChallenge.id}/start`,
       headers: {
         authorization: `Bearer ${juniorTokens.accessToken}`,
       },
@@ -252,7 +252,7 @@ describe('AI Governance Integration Tests', () => {
     it('should validate and accept legitimate prompt', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/governance/validate',
+        url: '/api/ai/governance/validate',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -290,7 +290,7 @@ describe('AI Governance Integration Tests', () => {
       for (const prompt of suspiciousPrompts) {
         const response = await app.inject({
           method: 'POST',
-          url: '/ai/governance/validate',
+          url: '/api/ai/governance/validate',
           headers: {
             authorization: `Bearer ${juniorTokens.accessToken}`,
             'content-type': 'application/json',
@@ -324,7 +324,7 @@ describe('AI Governance Integration Tests', () => {
       for (const prompt of solutionSeekingPrompts) {
         const response = await app.inject({
           method: 'POST',
-          url: '/ai/governance/validate',
+          url: '/api/ai/governance/validate',
           headers: {
             authorization: `Bearer ${juniorTokens.accessToken}`,
             'content-type': 'application/json',
@@ -348,7 +348,7 @@ describe('AI Governance Integration Tests', () => {
     it('should handle context-aware validation', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/governance/validate',
+        url: '/api/ai/governance/validate',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -373,7 +373,7 @@ describe('AI Governance Integration Tests', () => {
     it('should require authentication for prompt validation', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/governance/validate',
+        url: '/api/ai/governance/validate',
         headers: {
           'content-type': 'application/json',
         },
@@ -391,7 +391,7 @@ describe('AI Governance Integration Tests', () => {
     it('should validate required fields for prompt validation', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/governance/validate',
+        url: '/api/ai/governance/validate',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -412,7 +412,7 @@ describe('AI Governance Integration Tests', () => {
     it('should generate educational feedback for blocked prompts', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/governance/educational-feedback',
+        url: '/api/ai/governance/educational-feedback',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -443,7 +443,7 @@ describe('AI Governance Integration Tests', () => {
     it('should provide contextual feedback for solution seeking', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/governance/educational-feedback',
+        url: '/api/ai/governance/educational-feedback',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -472,7 +472,7 @@ describe('AI Governance Integration Tests', () => {
       // Teste com usuário junior
       const juniorResponse = await app.inject({
         method: 'POST',
-        url: '/ai/governance/educational-feedback',
+        url: '/api/ai/governance/educational-feedback',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -491,7 +491,7 @@ describe('AI Governance Integration Tests', () => {
       // Teste com usuário senior
       const seniorResponse = await app.inject({
         method: 'POST',
-        url: '/ai/governance/educational-feedback',
+        url: '/api/ai/governance/educational-feedback',
         headers: {
           authorization: `Bearer ${seniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -516,7 +516,7 @@ describe('AI Governance Integration Tests', () => {
     it('should track feedback generation in metrics', async () => {
       await app.inject({
         method: 'POST',
-        url: '/ai/governance/educational-feedback',
+        url: '/api/ai/governance/educational-feedback',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -547,7 +547,7 @@ describe('AI Governance Integration Tests', () => {
       for (const prompt of interactions) {
         await app.inject({
           method: 'POST',
-          url: '/ai/governance/validate',
+          url: '/api/ai/governance/validate',
           headers: {
             authorization: `Bearer ${juniorTokens.accessToken}`,
             'content-type': 'application/json',
@@ -564,7 +564,7 @@ describe('AI Governance Integration Tests', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/governance/analyze-temporal-behavior',
+        url: '/api/ai/governance/analyze-temporal-behavior',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -594,7 +594,7 @@ describe('AI Governance Integration Tests', () => {
       for (const prompt of suspiciousPrompts) {
         await app.inject({
           method: 'POST',
-          url: '/ai/governance/validate',
+          url: '/api/ai/governance/validate',
           headers: {
             authorization: `Bearer ${juniorTokens.accessToken}`,
             'content-type': 'application/json',
@@ -612,7 +612,7 @@ describe('AI Governance Integration Tests', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/governance/analyze-temporal-behavior',
+        url: '/api/ai/governance/analyze-temporal-behavior',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -635,7 +635,7 @@ describe('AI Governance Integration Tests', () => {
     it('should provide behavioral recommendations', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/governance/analyze-temporal-behavior',
+        url: '/api/ai/governance/analyze-temporal-behavior',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -661,7 +661,7 @@ describe('AI Governance Integration Tests', () => {
       for (const window of timeWindows) {
         const response = await app.inject({
           method: 'POST',
-          url: '/ai/governance/analyze-temporal-behavior',
+          url: '/api/ai/governance/analyze-temporal-behavior',
           headers: {
             authorization: `Bearer ${juniorTokens.accessToken}`,
             'content-type': 'application/json',
@@ -685,7 +685,7 @@ describe('AI Governance Integration Tests', () => {
     it('should return governance metrics for admin users', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/ai/governance/metrics',
+        url: '/api/ai/governance/metrics',
         headers: {
           authorization: `Bearer ${adminTokens.accessToken}`,
         },
@@ -705,7 +705,7 @@ describe('AI Governance Integration Tests', () => {
     it('should deny governance metrics access to non-admin users', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/ai/governance/metrics',
+        url: '/api/ai/governance/metrics',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
         },
@@ -719,7 +719,7 @@ describe('AI Governance Integration Tests', () => {
     it('should return governance stats for admin', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/ai/governance/stats',
+        url: '/api/ai/governance/stats',
         headers: {
           authorization: `Bearer ${adminTokens.accessToken}`,
         },
@@ -739,7 +739,7 @@ describe('AI Governance Integration Tests', () => {
     it('should allow admin to refresh challenge cache', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/governance/refresh-challenge-cache',
+        url: '/api/ai/governance/refresh-challenge-cache',
         headers: {
           authorization: `Bearer ${adminTokens.accessToken}`,
           'content-type': 'application/json',
@@ -760,7 +760,7 @@ describe('AI Governance Integration Tests', () => {
     it('should allow admin to prewarm cache', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/governance/prewarm-cache',
+        url: '/api/ai/governance/prewarm-cache',
         headers: {
           authorization: `Bearer ${adminTokens.accessToken}`,
           'content-type': 'application/json',
@@ -781,7 +781,7 @@ describe('AI Governance Integration Tests', () => {
     it('should allow admin to clear validation cache', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/governance/clear-validation-cache',
+        url: '/api/ai/governance/clear-validation-cache',
         headers: {
           authorization: `Bearer ${adminTokens.accessToken}`,
         },
@@ -797,10 +797,10 @@ describe('AI Governance Integration Tests', () => {
 
     it('should deny cache management to non-admin users', async () => {
       const endpoints = [
-        { method: 'POST', url: '/ai/governance/refresh-challenge-cache', payload: { challengeIds: ['valid-id'] } },
-        { method: 'POST', url: '/ai/governance/prewarm-cache', payload: { challengeIds: ['valid-id'] } },
-        { method: 'POST', url: '/ai/governance/clear-validation-cache', payload: {} },
-      ];
+        { method: 'POST', url: '/api/ai/governance/refresh-challenge-cache', payload: { challengeIds: ['valid-id'] } },
+        { method: 'POST', url: '/api/ai/governance/prewarm-cache', payload: { challengeIds: ['valid-id'] } },
+        { method: 'POST', url: '/api/ai/governance/clear-validation-cache', payload: {} },
+      ] as const;
 
       for (const endpoint of endpoints) {
         const response = await app.inject({
@@ -824,7 +824,7 @@ describe('AI Governance Integration Tests', () => {
     it('should analyze prompt content and structure', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/governance/analyze-prompt',
+        url: '/api/ai/governance/analyze-prompt',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -858,7 +858,7 @@ describe('AI Governance Integration Tests', () => {
       for (const { prompt, expectedIntent } of promptTypes) {
         const response = await app.inject({
           method: 'POST',
-          url: '/ai/governance/analyze-prompt',
+          url: '/api/ai/governance/analyze-prompt',
           headers: {
             authorization: `Bearer ${juniorTokens.accessToken}`,
             'content-type': 'application/json',
@@ -888,7 +888,7 @@ describe('AI Governance Integration Tests', () => {
       for (const prompt of educationalPrompts) {
         const response = await app.inject({
           method: 'POST',
-          url: '/ai/governance/analyze-prompt',
+          url: '/api/ai/governance/analyze-prompt',
           headers: {
             authorization: `Bearer ${juniorTokens.accessToken}`,
             'content-type': 'application/json',
@@ -913,7 +913,7 @@ describe('AI Governance Integration Tests', () => {
     it('should handle malformed governance requests', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/governance/validate',
+        url: '/api/ai/governance/validate',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -929,7 +929,7 @@ describe('AI Governance Integration Tests', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/governance/validate',
+        url: '/api/ai/governance/validate',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -947,7 +947,7 @@ describe('AI Governance Integration Tests', () => {
     it('should handle special characters in prompts', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/governance/validate',
+        url: '/api/ai/governance/validate',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -966,7 +966,7 @@ describe('AI Governance Integration Tests', () => {
       const promises = Array.from({ length: 5 }, (_, i) =>
         app.inject({
           method: 'POST',
-          url: '/ai/governance/validate',
+          url: '/api/ai/governance/validate',
           headers: {
             authorization: `Bearer ${juniorTokens.accessToken}`,
             'content-type': 'application/json',
@@ -989,7 +989,7 @@ describe('AI Governance Integration Tests', () => {
     it('should handle non-existent challenge IDs', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/governance/validate',
+        url: '/api/ai/governance/validate',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',

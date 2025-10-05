@@ -40,5 +40,4 @@ const websocketPlugin: FastifyPluginAsync<WebSocketPluginOptions> = async functi
 
 export default fp(websocketPlugin, {
   name: 'websocket-plugin',
-  dependencies: ['auth-plugin'],
 });

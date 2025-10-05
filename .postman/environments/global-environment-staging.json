@@ -4,7 +4,7 @@
 	"values": [
 		{
 			"key": "baseUrl",
-			"value": "https://api-staging.devcoach.ai",
+			"value": "https://api-staging.devcoach.ai/api",
 			"description": "Base URL for the API server (staging)",
 			"type": "default",
 			"enabled": true

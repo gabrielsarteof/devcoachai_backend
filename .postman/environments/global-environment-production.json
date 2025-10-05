@@ -4,7 +4,7 @@
 	"values": [
 		{
 			"key": "baseUrl",
-			"value": "https://api.devcoach.ai",
+			"value": "https://api.devcoach.ai/api",
 			"description": "Base URL for the API server (production)",
 			"type": "default",
 			"enabled": true

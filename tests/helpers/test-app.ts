@@ -42,12 +42,15 @@ export async function buildTestApp(): Promise<{
     await app.register(helmet, { contentSecurityPolicy: false });
     await app.register(cors, { origin: true, credentials: true });
 
-    await app.register(authPlugin, { prisma, redis });
     await app.register(websocketPlugin, { prisma, redis });
-    await app.register(challengePlugin, { prisma, redis });
-    await app.register(aiPlugin, { prisma, redis });
-    await app.register(gamificationPlugin, { prisma, redis, wsServer: app.ws });
-    await app.register(metricPlugin, { prisma, redis, wsServer: app.ws });
+
+    await app.register(async (api) => {
+      await api.register(authPlugin, { prisma, redis });
+      await api.register(aiPlugin, { prisma, redis });
+      await api.register(challengePlugin, { prisma, redis });
+      await api.register(metricPlugin, { prisma, redis, wsServer: app.ws });
+      await api.register(gamificationPlugin, { prisma, redis, wsServer: app.ws });
+    }, { prefix: '/api' });
 
     await app.ready();
     return { app, prisma, redis };
@@ -166,7 +169,7 @@ export async function createTestUser(
 
   const response = await app.inject({
     method: 'POST',
-    url: '/auth/register',
+    url: '/api/auth/register',
     payload: {
       email,
       password,

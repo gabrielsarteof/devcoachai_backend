@@ -133,7 +133,7 @@ describe('AI Module Integration Tests', () => {
     // Criação de usuário admin
     const adminResponse = await app.inject({
       method: 'POST',
-      url: '/auth/register',
+      url: '/api/auth/register',
       payload: {
         email: `admin-${timestamp}@company.com`,
         password: 'Admin@123',
@@ -169,7 +169,7 @@ describe('AI Module Integration Tests', () => {
     // Login do admin após atualização
     const adminLoginResponse = await app.inject({
       method: 'POST',
-      url: '/auth/login',
+      url: '/api/auth/login',
       payload: {
         email: `admin-${timestamp}@company.com`,
         password: 'Admin@123',
@@ -188,7 +188,7 @@ describe('AI Module Integration Tests', () => {
     // Criação de usuário junior
     const juniorResponse = await app.inject({
       method: 'POST',
-      url: '/auth/register',
+      url: '/api/auth/register',
       payload: {
         email: `junior-${timestamp}@company.com`,
         password: 'Junior@123',
@@ -215,7 +215,7 @@ describe('AI Module Integration Tests', () => {
     // Criação de usuário senior
     const seniorResponse = await app.inject({
       method: 'POST',
-      url: '/auth/register',
+      url: '/api/auth/register',
       payload: {
         email: `senior-${timestamp}@company.com`,
         password: 'Senior@123',
@@ -247,7 +247,7 @@ describe('AI Module Integration Tests', () => {
     // Criação de challenge para testes
     const challengeResponse = await app.inject({
       method: 'POST',
-      url: '/challenges',
+      url: '/api/challenges',
       headers: {
         authorization: `Bearer ${adminTokens.accessToken}`,
       },
@@ -307,7 +307,7 @@ describe('AI Module Integration Tests', () => {
     // Criação de attempt para testes
     const attemptResponse = await app.inject({
       method: 'POST',
-      url: `/challenges/${testChallenge.id}/start`,
+      url: `/api/challenges/${testChallenge.id}/start`,
       headers: {
         authorization: `Bearer ${juniorTokens.accessToken}`,
       },
@@ -335,7 +335,7 @@ describe('AI Module Integration Tests', () => {
     it('should successfully process AI chat request with OpenAI', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/chat',
+        url: '/api/ai/chat',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -374,14 +374,14 @@ describe('AI Module Integration Tests', () => {
     it('should successfully process AI chat request with Anthropic', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/chat',
+        url: '/api/ai/chat',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
         },
         payload: {
           provider: 'anthropic',
-          model: 'claude-3-sonnet-20240229',
+          model: 'claude-3-haiku-20240307',
           messages: [
             {
               role: 'user',
@@ -408,7 +408,7 @@ describe('AI Module Integration Tests', () => {
     it('should reject AI chat request without authentication', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/chat',
+        url: '/api/ai/chat',
         headers: {
           'content-type': 'application/json',
         },
@@ -428,7 +428,7 @@ describe('AI Module Integration Tests', () => {
     it('should validate required fields in AI chat request', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/chat',
+        url: '/api/ai/chat',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -447,7 +447,7 @@ describe('AI Module Integration Tests', () => {
     it('should return available AI models', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/ai/models',
+        url: '/api/ai/models',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
         },
@@ -475,7 +475,7 @@ describe('AI Module Integration Tests', () => {
     it('should handle invalid provider gracefully', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/chat',
+        url: '/api/ai/chat',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -496,7 +496,7 @@ describe('AI Module Integration Tests', () => {
       // Geração de dados de uso
       await app.inject({
         method: 'POST',
-        url: '/ai/chat',
+        url: '/api/ai/chat',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -515,7 +515,7 @@ describe('AI Module Integration Tests', () => {
 
       const response = await app.inject({
         method: 'GET',
-        url: '/ai/usage?days=7',
+        url: '/api/ai/usage?days=7',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
         },
@@ -538,7 +538,7 @@ describe('AI Module Integration Tests', () => {
     it('should track copy-paste events', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/track-copy-paste',
+        url: '/api/ai/track-copy-paste',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -562,7 +562,7 @@ describe('AI Module Integration Tests', () => {
     it('should validate copy-paste data structure', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/track-copy-paste',
+        url: '/api/ai/track-copy-paste',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -581,7 +581,7 @@ describe('AI Module Integration Tests', () => {
     it('should handle missing challenge context in usage tracking', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/chat',
+        url: '/api/ai/chat',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -604,7 +604,7 @@ describe('AI Module Integration Tests', () => {
       const promises = Array.from({ length: 3 }, () =>
         app.inject({
           method: 'POST',
-          url: '/ai/chat',
+          url: '/api/ai/chat',
           headers: {
             authorization: `Bearer ${juniorTokens.accessToken}`,
             'content-type': 'application/json',
@@ -633,7 +633,7 @@ describe('AI Module Integration Tests', () => {
         promises.push(
           app.inject({
             method: 'POST',
-            url: '/ai/chat',
+            url: '/api/ai/chat',
             headers: {
               authorization: `Bearer ${juniorTokens.accessToken}`,
               'content-type': 'application/json',
@@ -664,7 +664,7 @@ describe('AI Module Integration Tests', () => {
       // Por agora, apenas verificamos que o sistema não quebra com muitas requisições
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/chat',
+        url: '/api/ai/chat',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -686,7 +686,7 @@ describe('AI Module Integration Tests', () => {
     it('should integrate properly with metrics tracking', async () => {
       const chatResponse = await app.inject({
         method: 'POST',
-        url: '/ai/chat',
+        url: '/api/ai/chat',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -725,7 +725,7 @@ describe('AI Module Integration Tests', () => {
       // Teste GET /ai/models
       const modelsResponse = await app.inject({
         method: 'GET',
-        url: '/ai/models',
+        url: '/api/ai/models',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -736,7 +736,7 @@ describe('AI Module Integration Tests', () => {
       // Teste POST /ai/chat
       const chatResponse = await app.inject({
         method: 'POST',
-        url: '/ai/chat',
+        url: '/api/ai/chat',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -754,7 +754,7 @@ describe('AI Module Integration Tests', () => {
       // Teste GET /ai/usage
       const usageResponse = await app.inject({
         method: 'GET',
-        url: '/ai/usage',
+        url: '/api/ai/usage',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -767,7 +767,7 @@ describe('AI Module Integration Tests', () => {
       // Teste GET /ai/models - sem auth
       const modelsUnauthResponse = await app.inject({
         method: 'GET',
-        url: '/ai/models',
+        url: '/api/ai/models',
         headers: { 'content-type': 'application/json' },
       });
       expect(modelsUnauthResponse.statusCode).toBe(401);
@@ -775,7 +775,7 @@ describe('AI Module Integration Tests', () => {
       // Teste GET /ai/models - com auth
       const modelsAuthResponse = await app.inject({
         method: 'GET',
-        url: '/ai/models',
+        url: '/api/ai/models',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -786,7 +786,7 @@ describe('AI Module Integration Tests', () => {
       // Teste GET /ai/usage - sem auth
       const usageUnauthResponse = await app.inject({
         method: 'GET',
-        url: '/ai/usage',
+        url: '/api/ai/usage',
         headers: { 'content-type': 'application/json' },
       });
       expect(usageUnauthResponse.statusCode).toBe(401);
@@ -794,7 +794,7 @@ describe('AI Module Integration Tests', () => {
       // Teste GET /ai/usage - com auth
       const usageAuthResponse = await app.inject({
         method: 'GET',
-        url: '/ai/usage',
+        url: '/api/ai/usage',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -805,7 +805,7 @@ describe('AI Module Integration Tests', () => {
       // Teste POST /ai/chat - sem auth
       const chatUnauthResponse = await app.inject({
         method: 'POST',
-        url: '/ai/chat',
+        url: '/api/ai/chat',
         headers: { 'content-type': 'application/json' },
         payload: {
           provider: 'openai',
@@ -818,7 +818,7 @@ describe('AI Module Integration Tests', () => {
       // Teste POST /ai/chat - com auth
       const chatAuthResponse = await app.inject({
         method: 'POST',
-        url: '/ai/chat',
+        url: '/api/ai/chat',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -834,7 +834,7 @@ describe('AI Module Integration Tests', () => {
       // Teste POST /ai/track-copy-paste - sem auth
       const trackUnauthResponse = await app.inject({
         method: 'POST',
-        url: '/ai/track-copy-paste',
+        url: '/api/ai/track-copy-paste',
         headers: { 'content-type': 'application/json' },
         payload: {
           attemptId: testAttempt.id,
@@ -848,7 +848,7 @@ describe('AI Module Integration Tests', () => {
       // Teste POST /ai/track-copy-paste - com auth
       const trackAuthResponse = await app.inject({
         method: 'POST',
-        url: '/ai/track-copy-paste',
+        url: '/api/ai/track-copy-paste',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -868,7 +868,7 @@ describe('AI Module Integration Tests', () => {
     it('should handle malformed JSON payloads', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/chat',
+        url: '/api/ai/chat',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -882,7 +882,7 @@ describe('AI Module Integration Tests', () => {
     it('should handle missing content-type header', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/chat',
+        url: '/api/ai/chat',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
         },
@@ -901,7 +901,7 @@ describe('AI Module Integration Tests', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/chat',
+        url: '/api/ai/chat',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -921,7 +921,7 @@ describe('AI Module Integration Tests', () => {
     it('should handle special characters in messages', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/chat',
+        url: '/api/ai/chat',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',
@@ -946,7 +946,7 @@ describe('AI Module Integration Tests', () => {
     it('should handle empty messages array', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/ai/chat',
+        url: '/api/ai/chat',
         headers: {
           authorization: `Bearer ${juniorTokens.accessToken}`,
           'content-type': 'application/json',

@@ -23,6 +23,21 @@ export const BadgePropsSchema = z.object({
 
 export type BadgeProps = z.infer<typeof BadgePropsSchema>;
 
+export interface BadgeEntityJSON {
+  id: string;
+  key: string;
+  name: string;
+  description: string;
+  icon: string;
+  rarity: Rarity;
+  category: BadgeCategory;
+  requirements: BadgeRequirement;
+  xpReward: number;
+  visible: boolean;
+  unlockedAt?: Date;
+  progress?: number;
+}
+
 export class BadgeEntity {
   private constructor(private readonly props: BadgeProps) {}
 
@@ -99,8 +114,21 @@ export class BadgeEntity {
     return this.props.progress || 0;
   }
 
-  toJSON(): BadgeProps {
-    return { ...this.props };
+  toJSON(): BadgeEntityJSON {
+    return {
+      id: this.props.id,
+      key: this.props.key,
+      name: this.props.name,
+      description: this.props.description,
+      icon: this.props.icon,
+      rarity: this.props.rarity,
+      category: this.props.category,
+      requirements: this.props.requirement.getValue(),
+      xpReward: this.props.xpReward,
+      visible: this.props.visible,
+      unlockedAt: this.props.unlockedAt,
+      progress: this.props.progress,
+    };
   }
 
   toPrismaCreate(): Omit<PrismaBadge, 'id'> {

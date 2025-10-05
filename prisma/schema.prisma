@@ -575,6 +575,7 @@ enum NotificationType {
   level_up
   badge_unlock
   streak_risk
+  maintenance
 }
 
 enum NotificationPriority {

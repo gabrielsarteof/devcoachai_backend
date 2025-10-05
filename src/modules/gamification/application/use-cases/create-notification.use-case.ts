@@ -7,7 +7,7 @@ import { GamificationEvents } from '../../domain/enums/websocket-events.enum';
 
 export const CreateNotificationSchema = z.object({
   userId: z.string().min(1),
-  type: z.enum(['achievement', 'reminder', 'milestone', 'level_up', 'badge_unlock', 'streak_risk']),
+  type: z.enum(['achievement', 'reminder', 'milestone', 'level_up', 'badge_unlock', 'streak_risk', 'maintenance']),
   title: z.string().min(1).max(100),
   message: z.string().min(1).max(500),
   icon: z.string(),
@@ -26,18 +26,7 @@ export class CreateNotificationUseCase {
   ) {}
 
   async execute(input: CreateNotificationDTO): Promise<NotificationEntity> {
-    let validated;
-    try {
-      validated = CreateNotificationSchema.parse(input);
-    } catch (error) {
-      console.warn('=== CreateNotification schema validation failed, using fallback ===', {
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-      validated = {
-        ...input,
-        priority: input.priority || 'medium',
-      };
-    }
+    const validated = CreateNotificationSchema.parse(input);
     const startTime = Date.now();
 
     logger.info({

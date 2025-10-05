@@ -5,7 +5,7 @@ import { randomUUID } from 'crypto';
 export const NotificationPropsSchema = z.object({
   id: z.string().min(1),
   userId: z.string().min(1),
-  type: z.enum(['achievement', 'reminder', 'milestone', 'level_up', 'badge_unlock', 'streak_risk']),
+  type: z.enum(['achievement', 'reminder', 'milestone', 'level_up', 'badge_unlock', 'streak_risk', 'maintenance']),
   title: z.string().min(1).max(100),
   message: z.string().min(1).max(500),
   icon: z.string(),

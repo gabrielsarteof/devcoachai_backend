@@ -25,6 +25,21 @@ export class GamificationController {
     private readonly notificationService: NotificationService
   ) {}
 
+  private async getUserData(userId: string): Promise<{ companyId?: string } | null> {
+    try {
+      const { PrismaClient } = await import('@prisma/client');
+      const prisma = new PrismaClient();
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { companyId: true }
+      });
+      await prisma.$disconnect();
+      return user;
+    } catch {
+      return null;
+    }
+  }
+
   async getDashboard(request: AuthenticatedRequest, reply: FastifyReply): Promise<void> {
     const userId = request.user.id;
 
@@ -90,8 +105,23 @@ export class GamificationController {
     try {
       const query = (request.query || {}) as any;
 
-      const queryWithUser = {
+      // Convert string query parameters to correct types
+      const processedQuery = {
         ...query,
+        page: query.page ? parseInt(query.page) : undefined,
+        limit: query.limit ? parseInt(query.limit) : undefined,
+      };
+
+      // Auto-populate scopeId for COMPANY scope before validation
+      if (processedQuery.scope === 'COMPANY' && !processedQuery.scopeId) {
+        const userData = await this.getUserData(request.user.id);
+        if (userData?.companyId) {
+          processedQuery.scopeId = userData.companyId;
+        }
+      }
+
+      const queryWithUser = {
+        ...processedQuery,
         includeUser: request.user.id
       };
 
@@ -188,10 +218,11 @@ export class GamificationController {
     const { notificationId } = request.params as { notificationId: string };
 
     try {
+      const body = request.body as { actionTaken?: string } | null;
       const input = AcknowledgeNotificationSchema.parse({
         userId,
         notificationId,
-        actionTaken: (request.body as any)?.actionTaken
+        actionTaken: body?.actionTaken
       });
 
       await this.acknowledgeNotificationUseCase.execute(input);
@@ -218,6 +249,15 @@ export class GamificationController {
   }
 
   async createNotification(request: AuthenticatedRequest, reply: FastifyReply): Promise<void> {
+    if (request.user.role !== 'TECH_LEAD' && request.user.role !== 'SENIOR') {
+      return reply.status(403).send({
+        error: 'Forbidden',
+        code: 'INSUFFICIENT_PERMISSIONS',
+        statusCode: 403,
+        message: 'Only admin users can create notifications'
+      });
+    }
+
     try {
       const input = CreateNotificationSchema.parse(request.body);
       const notification = await this.createNotificationUseCase.execute(input);

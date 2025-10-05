@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Badge as PrismaBadge } from '@prisma/client';
 import { BadgeEntity } from '../../domain/entities/badge.entity';
 import { IBadgeRepository, BadgeProgress } from '../../domain/repositories/badge.repository.interface';
 import { BadgeEvaluationContext } from '../../domain/services/badge-evaluation-strategy';
@@ -16,20 +16,22 @@ export class BadgeRepository implements IBadgeRepository {
 
   async findById(badgeId: string): Promise<BadgeEntity | null> {
     const cacheKey = `badge:${badgeId}`;
-    let badge = await this.cache.get<BadgeEntity>(cacheKey);
-    
-    if (!badge) {
-      const prismaBadge = await this.prisma.badge.findUnique({
-        where: { id: badgeId },
-      });
-      
-      if (prismaBadge) {
-        badge = BadgeEntity.fromPrisma(prismaBadge);
-        await this.cache.set(cacheKey, badge, this.CACHE_TTL);
-      }
+    const cachedData = await this.cache.get<PrismaBadge>(cacheKey);
+
+    if (cachedData) {
+      return BadgeEntity.fromPrisma(cachedData);
     }
-    
-    return badge;
+
+    const prismaBadge = await this.prisma.badge.findUnique({
+      where: { id: badgeId },
+    });
+
+    if (prismaBadge) {
+      await this.cache.set(cacheKey, prismaBadge, this.CACHE_TTL);
+      return BadgeEntity.fromPrisma(prismaBadge);
+    }
+
+    return null;
   }
 
   async findByKey(key: string): Promise<BadgeEntity | null> {
@@ -51,26 +53,37 @@ export class BadgeRepository implements IBadgeRepository {
 
   async findByUserId(userId: string): Promise<BadgeEntity[]> {
     const cacheKey = `user:${userId}:badges`;
-    let badges = await this.cache.get<BadgeEntity[]>(cacheKey);
-    
-    if (!badges) {
-      const userBadges = await this.prisma.userBadge.findMany({
-        where: { userId },
-        include: { badge: true },
-        orderBy: { unlockedAt: 'desc' },
-      });
+    const cachedData = await this.cache.get<Array<{ badge: PrismaBadge; unlockedAt: Date; progress: number }>>(cacheKey);
 
-      badges = userBadges.map(ub => 
+    if (cachedData) {
+      return cachedData.map(ub =>
         BadgeEntity.fromPrisma(ub.badge, {
           unlockedAt: ub.unlockedAt,
           progress: ub.progress,
         })
       );
-      
-      await this.cache.set(cacheKey, badges, this.CACHE_TTL);
     }
-    
-    return badges;
+
+    const userBadges = await this.prisma.userBadge.findMany({
+      where: { userId },
+      include: { badge: true },
+      orderBy: { unlockedAt: 'desc' },
+    });
+
+    const serializedUserBadges = userBadges.map(ub => ({
+      badge: ub.badge,
+      unlockedAt: ub.unlockedAt,
+      progress: ub.progress,
+    }));
+
+    await this.cache.set(cacheKey, serializedUserBadges, this.CACHE_TTL);
+
+    return userBadges.map(ub =>
+      BadgeEntity.fromPrisma(ub.badge, {
+        unlockedAt: ub.unlockedAt,
+        progress: ub.progress,
+      })
+    );
   }
 
   async unlock(userId: string, badgeId: string): Promise<void> {

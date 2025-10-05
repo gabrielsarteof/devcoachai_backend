@@ -1,6 +1,7 @@
 import { ILeaderboardRepository, LeaderboardResult } from '../repositories/leaderboard.repository.interface';
 import { LeaderboardKeyVO } from '../value-objects/leaderboard-key.vo';
 import { LeaderboardType, LeaderboardScope, LeaderboardPeriod } from '../enums/leaderboard.enum';
+import { LeaderboardEntryEntity } from '../entities/leaderboard-entry.entity';
 import { ICacheService } from '../../infrastructure/services/cache.service';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
 
@@ -80,7 +81,17 @@ export class LeaderboardService {
     includeUser?: string
   ): Promise<LeaderboardResult> {
     const startTime = Date.now();
-    
+
+    // Handle COMPANY scope without scopeId - return empty leaderboard
+    if (scope === LeaderboardScope.COMPANY && !scopeId) {
+      return {
+        entries: [],
+        totalParticipants: 0,
+        lastUpdated: new Date(),
+        userRanking: null,
+      };
+    }
+
     const key = LeaderboardKeyVO.create({
       type,
       scope,
@@ -101,11 +112,40 @@ export class LeaderboardService {
     }, 'Getting leaderboard from service');
 
     try {
-      const cached = await this.cache.get<LeaderboardResult>(cacheKey);
+      interface CachedLeaderboardData {
+        entries: Array<{
+          userId: string;
+          name: string;
+          avatarUrl: string | null;
+          score: number;
+          position: number;
+          metadata: Record<string, unknown>;
+        }>;
+        totalParticipants: number;
+        userRanking?: {
+          userId: string;
+          position: number;
+          score: number;
+          percentile: number;
+        };
+        lastUpdated: string;
+      }
 
-      if (cached) {
+      const cachedData = await this.cache.get<CachedLeaderboardData>(cacheKey);
+
+      if (cachedData) {
         logger.debug({ cacheKey }, 'Leaderboard service cache hit');
-        return cached;
+
+        const result: LeaderboardResult = {
+          entries: cachedData.entries.map(entry =>
+            LeaderboardEntryEntity.fromCacheData(entry)
+          ),
+          totalParticipants: cachedData.totalParticipants,
+          userRanking: cachedData.userRanking,
+          lastUpdated: new Date(cachedData.lastUpdated),
+        };
+
+        return result;
       }
 
       const result = await this.repository.getLeaderboard({
@@ -115,8 +155,15 @@ export class LeaderboardService {
         includeUser,
       });
 
+      const cacheData: CachedLeaderboardData = {
+        entries: result.entries.map(entry => entry.toCacheData()),
+        totalParticipants: result.totalParticipants,
+        userRanking: result.userRanking,
+        lastUpdated: result.lastUpdated.toISOString(),
+      };
+
       const ttl = this.getCacheTTL(period);
-      await this.cache.set(cacheKey, result, ttl);
+      await this.cache.set(cacheKey, cacheData, ttl);
 
       logger.debug({
         operation: 'get_leaderboard_service_completed',

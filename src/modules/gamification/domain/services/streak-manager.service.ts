@@ -1,4 +1,4 @@
-import { StreakEntity, StreakActivityData, StreakConfig } from '../entities/streak.entity';
+import { StreakEntity, StreakActivityData, StreakConfig, StreakProps } from '../entities/streak.entity';
 import { IStreakRepository } from '../repositories/streak.repository.interface';
 import { ICacheService } from '../../infrastructure/services/cache.service';
 import { StreakNotFoundError, InvalidStreakOperationError } from '../errors';
@@ -164,28 +164,29 @@ export class StreakManagerService {
 
   private async getOrCreateStreak(userId: string): Promise<StreakEntity> {
     const cacheKey = `user:${userId}:streak`;
-    let streak = await this.cache.get<StreakEntity>(cacheKey);
-    
-    if (!streak) {
-      streak = await this.repository.findByUserId(userId);
-      
-      if (!streak) {
-        streak = StreakEntity.create({
-          userId,
-          currentStreak: 0,
-          longestStreak: 0,
-          lastActivityDate: new Date(),
-          freezesUsed: 0,
-          weekendProtected: this.config.weekendProtection,
-          status: 'ACTIVE',
-        });
-        
-        await this.repository.create(streak);
-      }
-      
-      await this.cache.set(cacheKey, streak, this.CACHE_TTL);
+    const cachedData = await this.cache.get<StreakProps>(cacheKey);
+
+    if (cachedData) {
+      return StreakEntity.fromPrisma(cachedData);
     }
-    
+
+    let streak = await this.repository.findByUserId(userId);
+
+    if (!streak) {
+      streak = StreakEntity.create({
+        userId,
+        currentStreak: 0,
+        longestStreak: 0,
+        lastActivityDate: new Date(),
+        freezesUsed: 0,
+        weekendProtected: this.config.weekendProtection,
+        status: 'ACTIVE',
+      });
+
+      await this.repository.create(streak);
+    }
+
+    await this.cache.set(cacheKey, streak.toJSON(), this.CACHE_TTL);
     return streak;
   }
 

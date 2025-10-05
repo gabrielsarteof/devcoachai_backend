@@ -4,6 +4,7 @@ import { BadgeEvaluationStrategyFactory } from './badge-evaluation-strategy';
 import { ICacheService } from '../../infrastructure/services/cache.service';
 import { BadgeNotFoundError, BadgeAlreadyUnlockedError } from '../errors';
 import { logger } from '@/shared/infrastructure/monitoring/logger';
+import { Badge as PrismaBadge } from '@prisma/client';
 
 export interface BadgeEvaluationResult {
   unlocked: BadgeEntity[];
@@ -87,29 +88,25 @@ export class BadgeService {
   }
 
   async getAllBadges(): Promise<BadgeEntity[]> {
-    const cacheKey = 'badges:all';
+    logger.info({ operation: 'get_all_badges_started' }, 'Getting all badges');
 
-    logger.info({ operation: 'get_all_badges_started', cacheKey }, 'Getting all badges');
-
-    let badges = await this.cache.get<BadgeEntity[]>(cacheKey);
-
-    if (!badges) {
-      logger.info({ operation: 'get_all_badges_cache_miss' }, 'Cache miss, fetching from repository');
-
-      badges = await this.repository.findAll();
+    try {
+      const badges = await this.repository.findAll();
 
       logger.info({
-        operation: 'get_all_badges_repository_result',
+        operation: 'get_all_badges_completed',
         badgeCount: badges.length,
         badgeIds: badges.map(b => b.getId()).slice(0, 5)
-      }, 'Repository returned badges');
+      }, 'All badges retrieved successfully');
 
-      await this.cache.set(cacheKey, badges, this.CACHE_TTL);
-    } else {
-      logger.info({ operation: 'get_all_badges_cache_hit', badgeCount: badges.length }, 'Cache hit');
+      return badges;
+    } catch (error) {
+      logger.error({
+        operation: 'get_all_badges_failed',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }, 'Failed to get all badges');
+      throw error;
     }
-
-    return badges;
   }
 
   async getUserBadges(userId: string): Promise<BadgeEntity[]> {

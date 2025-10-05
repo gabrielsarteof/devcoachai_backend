@@ -56,6 +56,52 @@ export class LeaderboardEntryEntity {
     return this.props.score;
   }
 
+  toCacheData(): {
+    userId: string;
+    name: string;
+    avatarUrl: string | null;
+    score: number;
+    position: number;
+    metadata: Record<string, unknown>;
+  } {
+    return {
+      userId: this.props.userId,
+      name: this.props.displayName,
+      avatarUrl: this.props.avatar || null,
+      score: this.props.score,
+      position: this.props.position,
+      metadata: {
+        level: this.props.level,
+        isAnonymous: this.props.isAnonymous,
+        lastActivity: this.props.lastActivity?.toISOString(),
+        change: this.props.change,
+      },
+    };
+  }
+
+  static fromCacheData(data: {
+    userId: string;
+    name: string;
+    avatarUrl: string | null;
+    score: number;
+    position: number;
+    metadata: Record<string, unknown>;
+  }): LeaderboardEntryEntity {
+    const metadata = data.metadata || {};
+
+    return new LeaderboardEntryEntity({
+      userId: data.userId,
+      displayName: data.name,
+      score: data.score,
+      position: data.position,
+      avatar: data.avatarUrl || undefined,
+      level: (metadata.level as number) || 1,
+      isAnonymous: (metadata.isAnonymous as boolean) || false,
+      lastActivity: metadata.lastActivity ? new Date(metadata.lastActivity as string) : undefined,
+      change: metadata.change as number | undefined,
+    });
+  }
+
   toJSON(): LeaderboardEntryProps {
     return { ...this.props };
   }

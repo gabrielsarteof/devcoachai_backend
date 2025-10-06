@@ -10,11 +10,13 @@ Sistema responsável pela autenticação de usuários, controle de acesso e gest
 ### Challenges ([challenges.md](./challenges.md))
 Módulo central da plataforma que gerencia desafios de programação, execução de código via Judge0, detecção de vulnerabilidades e sistema de pontuação. Inclui análise de qualidade de código e feedback automatizado.
 
+### Metrics ([metrics.md](./metrics.md))
+Sistema de telemetria que captura, calcula e analisa o desempenho dos desenvolvedores durante a resolução de desafios. Monitora dependência de IA (DI), taxa de aprovação em testes (PR) e score de checklist de validação (CS), fornecendo insights acionáveis e streaming em tempo real.
+
 ## Módulos Pendentes de Documentação
 
 - **Gamification**: Sistema de XP, níveis e conquistas
 - **AI**: Integração com LLMs para feedback inteligente
-- **Metrics**: Coleta e análise de métricas de uso
 
 ## Estrutura da Documentação
 

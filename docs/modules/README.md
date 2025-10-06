@@ -16,9 +16,8 @@ Sistema de telemetria que captura, calcula e analisa o desempenho dos desenvolve
 ### AI ([ai.md](./ai.md))
 Módulo avançado de integração com múltiplos provedores de IA (OpenAI, Anthropic) que implementa governança educacional sofisticada. Inclui validação multi-camada de prompts, feedback educacional personalizado, detecção de copy/paste, análise temporal de comportamento e sistema robusto de rate limiting e quotas.
 
-## Módulos Pendentes de Documentação
-
-- **Gamification**: Sistema de XP, níveis e conquistas
+### Gamification ([gamification.md](./gamification.md))
+Sistema completo de gamificação que transforma o aprendizado em experiência envolvente através de XP, níveis, badges, streaks e leaderboards. Implementa algoritmo sofisticado de cálculo de pontos baseado em métricas de qualidade, sistema de badges com diferentes raridades, gestão de streaks com proteções inteligentes e rankings competitivos com cache otimizado. Inclui notificações real-time via WebSocket e dashboard consolidado.
 
 ## Estrutura da Documentação
 

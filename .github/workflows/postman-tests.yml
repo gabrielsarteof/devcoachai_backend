@@ -82,7 +82,7 @@ jobs:
         run: |
           newman run .postman/collections/all-tests-collection.json \
             -e .postman/environments/global-environment.json \
-            --env-var "baseUrl=http://localhost:3333" \
+            --env-var "baseUrl=http://localhost:3333/api" \
             --reporters cli,json,htmlextra \
             --reporter-json-export ./newman/report.json \
             --reporter-htmlextra-export ./newman/report.html \
@@ -95,7 +95,7 @@ jobs:
         run: |
           newman run .postman/collections/auth-collection.json \
             -e .postman/environments/global-environment.json \
-            --env-var "baseUrl=http://localhost:3333" \
+            --env-var "baseUrl=http://localhost:3333/api" \
             --reporters cli,json \
             --reporter-json-export ./newman/auth-report.json \
             --color on
@@ -105,7 +105,7 @@ jobs:
         run: |
           newman run .postman/collections/challenges-collection.json \
             -e .postman/environments/global-environment.json \
-            --env-var "baseUrl=http://localhost:3333" \
+            --env-var "baseUrl=http://localhost:3333/api" \
             --reporters cli,json \
             --reporter-json-export ./newman/challenges-report.json \
             --color on
@@ -115,7 +115,7 @@ jobs:
         run: |
           newman run .postman/collections/metrics-collection.json \
             -e .postman/environments/global-environment.json \
-            --env-var "baseUrl=http://localhost:3333" \
+            --env-var "baseUrl=http://localhost:3333/api" \
             --reporters cli,json \
             --reporter-json-export ./newman/metrics-report.json \
             --color on
@@ -125,7 +125,7 @@ jobs:
         run: |
           newman run .postman/collections/gamification-collection.json \
             -e .postman/environments/global-environment.json \
-            --env-var "baseUrl=http://localhost:3333" \
+            --env-var "baseUrl=http://localhost:3333/api" \
             --reporters cli,json \
             --reporter-json-export ./newman/gamification-report.json \
             --color on
@@ -143,7 +143,7 @@ jobs:
             echo "🤖 Running AI tests with available API keys"
             newman run .postman/collections/ai-collection.json \
               -e .postman/environments/global-environment.json \
-              --env-var "baseUrl=http://localhost:3333" \
+              --env-var "baseUrl=http://localhost:3333/api" \
               --reporters cli,json \
               --reporter-json-export ./newman/ai-report.json \
               --color on

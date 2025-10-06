@@ -13,10 +13,12 @@ Módulo central da plataforma que gerencia desafios de programação, execução
 ### Metrics ([metrics.md](./metrics.md))
 Sistema de telemetria que captura, calcula e analisa o desempenho dos desenvolvedores durante a resolução de desafios. Monitora dependência de IA (DI), taxa de aprovação em testes (PR) e score de checklist de validação (CS), fornecendo insights acionáveis e streaming em tempo real.
 
+### AI ([ai.md](./ai.md))
+Módulo avançado de integração com múltiplos provedores de IA (OpenAI, Anthropic) que implementa governança educacional sofisticada. Inclui validação multi-camada de prompts, feedback educacional personalizado, detecção de copy/paste, análise temporal de comportamento e sistema robusto de rate limiting e quotas.
+
 ## Módulos Pendentes de Documentação
 
 - **Gamification**: Sistema de XP, níveis e conquistas
-- **AI**: Integração com LLMs para feedback inteligente
 
 ## Estrutura da Documentação
 

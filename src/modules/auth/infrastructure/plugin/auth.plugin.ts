@@ -59,6 +59,23 @@ const authPlugin: FastifyPluginAsync<AuthPluginOptions> = async function(
   registerAuthDecorators(fastify, authMiddleware);
 
   await fastify.register(async function authRoutesPlugin(childInstance) {
+    // Rate limit específico para autenticação
+    // Desenvolvimento: 50 tentativas por minuto (mais permissivo para testes)
+    // Produção: 5 tentativas a cada 15 minutos
+    if (process.env.NODE_ENV !== 'test') {
+      const isDevelopment = process.env.NODE_ENV === 'development';
+      await childInstance.register(require('@fastify/rate-limit'), {
+        max: isDevelopment ? 50 : 5,
+        timeWindow: isDevelopment ? '1 minute' : '15 minutes',
+        errorResponseBuilder: () => ({
+          statusCode: 429,
+          error: 'Too Many Requests',
+          message: 'Too many login attempts. Please try again later.',
+          code: 'TOO_MANY_LOGIN_ATTEMPTS'
+        })
+      });
+    }
+
     await authRoutes(childInstance, authController);
   }, {
     prefix: '/auth'
